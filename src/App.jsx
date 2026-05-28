@@ -726,8 +726,10 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       try{
         if(!window.__greekFont){
           const urls=[
-            "https://cdn.jsdelivr.net/npm/dejavu-sans-ttf@2.37.3/ttf/DejaVuSans.ttf",
-            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@version_2_37/ttf/DejaVuSans.ttf"
+            "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf",
+            "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf",
+            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@version_2_37/ttf/DejaVuSans.ttf",
+            "https://cdn.jsdelivr.net/npm/dejavu-sans-ttf@2.37.3/ttf/DejaVuSans.ttf"
           ];
           for(const u of urls){
             try{
@@ -797,10 +799,14 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         y+=rowH;
         if(y>195){doc.addPage();y=20;}
       });
-      doc.setDrawColor(180);doc.setLineWidth(0.15);
+      doc.setDrawColor(130);doc.setLineWidth(0.3);
       const tableTop=30, tableBottom=y;
-      columns.forEach(c=>doc.line(c.x,tableTop,c.x,tableBottom));
-      doc.line(startX+totalW,tableTop,startX+totalW,tableBottom);
+      // Κάθετες γραμμές
+      doc.line(startX,tableTop,startX,tableBottom);
+      columns.forEach(c=>doc.line(c.x+c.w,tableTop,c.x+c.w,tableBottom));
+      // Οριζόντιες γραμμές
+      doc.line(startX,tableTop,startX+totalW,tableTop);
+      for(let i=0;i<=regs.length;i++){const ly=tableTop+8+i*8;if(ly<=tableBottom)doc.line(startX,ly,startX+totalW,ly);}
       doc.line(startX,tableBottom,startX+totalW,tableBottom);
       doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
     }catch(e){
