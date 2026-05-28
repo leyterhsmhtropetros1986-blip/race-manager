@@ -718,7 +718,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");}
         catch(e){await loadScript("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js");}
       }
-    }catch(e){alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF. Κλείσε το AdBlock ή χρησιμοποίησε Excel.");return;}
+    }catch(e){alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF.");return;}
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF({orientation:"landscape"});
@@ -732,13 +732,13 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         if(window.__greekFont){doc.addFileToVFS("Greek.ttf",window.__greekFont);doc.addFont("Greek.ttf","GreekFont","normal");doc.setFont("GreekFont");gf=true;}
       }catch(e){gf=false;}
       const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"TH","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"CH","Ψ":"PS","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y"};
-      const fix=(txt)=>{if(gf)return String(txt==null?"":txt);return String(txt==null?"":txt).split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
+      const fix=(txt)=>{const v=txt==null?"":String(txt);if(gf)return v;return v.split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
 
-      const startX=10, tableW=277;
+      const startX=10;
       const columns=[
-        {h:"A/A",w:14},{h:"BIB",w:16},{h:fix("Όνομα"),w:34},{h:fix("Επώνυμο"),w:40},
-        {h:fix("Τηλέφωνο"),w:30},{h:fix("Διαδρομή"),w:30},{h:fix("Κατηγορία"),w:33},
-        {h:"T-Shirt",w:18},{h:fix("Σύλλογος"),w:34},{h:fix("Πόλη"),w:28}
+        {h:"A/A",w:14},{h:"BIB",w:16},{h:"Onoma",w:34,gh:"Όνομα"},{h:"Eponymo",w:40,gh:"Επώνυμο"},
+        {h:"Tilefono",w:30,gh:"Τηλέφωνο"},{h:"Diadromi",w:30,gh:"Διαδρομή"},{h:"Katigoria",w:33,gh:"Κατηγορία"},
+        {h:"T-Shirt",w:18},{h:"Syllogos",w:34,gh:"Σύλλογος"},{h:"Poli",w:28,gh:"Πόλη"}
       ];
       let xpos=startX;columns.forEach(c=>{c.x=xpos;xpos+=c.w;});
       const totalW=xpos-startX;
@@ -746,14 +746,16 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       doc.setFontSize(15);doc.setTextColor(40);
       doc.text(fix(race.name),startX,16);
       doc.setFontSize(9);doc.setTextColor(110);
-      doc.text(fix(`Ημερομηνια: ${race.date}    Τοποθεσια: ${race.location||"-"}    Συνολο: ${regs.length}`),startX,23);
+      doc.text(fix(`${gf?"Ημερομηνία":"Date"}: ${race.date}    ${gf?"Τοποθεσία":"Location"}: ${race.location||"-"}    ${gf?"Σύνολο":"Total"}: ${regs.length}`),startX,23);
 
       let y=30;
       const rowH=8;
-      // Header background
       doc.setFillColor(74,93,199);doc.rect(startX,y,totalW,rowH,"F");
       doc.setTextColor(255);doc.setFontSize(8);
-      columns.forEach(c=>doc.text(String(c.h),c.x+2,y+5.5));
+      columns.forEach(c=>{
+        const headTxt=gf&&c.gh?c.gh:c.h;
+        doc.text(headTxt,c.x+2,y+5.5);
+      });
       y+=rowH;
 
       doc.setFontSize(8);
@@ -761,9 +763,20 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         const r=runners.find(x=>x.id===reg.runner_id)||{};
         if(i%2===0){doc.setFillColor(243,242,238);doc.rect(startX,y,totalW,rowH,"F");}
         doc.setTextColor(45);
-        const vals=[String(i+1),String(reg.bib_number||""),fix(r.first_name||""),fix(r.last_name||""),String(r.phone||""),fix(reg.distance||""),fix(reg.category||""),String(reg.tshirt||""),fix(r.club||""),fix(r.city||"")];
+        const vals=[
+          String(i+1),
+          String(reg.bib_number==null?"":reg.bib_number),
+          fix(r.first_name||""),
+          fix(r.last_name||""),
+          String(r.phone||""),
+          fix(reg.distance||""),
+          fix(reg.category||""),
+          String(reg.tshirt||""),
+          fix(r.club||""),
+          fix(r.city||"")
+        ];
         columns.forEach((c,ci)=>{
-          let txt=vals[ci];
+          let txt=vals[ci]||"";
           const maxChars=Math.floor(c.w/1.6);
           if(txt.length>maxChars)txt=txt.slice(0,maxChars-1)+"..";
           doc.text(txt,c.x+2,y+5.5);
@@ -771,16 +784,14 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         y+=rowH;
         if(y>195){doc.addPage();y=20;}
       });
-      // Περίγραμμα πίνακα + κάθετες γραμμές
-      doc.setDrawColor(200);doc.setLineWidth(0.1);
+      doc.setDrawColor(180);doc.setLineWidth(0.15);
       const tableTop=30, tableBottom=y;
-      columns.forEach(c=>{doc.line(c.x,tableTop,c.x,tableBottom);});
+      columns.forEach(c=>doc.line(c.x,tableTop,c.x,tableBottom));
       doc.line(startX+totalW,tableTop,startX+totalW,tableBottom);
       doc.line(startX,tableBottom,startX+totalW,tableBottom);
-
       doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
     }catch(e){
-      alert("⚠️ Σφάλμα PDF: "+e.message+"\n\nΔοκίμασε το κουμπί Excel.");
+      alert("⚠️ Σφάλμα PDF: "+e.message);
     }
   }
 
