@@ -48,7 +48,7 @@ const STR = {
     extraInfo:"✨ Επιπλέον Στοιχεία", pleaseComplete:"Συμπληρώστε:", select:"— Επιλέξτε —", yes:"Ναι",
     myRacesTitle:"Οι Αγώνες μου", adminAll:"(admin — όλοι)", newRace:"+ Νέος Αγώνας",
     noRacesYet:"Δεν έχεις δημιουργήσει αγώνες ακόμα!",
-    totalRev:"συνολικά", statusBtn:"⟳ Κατάσταση", csvBtn:"📥 CSV", deleteBtn:"✕ Διαγραφή",
+    totalRev:"συνολικά", statusBtn:"⟳ Κατάσταση", excelBtn:"📊 Excel", pdfBtn:"📄 PDF", deleteBtn:"✕ Διαγραφή",
     deleteConfirm:"Διαγραφή αγώνα;", noRegsCsv:"Δεν υπάρχουν εγγραφές!",
     newRaceTitle:"Νέος Αγώνας", raceName:"Όνομα Αγώνα *", date:"Ημερομηνία *",
     location:"Τοποθεσία", fillNameDate:"Συμπληρώστε όνομα και ημερομηνία!",
@@ -116,7 +116,7 @@ const STR = {
     extraInfo:"✨ Additional Information", pleaseComplete:"Please complete:", select:"— Select —", yes:"Yes",
     myRacesTitle:"My Races", adminAll:"(admin — all)", newRace:"+ New Race",
     noRacesYet:"You haven't created any races yet!",
-    totalRev:"total", statusBtn:"⟳ Status", csvBtn:"📥 CSV", deleteBtn:"✕ Delete",
+    totalRev:"total", statusBtn:"⟳ Status", excelBtn:"📊 Excel", pdfBtn:"📄 PDF", deleteBtn:"✕ Delete",
     deleteConfirm:"Delete race?", noRegsCsv:"No registrations!",
     newRaceTitle:"New Race", raceName:"Race Name *", date:"Date *",
     location:"Location", fillNameDate:"Please fill in name and date!",
@@ -648,15 +648,65 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   }
   async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
   async function toggleStatus(race){const s=["upcoming","active","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
-  function exportCSV(race){
+  function getRegData(race){
+    const regs=registrations.filter(r=>r.race_id===race.id);
+    return regs.map((reg,i)=>{
+      const r=runners.find(x=>x.id===reg.runner_id)||{};
+      const cv={};(race.custom_fields||[]).forEach(f=>{const v=(reg.custom_answers||{})[f.id];cv[f.label]=v===true?"ΝΑΙ":v===false?"ΟΧΙ":(v||"");});
+      return {
+        "Α/Α":i+1,"BIB":reg.bib_number,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"",
+        "Email":r.email||"","Τηλέφωνο":r.phone||"","ΑΜΚΑ":r.amka||"","Πόλη":r.city||"",
+        "Ημ.Γέννησης":r.dob||"","Φύλο":r.gender||"","Διαδρομή":reg.distance||"",
+        "Κατηγορία":reg.category||"","T-Shirt":reg.tshirt||"","Σύλλογος":r.club||"",
+        "Επαφή Ανάγκης":r.emergency_name||"","Τηλ Ανάγκης":r.emergency_phone||"",
+        "Ιατρική":reg.medical_cert?"ΝΑΙ":"ΟΧΙ","Τιμή (€)":reg.price_paid||0,...cv
+      };
+    });
+  }
+
+  async function exportExcel(race){
+    const data=getRegData(race);
+    if(!data.length){alert(t.noRegsCsv);return;}
+    if(!window.XLSX){
+      await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+    }
+    const XLSX=window.XLSX;
+    const ws=XLSX.utils.json_to_sheet(data);
+    const cols=Object.keys(data[0]).map(k=>({wch:Math.max(k.length,12)}));
+    ws["!cols"]=cols;
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Εγγραφές");
+    XLSX.writeFile(wb,`${race.name.replace(/\s+/g,"-")}.xlsx`);
+  }
+
+  async function exportPDF(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){alert(t.noRegsCsv);return;}
-    const customFieldLabels=(race.custom_fields||[]).map(f=>f.label);
-    const headers=["Α/Α","BIB","Όνομα","Επώνυμο","Email","Τηλέφωνο","ΑΜΚΑ","Πόλη","Διαδρομή","Κατηγορία","T-Shirt","Σύλλογος","Επαφή Ανάγκης","Τηλ Ανάγκης","Ιατρική","Τιμή",...customFieldLabels];
-    const rows=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};const cv=(race.custom_fields||[]).map(f=>{const v=(reg.custom_answers||{})[f.id];return v===true?"ΝΑΙ":v===false?"ΟΧΙ":v||"";});return[i+1,reg.bib_number,r.first_name,r.last_name,r.email,r.phone||"",r.amka||"",r.city||"",reg.distance||"",reg.category,reg.tshirt,r.club||"",r.emergency_name||"",r.emergency_phone||"",reg.medical_cert?"ΝΑΙ":"ΟΧΙ",reg.price_paid||0,...cv].join(",");});
-    const csv=headers.join(",")+"\n"+rows.join("\n");
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));a.download=`${race.name.replace(/\s+/g,"-")}.csv`;a.click();
+    if(!window.jspdf){
+      await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+    }
+    if(!window.jspdf.jsPDF.API.autoTable){
+      await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+    }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF();
+    doc.setFontSize(16);
+    doc.text(race.name,14,18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Ημ/νία: ${race.date}  |  Τοποθεσία: ${race.location||"-"}  |  Σύνολο: ${regs.length}`,14,26);
+    const body=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};return[i+1,reg.bib_number,`${r.first_name||""} ${r.last_name||""}`,reg.distance||"",r.phone||""];});
+    doc.autoTable({
+      startY:32,
+      head:[["Α/Α","BIB","Ονοματεπώνυμο","Διαδρομή","Τηλέφωνο"]],
+      body:body,
+      styles:{fontSize:9,cellPadding:2.5},
+      headStyles:{fillColor:[74,93,199],textColor:255,fontStyle:"bold"},
+      alternateRowStyles:{fillColor:[245,243,239]}
+    });
+    doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
   }
+
   const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
   const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
 
@@ -680,7 +730,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
           {distances.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}</div>)}
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
             <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
-            <Btn sm v="ghost" onClick={()=>exportCSV(race)}>{t.csvBtn}</Btn>
+            <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
+            <Btn sm v="ghost" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
           </div>
         </div>;
