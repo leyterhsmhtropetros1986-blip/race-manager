@@ -722,75 +722,62 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF({orientation:"landscape"});
-      // Ελληνική γραμματοσειρά
       let gf=false;
       try{
         if(!window.__greekFont){
-          const urls=["https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf"];
-          for(const u of urls){try{const resp=await fetch(u);if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__greekFont=btoa(bin);break;}}catch(e){}}
+          const u="https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf";
+          const resp=await fetch(u);
+          if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__greekFont=btoa(bin);}
         }
         if(window.__greekFont){doc.addFileToVFS("Greek.ttf",window.__greekFont);doc.addFont("Greek.ttf","GreekFont","normal");doc.setFont("GreekFont");gf=true;}
       }catch(e){gf=false;}
       const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"TH","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"CH","Ψ":"PS","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y"};
       const fix=(txt)=>{if(gf)return String(txt==null?"":txt);return String(txt==null?"":txt).split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
 
-      // Στήλες (landscape = 297mm πλάτος, χρησιμοποιούμε 14..283)
+      const startX=10, tableW=277;
       const columns=[
-        {h:"A/A",w:12},
-        {h:"BIB",w:14},
-        {h:fix("Όνομα"),w:32},
-        {h:fix("Επώνυμο"),w:38},
-        {h:fix("Τηλέφωνο"),w:28},
-        {h:fix("Διαδρομή"),w:30},
-        {h:fix("Κατηγορία"),w:32},
-        {h:"T-Shirt",w:16},
-        {h:fix("Σύλλογος"),w:34},
-        {h:fix("Πόλη"),w:26},
-        {h:fix("Email"),w:0}
+        {h:"A/A",w:14},{h:"BIB",w:16},{h:fix("Όνομα"),w:34},{h:fix("Επώνυμο"),w:40},
+        {h:fix("Τηλέφωνο"),w:30},{h:fix("Διαδρομή"),w:30},{h:fix("Κατηγορία"),w:33},
+        {h:"T-Shirt",w:18},{h:fix("Σύλλογος"),w:34},{h:fix("Πόλη"),w:28}
       ];
-      // υπολογισμός x θέσεων
-      let xpos=14;columns.forEach(c=>{c.x=xpos;if(c.w===0)c.w=283-xpos;xpos+=c.w;});
+      let xpos=startX;columns.forEach(c=>{c.x=xpos;xpos+=c.w;});
+      const totalW=xpos-startX;
 
-      // Τίτλος
       doc.setFontSize(15);doc.setTextColor(40);
-      doc.text(fix(race.name),14,16);
+      doc.text(fix(race.name),startX,16);
       doc.setFontSize(9);doc.setTextColor(110);
-      doc.text(fix(`Ημ/νία: ${race.date}   Τοποθεσία: ${race.location||"-"}   Σύνολο εγγραφών: ${regs.length}`),14,23);
+      doc.text(fix(`Ημερομηνια: ${race.date}    Τοποθεσια: ${race.location||"-"}    Συνολο: ${regs.length}`),startX,23);
 
       let y=30;
-      // Header
-      doc.setFillColor(74,93,199);doc.rect(14,y,269,8,"F");
+      const rowH=8;
+      // Header background
+      doc.setFillColor(74,93,199);doc.rect(startX,y,totalW,rowH,"F");
       doc.setTextColor(255);doc.setFontSize(8);
-      columns.forEach(c=>doc.text(String(c.h),c.x+1.5,y+5.5));
-      y+=8;
-      // Γραμμές
+      columns.forEach(c=>doc.text(String(c.h),c.x+2,y+5.5));
+      y+=rowH;
+
       doc.setFontSize(8);
       regs.forEach((reg,i)=>{
         const r=runners.find(x=>x.id===reg.runner_id)||{};
-        if(i%2===0){doc.setFillColor(245,243,239);doc.rect(14,y,269,7,"F");}
-        doc.setTextColor(40);
-        const vals=[
-          String(i+1),
-          String(reg.bib_number||""),
-          fix(r.first_name||""),
-          fix(r.last_name||""),
-          String(r.phone||""),
-          fix(reg.distance||""),
-          fix(reg.category||""),
-          String(reg.tshirt||""),
-          fix(r.club||""),
-          fix(r.city||""),
-          String(r.email||"")
-        ];
+        if(i%2===0){doc.setFillColor(243,242,238);doc.rect(startX,y,totalW,rowH,"F");}
+        doc.setTextColor(45);
+        const vals=[String(i+1),String(reg.bib_number||""),fix(r.first_name||""),fix(r.last_name||""),String(r.phone||""),fix(reg.distance||""),fix(reg.category||""),String(reg.tshirt||""),fix(r.club||""),fix(r.city||"")];
         columns.forEach((c,ci)=>{
           let txt=vals[ci];
-          const maxChars=Math.floor(c.w/1.7);
+          const maxChars=Math.floor(c.w/1.6);
           if(txt.length>maxChars)txt=txt.slice(0,maxChars-1)+"..";
-          doc.text(txt,c.x+1.5,y+5);
+          doc.text(txt,c.x+2,y+5.5);
         });
-        y+=7;
+        y+=rowH;
         if(y>195){doc.addPage();y=20;}
       });
+      // Περίγραμμα πίνακα + κάθετες γραμμές
+      doc.setDrawColor(200);doc.setLineWidth(0.1);
+      const tableTop=30, tableBottom=y;
+      columns.forEach(c=>{doc.line(c.x,tableTop,c.x,tableBottom);});
+      doc.line(startX+totalW,tableTop,startX+totalW,tableBottom);
+      doc.line(startX,tableBottom,startX+totalW,tableBottom);
+
       doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
     }catch(e){
       alert("⚠️ Σφάλμα PDF: "+e.message+"\n\nΔοκίμασε το κουμπί Excel.");
