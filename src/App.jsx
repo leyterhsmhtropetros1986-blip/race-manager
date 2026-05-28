@@ -718,66 +718,78 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");}
         catch(e){await loadScript("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js");}
       }
-    }catch(e){
-      alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF. Απενεργοποίησε το AdBlock ή χρησιμοποίησε το κουμπί Excel.");
-      return;
-    }
+    }catch(e){alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF. Κλείσε το AdBlock ή χρησιμοποίησε Excel.");return;}
     try{
       const {jsPDF}=window.jspdf;
-      const doc=new jsPDF();
-      // Γραμματοσειρά TTF με Ελληνικά (NotoSans) — συμβατή με jsPDF
+      const doc=new jsPDF({orientation:"landscape"});
+      // Ελληνική γραμματοσειρά
       let gf=false;
       try{
         if(!window.__greekFont){
-          const urls=[
-            "https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf",
-            "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5.0.0/files/noto-sans-greek-400-normal.woff"
-          ];
-          for(const u of urls){
-            try{
-              const resp=await fetch(u);
-              if(resp.ok){
-                const buf=await resp.arrayBuffer();
-                let bin="";const b=new Uint8Array(buf);
-                for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
-                window.__greekFont=btoa(bin);
-                break;
-              }
-            }catch(e){}
-          }
+          const urls=["https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf"];
+          for(const u of urls){try{const resp=await fetch(u);if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__greekFont=btoa(bin);break;}}catch(e){}}
         }
-        if(window.__greekFont){
-          doc.addFileToVFS("Greek.ttf",window.__greekFont);
-          doc.addFont("Greek.ttf","GreekFont","normal");
-          doc.setFont("GreekFont");
-          gf=true;
-        }
+        if(window.__greekFont){doc.addFileToVFS("Greek.ttf",window.__greekFont);doc.addFont("Greek.ttf","GreekFont","normal");doc.setFont("GreekFont");gf=true;}
       }catch(e){gf=false;}
-
-      // Συνάρτηση: αν δεν έχουμε ελληνική γραμματοσειρά, μετατροπή σε λατινικά
       const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"TH","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"CH","Ψ":"PS","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y"};
-      const fix=(txt)=>{if(gf)return String(txt);return String(txt).split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
+      const fix=(txt)=>{if(gf)return String(txt==null?"":txt);return String(txt==null?"":txt).split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
 
-      doc.setFontSize(16);doc.setTextColor(40);
-      doc.text(fix(race.name),14,18);
-      doc.setFontSize(10);doc.setTextColor(120);
-      doc.text(fix(`Hmeromhnia: ${race.date}   Topothesia: ${race.location||"-"}   Synolo: ${regs.length}`),14,26);
+      // Στήλες (landscape = 297mm πλάτος, χρησιμοποιούμε 14..283)
+      const columns=[
+        {h:"A/A",w:12},
+        {h:"BIB",w:14},
+        {h:fix("Όνομα"),w:32},
+        {h:fix("Επώνυμο"),w:38},
+        {h:fix("Τηλέφωνο"),w:28},
+        {h:fix("Διαδρομή"),w:30},
+        {h:fix("Κατηγορία"),w:32},
+        {h:"T-Shirt",w:16},
+        {h:fix("Σύλλογος"),w:34},
+        {h:fix("Πόλη"),w:26},
+        {h:fix("Email"),w:0}
+      ];
+      // υπολογισμός x θέσεων
+      let xpos=14;columns.forEach(c=>{c.x=xpos;if(c.w===0)c.w=283-xpos;xpos+=c.w;});
 
-      const cols=[{x:14,w:14,h:"A/A"},{x:28,w:18,h:"BIB"},{x:46,w:75,h:fix("Onomateponymo")},{x:121,w:40,h:fix("Diadromi")},{x:161,w:35,h:fix("Tilefono")}];
-      let y=34;
-      doc.setFillColor(74,93,199);doc.rect(14,y,182,9,"F");
-      doc.setTextColor(255);doc.setFontSize(9);
-      cols.forEach(c=>doc.text(String(c.h),c.x+2,y+6));
-      y+=9;
-      doc.setTextColor(40);
+      // Τίτλος
+      doc.setFontSize(15);doc.setTextColor(40);
+      doc.text(fix(race.name),14,16);
+      doc.setFontSize(9);doc.setTextColor(110);
+      doc.text(fix(`Ημ/νία: ${race.date}   Τοποθεσία: ${race.location||"-"}   Σύνολο εγγραφών: ${regs.length}`),14,23);
+
+      let y=30;
+      // Header
+      doc.setFillColor(74,93,199);doc.rect(14,y,269,8,"F");
+      doc.setTextColor(255);doc.setFontSize(8);
+      columns.forEach(c=>doc.text(String(c.h),c.x+1.5,y+5.5));
+      y+=8;
+      // Γραμμές
+      doc.setFontSize(8);
       regs.forEach((reg,i)=>{
         const r=runners.find(x=>x.id===reg.runner_id)||{};
-        if(i%2===0){doc.setFillColor(245,243,239);doc.rect(14,y,182,8,"F");}
-        let nm=`${r.first_name||""} ${r.last_name||""}`;
-        const row=[String(i+1),String(reg.bib_number),fix(nm),fix(reg.distance||""),String(r.phone||"")];
-        cols.forEach((c,ci)=>{let txt=row[ci];if(txt.length>40)txt=txt.slice(0,38)+"..";doc.text(txt,c.x+2,y+5.5);});
-        y+=8;
-        if(y>280){doc.addPage();y=20;}
+        if(i%2===0){doc.setFillColor(245,243,239);doc.rect(14,y,269,7,"F");}
+        doc.setTextColor(40);
+        const vals=[
+          String(i+1),
+          String(reg.bib_number||""),
+          fix(r.first_name||""),
+          fix(r.last_name||""),
+          String(r.phone||""),
+          fix(reg.distance||""),
+          fix(reg.category||""),
+          String(reg.tshirt||""),
+          fix(r.club||""),
+          fix(r.city||""),
+          String(r.email||"")
+        ];
+        columns.forEach((c,ci)=>{
+          let txt=vals[ci];
+          const maxChars=Math.floor(c.w/1.7);
+          if(txt.length>maxChars)txt=txt.slice(0,maxChars-1)+"..";
+          doc.text(txt,c.x+1.5,y+5);
+        });
+        y+=7;
+        if(y>195){doc.addPage();y=20;}
       });
       doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
     }catch(e){
