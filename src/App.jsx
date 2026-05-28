@@ -196,6 +196,7 @@ function Modal({title,onClose,children,wide}){
   </div>;
 }
 
+// ─── LANGUAGE TOGGLE ──────────────────────────────────────────────────────────
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -204,6 +205,7 @@ function LangToggle(){
   </div>;
 }
 
+// ─── PICKERS ──────────────────────────────────────────────────────────────────
 function DistancesPicker({distances,onChange}){
   const {t}=useLang();
   const [custom,setCustom]=useState("");
@@ -349,6 +351,7 @@ function CustomFieldsPicker({fields,onChange}){
   </F>;
 }
 
+// ─── LOGIN ──────────────────────────────────────────────────────────────────────
 function LoginPage(){
   const {t}=useLang();
   const [step,setStep]=useState("role");
@@ -359,31 +362,15 @@ function LoginPage(){
   const [name,setName]=useState("");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
+
   function selectRole(r){setRole(r);setStep("auth");setError("");}
   function backToRole(){setStep("role");setRole(null);setError("");setEmail("");setPassword("");setName("");}
+
   async function handleSubmit(){
     setError("");
     if(!email||!password){setError(t.fillEmailPass);return;}
     if(mode==="signup"&&!name){setError(t.fillName);return;}
-    if(mode==="signup"&&!name){setError(t.fillName);return;}
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-if (!emailRegex.test(email)) {
-  setError("Βάλε σωστό email");
-  setLoading(false);
-  return;
-}
-
-setLoading(true);
     setLoading(true);
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-if (!emailRegex.test(email)) {
-  setError("Βάλε σωστό email");
-  setLoading(false);
-  return;
-}
     if(mode==="login"){
       const {error}=await supabase.auth.signInWithPassword({email,password});
       if(error)setError(t.wrongCreds);
@@ -398,9 +385,11 @@ if (!emailRegex.test(email)) {
     }
     setLoading(false);
   }
+
   const roleColor=role==="organizer"?T.primary:T.accent;
   const roleIcon=role==="organizer"?"🏟":"🏃";
   const roleLabel=role==="organizer"?t.organizer:t.athlete;
+
   return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:"20px",position:"relative"}}>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <div style={{position:"absolute",top:"20px",right:"20px"}}><LangToggle/></div>
@@ -444,6 +433,7 @@ if (!emailRegex.test(email)) {
   </div>;
 }
 
+// ─── ΥΠΟΛΟΓΙΣΜΟΣ ΤΙΜΗΣ ─────────────────────────────────────────────────────────
 function calculatePrice(race,distance){
   const basePrice=(race.pricing||[]).find(p=>p.distance===distance)?.price||0;
   if(!race.early_bird||!race.early_bird.deadline)return{base:basePrice,final:basePrice,isEarlyBird:false};
@@ -452,6 +442,7 @@ function calculatePrice(race,distance){
   return{base:basePrice,final:basePrice,isEarlyBird:false};
 }
 
+// ─── ΑΘΛΗΤΗΣ - ΚΑΡΤΑ ΑΓΩΝΑ ────────────────────────────────────────────────────
 function AthleteRaceCard({race,registrations,runners,session,onRegister}){
   const {t}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
@@ -486,36 +477,63 @@ function AthleteRaceCard({race,registrations,runners,session,onRegister}){
   </div>;
 }
 
+// ─── ΑΘΛΗΤΗΣ - FORM ΕΓΓΡΑΦΗΣ ──────────────────────────────────────────────────
 function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   const {t}=useLang();
   const distances=race.distance?race.distance.split(" | "):[];
   const customFields=race.custom_fields||[];
-  const [form,setForm]=useState({distance:distances[0]||"",category:"Γενική",tshirt:"M",phone:"",dob:"",gender:t.male,club:"",medical_cert:false});
+  const profileName=(profile?.full_name||"").trim().split(" ");
+  const [form,setForm]=useState({
+    first_name:profileName[0]||"",
+    last_name:profileName.slice(1).join(" ")||"",
+    distance:distances[0]||"",category:"Γενική",tshirt:"M",phone:"",
+    dob:"",gender:t.male,club:"",amka:"",city:"",
+    emergency_name:"",emergency_phone:"",medical_cert:false
+  });
   const [customAnswers,setCustomAnswers]=useState({});
   const [loading,setLoading]=useState(false);
   const priceInfo=calculatePrice(race,form.distance);
   function updateCustom(id,value){setCustomAnswers({...customAnswers,[id]:value});}
+  function set(k,v){setForm({...form,[k]:v});}
+
   async function submit(){
+    if(!form.first_name.trim()||!form.last_name.trim()){alert("Συμπληρώστε Όνομα και Επώνυμο!");return;}
     if(!form.distance){alert(t.selectDistance);return;}
     for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){alert(`${t.pleaseComplete} ${f.label}`);return;}}
     setLoading(true);
-    const fullName=(profile?.full_name||"").trim().split(" ");
-    const firstName=fullName[0]||"";const lastName=fullName.slice(1).join(" ")||"";
     let {data:runner}=await supabase.from("runners").select("*").eq("email",session.user.email).single();
+    const runnerData={
+      first_name:form.first_name.trim(),last_name:form.last_name.trim(),
+      email:session.user.email,phone:form.phone,dob:form.dob||null,
+      gender:form.gender,club:form.club,amka:form.amka,city:form.city,
+      emergency_name:form.emergency_name,emergency_phone:form.emergency_phone
+    };
     if(!runner){
-      const {data}=await supabase.from("runners").insert([{first_name:firstName,last_name:lastName,email:session.user.email,phone:form.phone,dob:form.dob,gender:form.gender,club:form.club}]).select();
+      const {data,error}=await supabase.from("runners").insert([runnerData]).select();
+      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
       if(data)runner=data[0];
+    } else {
+      await supabase.from("runners").update(runnerData).eq("id",runner.id);
     }
     if(!runner){setLoading(false);return;}
     const {data:existing}=await supabase.from("registrations").select("*").eq("runner_id",runner.id).eq("race_id",race.id);
     if(existing&&existing.length>0){alert(t.alreadyRegAlert);setLoading(false);return;}
     const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
-    await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:(maxBib+1).toString(),custom_answers:customAnswers,price_paid:priceInfo.final}]);
-    setLoading(false);onSuccess();
+    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:(maxBib+1).toString(),custom_answers:customAnswers,price_paid:priceInfo.final}]);
+    if(regError){alert("Σφάλμα εγγραφής: "+regError.message);setLoading(false);return;}
+    setLoading(false);
+    alert("✅ Η εγγραφή ολοκληρώθηκε! BIB #"+(maxBib+1));
+    onSuccess();
   }
+
   return <Modal title={`${t.regForRace} ${race.name}`} onClose={onClose} wide>
-    <Sel label={t.distance+" *"} value={form.distance} onChange={e=>setForm({...form,distance:e.target.value})}>{distances.map(d=><option key={d} value={d}>{d}</option>)}</Sel>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <In label="Όνομα *" value={form.first_name} onChange={e=>set("first_name",e.target.value)} placeholder="π.χ. Γιώργος"/>
+      <In label="Επώνυμο *" value={form.last_name} onChange={e=>set("last_name",e.target.value)} placeholder="π.χ. Παπαδόπουλος"/>
+    </div>
+    <In label="Email" value={session.user.email} disabled style={{opacity:0.6,cursor:"not-allowed"}}/>
+    <Sel label={t.distance+" *"} value={form.distance} onChange={e=>set("distance",e.target.value)}>{distances.map(d=><option key={d} value={d}>{d}</option>)}</Sel>
     {priceInfo.base>0&&(
       <div style={{background:priceInfo.isEarlyBird?`${T.warning}10`:T.bg,border:`1px solid ${priceInfo.isEarlyBird?T.warning+"44":T.border}`,borderRadius:"10px",padding:"14px 18px",marginBottom:"14px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -524,16 +542,29 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         </div>
       </div>
     )}
-    <Sel label={t.category} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</Sel>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-      <Sel label={t.tshirt} value={form.tshirt} onChange={e=>setForm({...form,tshirt:e.target.value})}>{TSHIRTS.map(ts=><option key={ts}>{ts}</option>)}</Sel>
-      <In label={t.phone} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/>
+      <Sel label={t.category} value={form.category} onChange={e=>set("category",e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</Sel>
+      <Sel label={t.tshirt} value={form.tshirt} onChange={e=>set("tshirt",e.target.value)}>{TSHIRTS.map(ts=><option key={ts}>{ts}</option>)}</Sel>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-      <In label={t.dob} type="date" value={form.dob} onChange={e=>setForm({...form,dob:e.target.value})}/>
-      <Sel label={t.gender} value={form.gender} onChange={e=>setForm({...form,gender:e.target.value})}><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></Sel>
+      <In label={t.phone+" *"} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="69..."/>
+      <In label="ΑΜΚΑ" value={form.amka} onChange={e=>set("amka",e.target.value)} placeholder="Προαιρετικό"/>
     </div>
-    <In label={t.club} value={form.club} onChange={e=>setForm({...form,club:e.target.value})} placeholder={t.optional}/>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <In label={t.dob} type="date" value={form.dob} onChange={e=>set("dob",e.target.value)}/>
+      <Sel label={t.gender} value={form.gender} onChange={e=>set("gender",e.target.value)}><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></Sel>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+      <In label={t.club} value={form.club} onChange={e=>set("club",e.target.value)} placeholder={t.optional}/>
+      <In label="Πόλη" value={form.city} onChange={e=>set("city",e.target.value)} placeholder={t.optional}/>
+    </div>
+    <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"16px",marginBottom:"14px"}}>
+      <div style={{color:T.text,fontSize:"13px",fontWeight:700,marginBottom:"12px"}}>🆘 Επαφή Έκτακτης Ανάγκης</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+        <In label="Ονοματεπώνυμο" value={form.emergency_name} onChange={e=>set("emergency_name",e.target.value)} placeholder={t.optional}/>
+        <In label="Τηλέφωνο" value={form.emergency_phone} onChange={e=>set("emergency_phone",e.target.value)} placeholder={t.optional}/>
+      </div>
+    </div>
     {customFields.length>0&&(
       <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"16px",marginBottom:"14px"}}>
         <div style={{color:T.text,fontSize:"13px",fontWeight:700,marginBottom:"12px"}}>{t.extraInfo}</div>
@@ -548,7 +579,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         ))}
       </div>
     )}
-    <label style={{display:"flex",alignItems:"center",gap:"8px",color:T.textMid,fontSize:"13px",cursor:"pointer",marginBottom:"16px"}}><input type="checkbox" checked={form.medical_cert} onChange={e=>setForm({...form,medical_cert:e.target.checked})}/>{t.medicalCert}</label>
+    <label style={{display:"flex",alignItems:"center",gap:"8px",color:T.textMid,fontSize:"13px",cursor:"pointer",marginBottom:"16px"}}><input type="checkbox" checked={form.medical_cert} onChange={e=>set("medical_cert",e.target.checked)}/>{t.medicalCert}</label>
     <div style={{display:"flex",gap:"10px"}}>
       <Btn onClick={submit} style={{flex:1}} disabled={loading}>{loading?"...":`${t.confirmReg}${priceInfo.final>0?` (${priceInfo.final.toFixed(2)}€)`:""}`}</Btn>
       <Btn v="sec" onClick={onClose} style={{flex:1}}>{t.cancel}</Btn>
@@ -596,6 +627,7 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
   </div>;
 }
 
+// ─── ΔΙΟΡΓΑΝΩΤΗΣ - ΑΓΩΝΕΣ ──────────────────────────────────────────────────────
 function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t}=useLang();
   const [showForm,setShowForm]=useState(false);
@@ -604,6 +636,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   function resetForm(){setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});}
+
   async function add(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
     if(form.distances.length===0){alert(t.addDistance);return;}
@@ -619,13 +652,14 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){alert(t.noRegsCsv);return;}
     const customFieldLabels=(race.custom_fields||[]).map(f=>f.label);
-    const headers=["Α/Α","BIB","Όνομα","Επώνυμο","Email","Τηλέφωνο","Διαδρομή","Κατηγορία","T-Shirt","Σύλλογος","Ιατρική","Τιμή",...customFieldLabels];
-    const rows=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};const cv=(race.custom_fields||[]).map(f=>{const v=(reg.custom_answers||{})[f.id];return v===true?"ΝΑΙ":v===false?"ΟΧΙ":v||"";});return[i+1,reg.bib_number,r.first_name,r.last_name,r.email,r.phone||"",reg.distance||"",reg.category,reg.tshirt,r.club||"",reg.medical_cert?"ΝΑΙ":"ΟΧΙ",reg.price_paid||0,...cv].join(",");});
+    const headers=["Α/Α","BIB","Όνομα","Επώνυμο","Email","Τηλέφωνο","ΑΜΚΑ","Πόλη","Διαδρομή","Κατηγορία","T-Shirt","Σύλλογος","Επαφή Ανάγκης","Τηλ Ανάγκης","Ιατρική","Τιμή",...customFieldLabels];
+    const rows=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};const cv=(race.custom_fields||[]).map(f=>{const v=(reg.custom_answers||{})[f.id];return v===true?"ΝΑΙ":v===false?"ΟΧΙ":v||"";});return[i+1,reg.bib_number,r.first_name,r.last_name,r.email,r.phone||"",r.amka||"",r.city||"",reg.distance||"",reg.category,reg.tshirt,r.club||"",r.emergency_name||"",r.emergency_phone||"",reg.medical_cert?"ΝΑΙ":"ΟΧΙ",reg.price_paid||0,...cv].join(",");});
     const csv=headers.join(",")+"\n"+rows.join("\n");
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));a.download=`${race.name.replace(/\s+/g,"-")}.csv`;a.click();
   }
   const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
   const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
+
   return <div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"24px"}}>
       <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.myRacesTitle} {isAdmin&&<span style={{color:T.textMid,fontSize:"13px"}}>{t.adminAll}</span>}</h2>
@@ -702,6 +736,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   </div>;
 }
 
+// ─── ADMIN PANEL ────────────────────────────────────────────────────────────────
 function AdminPanel(){
   const {t}=useLang();
   const [pendingOrgs,setPendingOrgs]=useState([]);
@@ -743,6 +778,7 @@ function AdminPanel(){
   </div>;
 }
 
+// ─── MAIN ───────────────────────────────────────────────────────────────────────
 function AppContent(){
   const {t}=useLang();
   const [session,setSession]=useState(null);
@@ -752,10 +788,12 @@ function AppContent(){
   const [runners,setRunners]=useState([]);
   const [registrations,setRegistrations]=useState([]);
   const [loading,setLoading]=useState(true);
+
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
     supabase.auth.onAuthStateChange((_,session)=>setSession(session));
   },[]);
+
   async function fetchAll(){
     if(!session)return;
     const [r1,r2,r3,r4]=await Promise.all([
@@ -768,13 +806,16 @@ function AppContent(){
     setLoading(false);
   }
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
+
   if(!session)return <LoginPage/>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
+
   const isAthlete=profile?.role==="athlete";
   const isOrganizer=(profile?.role==="organizer"||profile?.role==="admin")&&profile?.status==="approved";
   const isPendingOrganizer=profile?.role==="organizer"&&profile?.status==="pending";
   const isRejectedOrganizer=profile?.role==="organizer"&&profile?.status==="rejected";
   const isAdmin=profile?.role==="admin";
+
   return <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"Inter,sans-serif"}}>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"16px 24px",background:T.bgAlt,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
@@ -792,6 +833,7 @@ function AppContent(){
         <button onClick={()=>supabase.auth.signOut()} style={{background:`${T.danger}15`,color:T.danger,border:`1px solid ${T.danger}33`,borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>{t.logout}</button>
       </div>
     </div>
+
     {isPendingOrganizer&&(<div style={{padding:"40px 28px",maxWidth:"640px",margin:"40px auto"}}>
       <div style={{background:T.bgAlt,border:`1px solid ${T.warning}44`,borderRadius:"16px",padding:"40px",textAlign:"center",boxShadow:T.shadow}}>
         <div style={{fontSize:"64px",marginBottom:"20px"}}>⏳</div>
@@ -801,6 +843,7 @@ function AppContent(){
         <button onClick={()=>supabase.auth.signOut()} style={{background:T.bgAlt,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 20px",cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.logout}</button>
       </div>
     </div>)}
+
     {isRejectedOrganizer&&(<div style={{padding:"40px 28px",maxWidth:"640px",margin:"40px auto"}}>
       <div style={{background:T.bgAlt,border:`1px solid ${T.danger}44`,borderRadius:"16px",padding:"40px",textAlign:"center",boxShadow:T.shadow}}>
         <div style={{fontSize:"64px",marginBottom:"20px"}}>❌</div>
@@ -809,9 +852,11 @@ function AppContent(){
         <button onClick={()=>supabase.auth.signOut()} style={{background:T.bgAlt,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 20px",cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.logout}</button>
       </div>
     </div>)}
+
     {isAthlete&&(<div style={{padding:"28px",maxWidth:"960px",margin:"0 auto"}}>
       <AthleteDashboard races={races} registrations={registrations} runners={runners} profile={profile} session={session} onRefresh={fetchAll}/>
     </div>)}
+
     {isOrganizer&&(<>
       <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt}}>
         {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
@@ -833,3 +878,4 @@ export default function App(){
     <AppContent/>
   </LangContext.Provider>;
 }
+
