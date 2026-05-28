@@ -712,58 +712,55 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   async function exportPDF(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){alert(t.noRegsCsv);return;}
-    function loadScript(src){return new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("blocked: "+src));document.head.appendChild(sc);});}
+    function loadScript(src){return new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("blocked"));document.head.appendChild(sc);});}
     try{
       if(!window.jspdf){
         try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");}
         catch(e){await loadScript("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js");}
       }
-      if(!window.jspdf.jsPDF.API.autoTable){
-        try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");}
-        catch(e){await loadScript("https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js");}
-      }
     }catch(e){
-      alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF.\n\nΠιθανόν το AdBlock/Ad-blocker τη μπλοκάρει.\nΑπενεργοποίησε το AdBlock για αυτή τη σελίδα και ξαναδοκίμασε.\n\nΕναλλακτικά χρησιμοποίησε το κουμπί Excel.");
+      alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF.\n\nΠιθανόν το AdBlock τη μπλοκάρει. Απενεργοποίησέ το ή χρησιμοποίησε το κουμπί Excel.");
       return;
     }
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF();
-      let greekFont=false;
+      // Γραμματοσειρά με Ελληνικά
+      let gf=false;
       try{
         if(!window.__robotoFont){
           const resp=await fetch("https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.0.8/files/roboto-greek-400-normal.woff");
-          if(resp.ok){
-            const buf=await resp.arrayBuffer();
-            let bin="";const bytes=new Uint8Array(buf);
-            for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
-            window.__robotoFont=btoa(bin);
-          }
+          if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__robotoFont=btoa(bin);}
         }
-        if(window.__robotoFont){
-          doc.addFileToVFS("Roboto.ttf",window.__robotoFont);
-          doc.addFont("Roboto.ttf","Roboto","normal");
-          doc.setFont("Roboto");
-          greekFont=true;
-        }
-      }catch(e){greekFont=false;}
-      doc.setFontSize(16);
+        if(window.__robotoFont){doc.addFileToVFS("Roboto.ttf",window.__robotoFont);doc.addFont("Roboto.ttf","Roboto","normal");doc.setFont("Roboto");gf=true;}
+      }catch(e){gf=false;}
+      const L=(el,en)=>gf?el:en;
+      // Τίτλος
+      doc.setFontSize(16);doc.setTextColor(40);
       doc.text(race.name,14,18);
-      doc.setFontSize(10);
-      doc.setTextColor(120);
-      doc.text(`${greekFont?"Ημ/νία":"Date"}: ${race.date}  |  ${greekFont?"Τοποθεσία":"Location"}: ${race.location||"-"}  |  ${greekFont?"Σύνολο":"Total"}: ${regs.length}`,14,26);
-      const body=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};return[i+1,reg.bib_number,`${r.first_name||""} ${r.last_name||""}`,reg.distance||"",r.phone||""];});
-      doc.autoTable({
-        startY:32,
-        head:[greekFont?["Α/Α","BIB","Ονοματεπώνυμο","Διαδρομή","Τηλέφωνο"]:["No","BIB","Full Name","Distance","Phone"]],
-        body:body,
-        styles:{fontSize:9,cellPadding:2.5,font:greekFont?"Roboto":"helvetica"},
-        headStyles:{fillColor:[74,93,199],textColor:255,fontStyle:"normal",font:greekFont?"Roboto":"helvetica"},
-        alternateRowStyles:{fillColor:[245,243,239]}
+      doc.setFontSize(10);doc.setTextColor(120);
+      doc.text(`${L("Ημ/νία","Date")}: ${race.date}   ${L("Τοποθεσία","Location")}: ${race.location||"-"}   ${L("Σύνολο","Total")}: ${regs.length}`,14,26);
+      // Πίνακας χειροκίνητα
+      const cols=[{x:14,w:14,h:L("Α/Α","No")},{x:28,w:18,h:"BIB"},{x:46,w:75,h:L("Ονοματεπώνυμο","Full Name")},{x:121,w:40,h:L("Διαδρομή","Distance")},{x:161,w:35,h:L("Τηλέφωνο","Phone")}];
+      let y=34;
+      // Header row
+      doc.setFillColor(74,93,199);doc.rect(14,y,182,9,"F");
+      doc.setTextColor(255);doc.setFontSize(9);
+      cols.forEach(c=>doc.text(String(c.h),c.x+2,y+6));
+      y+=9;
+      // Data rows
+      doc.setTextColor(40);
+      regs.forEach((reg,i)=>{
+        const r=runners.find(x=>x.id===reg.runner_id)||{};
+        if(i%2===0){doc.setFillColor(245,243,239);doc.rect(14,y,182,8,"F");}
+        const row=[String(i+1),String(reg.bib_number),`${r.first_name||""} ${r.last_name||""}`,reg.distance||"",r.phone||""];
+        cols.forEach((c,ci)=>{let txt=row[ci];if(txt.length>40)txt=txt.slice(0,38)+"..";doc.text(txt,c.x+2,y+5.5);});
+        y+=8;
+        if(y>280){doc.addPage();y=20;}
       });
       doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
     }catch(e){
-      alert("⚠️ Σφάλμα δημιουργίας PDF: "+e.message+"\n\nΔοκίμασε το κουμπί Excel.");
+      alert("⚠️ Σφάλμα PDF: "+e.message+"\n\nΔοκίμασε το κουμπί Excel.");
     }
   }
 
