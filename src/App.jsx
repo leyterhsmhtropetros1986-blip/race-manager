@@ -652,7 +652,7 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
       const doc=new jsPDF({orientation:"landscape",unit:"mm",format:[148,105]});
       // Background gradient effect (μπλε γωνία)
       doc.setFillColor(74,93,199);doc.rect(0,0,148,18,"F");
-      doc.setFillColor(45,167,127);doc.rect(0,87,148,18,"F");
+      doc.setFillColor(45,167,127);doc.rect(0,100,148,5,"F");
       // Τίτλος πάνω
       doc.setTextColor(255);doc.setFontSize(11);doc.setFont("helvetica","bold");
       doc.text("RACE MANAGEMENT - OFFICIAL BIB",74,11,{align:"center"});
@@ -670,21 +670,21 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
       doc.text("BIB",74,50,{align:"center"});
       doc.setFontSize(38);
       doc.text(`#${reg.bib_number}`,74,72,{align:"center"});
-      // Όνομα αθλητή - δεξιά από BIB
-      doc.setTextColor(40);doc.setFontSize(11);doc.setFont("helvetica","bold");
-      doc.text(tr(`${runner.first_name||""} ${runner.last_name||""}`),105,50,{maxWidth:42});
-      doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(100);
-      doc.text(`Distance: ${tr(reg.distance||"-")}`,105,58);
-      doc.text(`Category: ${tr(reg.category||"-")}`,105,63);
-      doc.text(`T-Shirt: ${reg.tshirt||"-"}`,105,68);
-      if(runner.club)doc.text(`Club: ${tr(runner.club)}`,105,73);
-      // Αριστερά - όνομα αθλητή
-      doc.setTextColor(40);doc.setFontSize(11);doc.setFont("helvetica","bold");
-      doc.text(tr(`${runner.first_name||""}`),22,50,{maxWidth:25});
-      doc.text(tr(`${runner.last_name||""}`),22,56,{maxWidth:25});
+      // ΟΝΟΜΑ ΑΘΛΗΤΗ - μεγάλο, κάτω από BIB
+      doc.setTextColor(40);doc.setFontSize(13);doc.setFont("helvetica","bold");
+      const fullName=tr(`${runner.first_name||""} ${runner.last_name||""}`).trim().toUpperCase();
+      doc.text(fullName,74,86,{align:"center",maxWidth:140});
+      // Λεπτομέρειες - σε 2 στήλες κάτω αριστερά & δεξιά
+      doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(80);
+      // Αριστερά
+      doc.text(`Distance: ${tr(reg.distance||"-")}`,12,93);
+      doc.text(`Category: ${tr(reg.category||"-")}`,12,97.5);
+      // Δεξιά
+      doc.text(`T-Shirt: ${reg.tshirt||"-"}`,108,93);
+      if(runner.club)doc.text(`Club: ${tr(runner.club)}`,108,97.5);
       // Footer
-      doc.setTextColor(255);doc.setFontSize(8);doc.setFont("helvetica","bold");
-      doc.text("PRESENT THIS CARD AT THE START LINE",74,98,{align:"center"});
+      doc.setTextColor(255);doc.setFontSize(7);doc.setFont("helvetica","bold");
+      doc.text("PRESENT THIS CARD AT THE START LINE",74,103.5,{align:"center"});
       doc.save(`BIB-${reg.bib_number}-${race.name.replace(/[^\w]+/g,"-")}.pdf`);
     }catch(e){
       alert("⚠️ "+e.message);
