@@ -690,18 +690,33 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     }
     const {jsPDF}=window.jspdf;
     const doc=new jsPDF();
+    // Φόρτωση γραμματοσειράς με Ελληνικά (Roboto) — μία φορά
+    let greekFont=true;
+    try{
+      if(!window.__robotoFont){
+        const resp=await fetch("https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.0.8/files/roboto-greek-400-normal.woff");
+        if(!resp.ok)throw new Error("font fetch failed");
+        const buf=await resp.arrayBuffer();
+        let bin="";const bytes=new Uint8Array(buf);
+        for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+        window.__robotoFont=btoa(bin);
+      }
+      doc.addFileToVFS("Roboto.ttf",window.__robotoFont);
+      doc.addFont("Roboto.ttf","Roboto","normal");
+      doc.setFont("Roboto");
+    }catch(e){greekFont=false;}
     doc.setFontSize(16);
     doc.text(race.name,14,18);
     doc.setFontSize(10);
     doc.setTextColor(120);
-    doc.text(`Ημ/νία: ${race.date}  |  Τοποθεσία: ${race.location||"-"}  |  Σύνολο: ${regs.length}`,14,26);
+    doc.text(`${greekFont?"Ημ/νία":"Date"}: ${race.date}  |  ${greekFont?"Τοποθεσία":"Location"}: ${race.location||"-"}  |  ${greekFont?"Σύνολο":"Total"}: ${regs.length}`,14,26);
     const body=regs.map((reg,i)=>{const r=runners.find(x=>x.id===reg.runner_id)||{};return[i+1,reg.bib_number,`${r.first_name||""} ${r.last_name||""}`,reg.distance||"",r.phone||""];});
     doc.autoTable({
       startY:32,
-      head:[["Α/Α","BIB","Ονοματεπώνυμο","Διαδρομή","Τηλέφωνο"]],
+      head:[greekFont?["Α/Α","BIB","Ονοματεπώνυμο","Διαδρομή","Τηλέφωνο"]:["No","BIB","Full Name","Distance","Phone"]],
       body:body,
-      styles:{fontSize:9,cellPadding:2.5},
-      headStyles:{fillColor:[74,93,199],textColor:255,fontStyle:"bold"},
+      styles:{fontSize:9,cellPadding:2.5,font:greekFont?"Roboto":"helvetica"},
+      headStyles:{fillColor:[74,93,199],textColor:255,fontStyle:"normal",font:greekFont?"Roboto":"helvetica"},
       alternateRowStyles:{fillColor:[245,243,239]}
     });
     doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
