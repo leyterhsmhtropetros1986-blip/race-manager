@@ -520,10 +520,30 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     if(existing&&existing.length>0){alert(t.alreadyRegAlert);setLoading(false);return;}
     const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
-    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:(maxBib+1).toString(),custom_answers:customAnswers,price_paid:priceInfo.final}]);
+    const bibNum=(maxBib+1).toString();
+    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final}]);
     if(regError){alert("Σφάλμα εγγραφής: "+regError.message);setLoading(false);return;}
+    // Αποστολή email επιβεβαίωσης (μέσω Edge Function)
+    try{
+      let organizerEmail=null;
+      if(race.user_id){
+        const {data:org}=await supabase.from("profiles").select("email").eq("id",race.user_id).single();
+        organizerEmail=org?.email||null;
+      }
+      await supabase.functions.invoke("send-registration-email",{
+        body:{
+          athleteEmail:session.user.email,
+          athleteName:`${form.first_name} ${form.last_name}`,
+          raceName:race.name,
+          raceDate:race.date,
+          distance:form.distance,
+          bibNumber:bibNum,
+          organizerEmail:organizerEmail
+        }
+      });
+    }catch(e){console.log("Email error (μη κρίσιμο):",e);}
     setLoading(false);
-    alert("✅ Η εγγραφή ολοκληρώθηκε! BIB #"+(maxBib+1));
+    alert("✅ Η εγγραφή ολοκληρώθηκε! BIB #"+bibNum+"\n📧 Σου στείλαμε email επιβεβαίωσης.");
     onSuccess();
   }
 
