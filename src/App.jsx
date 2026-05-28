@@ -164,7 +164,26 @@ const T = {
 const CATEGORIES = ["Γενική","Άνδρες 18-29","Άνδρες 30-39","Άνδρες 40-49","Άνδρες 50+","Γυναίκες 18-29","Γυναίκες 30-39","Γυναίκες 40-49","Γυναίκες 50+","Παίδες U18"];
 const TSHIRTS = ["XS","S","M","L","XL","XXL"];
 const SUGGESTED_DISTANCES = ["5km","10km","12km","15km","20km","21km","23km","42km","Ημιμαραθώνιος","Μαραθώνιος","Trail","Ορεινός"];
-const SUGGESTED_PERKS = ["👕 T-Shirt","🏅 Μετάλλιο","🍝 Φαγητό","💧 Νερό/Ρόφημα","🎒 Goody Bag","📸 Φωτογραφίες","🚿 Ντουζιέρες","🏥 Ιατρική Κάλυψη","🎟️ Χρονομέτρηση","📋 Πιστοποιητικό"];
+const PERK_PAIRS = [
+  {el:"👕 T-Shirt", en:"👕 T-Shirt"},
+  {el:"🏅 Μετάλλιο", en:"🏅 Medal"},
+  {el:"🍝 Φαγητό", en:"🍝 Food"},
+  {el:"💧 Νερό/Ρόφημα", en:"💧 Water/Drink"},
+  {el:"🎒 Goody Bag", en:"🎒 Goody Bag"},
+  {el:"📸 Φωτογραφίες", en:"📸 Photos"},
+  {el:"🚿 Ντουζιέρες", en:"🚿 Showers"},
+  {el:"🏥 Ιατρική Κάλυψη", en:"🏥 Medical Coverage"},
+  {el:"🎟️ Χρονομέτρηση", en:"🎟️ Timing"},
+  {el:"📋 Πιστοποιητικό", en:"📋 Certificate"}
+];
+const SUGGESTED_PERKS = PERK_PAIRS.map(p=>p.el);
+// Μεταφράζει μια παροχή στη σωστή γλώσσα
+function translatePerk(perk, lang){
+  for(const p of PERK_PAIRS){
+    if(perk===p.el||perk===p.en)return lang==="en"?p.en:p.el;
+  }
+  return perk; // custom παροχή που πρόσθεσε ο χρήστης
+}
 
 const css = {
   input:{width:"100%",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 14px",color:T.text,fontSize:"14px",outline:"none",boxSizing:"border-box",fontFamily:"inherit"},
@@ -444,7 +463,7 @@ function calculatePrice(race,distance){
 
 // ─── ΑΘΛΗΤΗΣ - ΚΑΡΤΑ ΑΓΩΝΑ ────────────────────────────────────────────────────
 function AthleteRaceCard({race,registrations,runners,session,onRegister}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
   const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
   const distances=race.distance?race.distance.split(" | "):[];
@@ -467,7 +486,7 @@ function AthleteRaceCard({race,registrations,runners,session,onRegister}){
         {distances.map((d,i)=>{const pr=calculatePrice(race,d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr.base>0&&(pr.isEarlyBird?<> · <s style={{opacity:0.5}}>{pr.base}€</s> <strong style={{color:T.warning}}>{pr.final.toFixed(2)}€</strong></>:` · ${pr.base}€`)}</span>;})}
       </div>
     )}
-    {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{p}</span>))}</div>)}
+    {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
     {myReg?(
       <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:`${T.accent}10`,borderRadius:"8px",border:`1px solid ${T.accent}33`}}>
         <span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontWeight:700,fontSize:"13px"}}>#{myReg.bib_number}</span>
@@ -649,7 +668,7 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
 
 // ─── ΔΙΟΡΓΑΝΩΤΗΣ - ΑΓΩΝΕΣ ──────────────────────────────────────────────────────
 function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -722,73 +741,50 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF({orientation:"landscape"});
-      let gf=false;
-      try{
-        if(!window.__greekFont){
-          const urls=[
-            "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf",
-            "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf",
-            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@version_2_37/ttf/DejaVuSans.ttf",
-            "https://cdn.jsdelivr.net/npm/dejavu-sans-ttf@2.37.3/ttf/DejaVuSans.ttf"
-          ];
-          for(const u of urls){
-            try{
-              const resp=await fetch(u);
-              if(resp.ok){
-                const buf=await resp.arrayBuffer();
-                let bin="";const b=new Uint8Array(buf);
-                for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
-                window.__greekFont=btoa(bin);
-                break;
-              }
-            }catch(e){}
-          }
-        }
-        if(window.__greekFont){doc.addFileToVFS("Greek.ttf",window.__greekFont);doc.addFont("Greek.ttf","GreekFont","normal");doc.setFont("GreekFont");gf=true;}
-      }catch(e){gf=false;}
-      const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"TH","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"CH","Ψ":"PS","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y"};
-      const fix=(txt)=>{const v=txt==null?"":String(txt);if(gf)return v;return v.split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
+      // Transliteration: όλα γίνονται λατινικά για να φαίνονται σίγουρα
+      const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"Th","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"Ch","Ψ":"Ps","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y","Ά":"A","Έ":"E","Ή":"I","Ί":"I","Ό":"O","Ύ":"Y","Ώ":"O"};
+      const tr=(txt)=>{const v=txt==null?"":String(txt);return v.split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
 
       const startX=10;
       const columns=[
-        {h:"A/A",w:14},{h:"BIB",w:16},{h:"Onoma",w:34,gh:"Όνομα"},{h:"Eponymo",w:40,gh:"Επώνυμο"},
-        {h:"Tilefono",w:30,gh:"Τηλέφωνο"},{h:"Diadromi",w:30,gh:"Διαδρομή"},{h:"Katigoria",w:33,gh:"Κατηγορία"},
-        {h:"T-Shirt",w:18},{h:"Syllogos",w:34,gh:"Σύλλογος"},{h:"Poli",w:28,gh:"Πόλη"}
+        {h:"A/A",w:14},{h:"BIB",w:16},{h:"Onoma",w:34},{h:"Eponymo",w:40},
+        {h:"Tilefono",w:30},{h:"Diadromi",w:30},{h:"Katigoria",w:33},
+        {h:"T-Shirt",w:18},{h:"Syllogos",w:34},{h:"Poli",w:28}
       ];
       let xpos=startX;columns.forEach(c=>{c.x=xpos;xpos+=c.w;});
       const totalW=xpos-startX;
 
       doc.setFontSize(15);doc.setTextColor(40);
-      doc.text(fix(race.name),startX,16);
+      doc.text(tr(race.name),startX,16);
       doc.setFontSize(9);doc.setTextColor(110);
-      doc.text(fix(`${gf?"Ημερομηνία":"Date"}: ${race.date}    ${gf?"Τοποθεσία":"Location"}: ${race.location||"-"}    ${gf?"Σύνολο":"Total"}: ${regs.length}`),startX,23);
+      doc.text(`Date: ${race.date}    Location: ${tr(race.location||"-")}    Total: ${regs.length}`,startX,23);
 
       let y=30;
       const rowH=8;
+      const tableTop=y;
+
+      // Header background
       doc.setFillColor(74,93,199);doc.rect(startX,y,totalW,rowH,"F");
-      doc.setTextColor(255);doc.setFontSize(8);
-      columns.forEach(c=>{
-        const headTxt=gf&&c.gh?c.gh:c.h;
-        doc.text(headTxt,c.x+2,y+5.5);
-      });
+      doc.setTextColor(255);doc.setFontSize(9);doc.setFont("helvetica","bold");
+      columns.forEach(c=>doc.text(c.h,c.x+2,y+5.5));
       y+=rowH;
 
-      doc.setFontSize(8);
+      doc.setFont("helvetica","normal");doc.setFontSize(8);
       regs.forEach((reg,i)=>{
         const r=runners.find(x=>x.id===reg.runner_id)||{};
         if(i%2===0){doc.setFillColor(243,242,238);doc.rect(startX,y,totalW,rowH,"F");}
         doc.setTextColor(45);
         const vals=[
           String(i+1),
-          String(reg.bib_number==null?"":reg.bib_number),
-          fix(r.first_name||""),
-          fix(r.last_name||""),
+          String(reg.bib_number||""),
+          tr(r.first_name||""),
+          tr(r.last_name||""),
           String(r.phone||""),
-          fix(reg.distance||""),
-          fix(reg.category||""),
+          tr(reg.distance||""),
+          tr(reg.category||""),
           String(reg.tshirt||""),
-          fix(r.club||""),
-          fix(r.city||"")
+          tr(r.club||""),
+          tr(r.city||"")
         ];
         columns.forEach((c,ci)=>{
           let txt=vals[ci]||"";
@@ -799,16 +795,18 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         y+=rowH;
         if(y>195){doc.addPage();y=20;}
       });
-      doc.setDrawColor(130);doc.setLineWidth(0.3);
-      const tableTop=30, tableBottom=y;
-      // Κάθετες γραμμές
+
+      const tableBottom=y;
+      // Γραμμές πίνακα - σκούρες, εμφανείς
+      doc.setDrawColor(100);doc.setLineWidth(0.3);
+      // Κάθετες
       doc.line(startX,tableTop,startX,tableBottom);
       columns.forEach(c=>doc.line(c.x+c.w,tableTop,c.x+c.w,tableBottom));
-      // Οριζόντιες γραμμές
-      doc.line(startX,tableTop,startX+totalW,tableTop);
-      for(let i=0;i<=regs.length;i++){const ly=tableTop+8+i*8;if(ly<=tableBottom)doc.line(startX,ly,startX+totalW,ly);}
+      // Οριζόντιες
+      for(let yy=tableTop;yy<=tableBottom;yy+=rowH){doc.line(startX,yy,startX+totalW,yy);}
       doc.line(startX,tableBottom,startX+totalW,tableBottom);
-      doc.save(`${race.name.replace(/\s+/g,"-")}.pdf`);
+
+      doc.save(`${race.name.replace(/[^\w]+/g,"-")}.pdf`);
     }catch(e){
       alert("⚠️ Σφάλμα PDF: "+e.message);
     }
@@ -835,7 +833,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
           </div>
           <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"10px"}}>📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 👤 {regCount} {t.registered}{totalRevenue>0&&<> &nbsp; 💰 {totalRevenue.toFixed(2)}€ {t.totalRev}</>}</div>
           {distances.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"8px"}}>{distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}</div>)}
-          {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{p}</span>))}</div>)}
+          {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
           {race.early_bird&&race.early_bird.deadline&&(<div style={{marginBottom:"12px"}}><span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",fontWeight:600}}>🏷️ Early Bird -{race.early_bird.discount_percent}% (έως {race.early_bird.deadline})</span></div>)}
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
             <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
