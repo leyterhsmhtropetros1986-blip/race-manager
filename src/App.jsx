@@ -50,7 +50,7 @@ const STR = {
     noRacesYet:"Δεν έχεις δημιουργήσει αγώνες ακόμα!",
     totalRev:"συνολικά", statusBtn:"⟳ Κατάσταση", excelBtn:"📊 Excel", pdfBtn:"📄 PDF", deleteBtn:"✕ Διαγραφή",
     deleteConfirm:"Διαγραφή αγώνα;", noRegsCsv:"Δεν υπάρχουν εγγραφές!",
-    newRaceTitle:"Νέος Αγώνας", raceName:"Όνομα Αγώνα *", date:"Ημερομηνία *",
+    newRaceTitle:"Νέος Αγώνας", editRaceTitle:"Επεξεργασία Αγώνα", editBtn:"✏️ Επεξεργασία", saveChanges:"Αποθήκευση Αλλαγών", raceName:"Όνομα Αγώνα *", date:"Ημερομηνία *",
     location:"Τοποθεσία", fillNameDate:"Συμπληρώστε όνομα και ημερομηνία!",
     addDistance:"Προσθέστε τουλάχιστον μία διαδρομή!",
     maxRunners:"Μέγ. Συμμετοχές", maxRunnersPlaceholder:"Κενό = απεριόριστο",
@@ -118,7 +118,7 @@ const STR = {
     noRacesYet:"You haven't created any races yet!",
     totalRev:"total", statusBtn:"⟳ Status", excelBtn:"📊 Excel", pdfBtn:"📄 PDF", deleteBtn:"✕ Delete",
     deleteConfirm:"Delete race?", noRegsCsv:"No registrations!",
-    newRaceTitle:"New Race", raceName:"Race Name *", date:"Date *",
+    newRaceTitle:"New Race", editRaceTitle:"Edit Race", editBtn:"✏️ Edit", saveChanges:"Save Changes", raceName:"Race Name *", date:"Date *",
     location:"Location", fillNameDate:"Please fill in name and date!",
     addDistance:"Please add at least one distance!",
     maxRunners:"Max Participants", maxRunnersPlaceholder:"Empty = unlimited",
@@ -651,19 +651,29 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
 function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t}=useLang();
   const [showForm,setShowForm]=useState(false);
+  const [editId,setEditId]=useState(null);
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[]});setShowForm(true);}
 
-  async function add(){
+  async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
     if(form.distances.length===0){alert(t.addDistance);return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
-    const {data}=await supabase.from("races").insert([{name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,status:"upcoming",user_id:session.user.id,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields}]).select();
-    if(data)setRaces([data[0],...races]);
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields};
+    if(editId){
+      const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
+      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
+      if(data)setRaces(races.map(r=>r.id===editId?data[0]:r));
+    } else {
+      const {data,error}=await supabase.from("races").insert([{...payload,status:"upcoming",user_id:session.user.id}]).select();
+      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
+      if(data)setRaces([data[0],...races]);
+    }
     setLoading(false);setShowForm(false);resetForm();
   }
   async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
@@ -765,6 +775,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
           {distances.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}</div>)}
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
             <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
+            <Btn sm v="sec" onClick={()=>openEdit(race)}>{t.editBtn}</Btn>
             <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
             <Btn sm v="ghost" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
@@ -772,7 +783,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         </div>;
       })}
     </div>
-    {showForm&&<Modal title={t.newRaceTitle} onClose={()=>{setShowForm(false);resetForm();}} wide>
+    {showForm&&<Modal title={editId?t.editRaceTitle:t.newRaceTitle} onClose={()=>{setShowForm(false);resetForm();}} wide>
       <In label={t.raceName} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
@@ -786,7 +797,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       <In label={t.maxRunners} type="number" value={form.max_runners} onChange={e=>setForm({...form,max_runners:e.target.value})} placeholder={t.maxRunnersPlaceholder}/>
       <F label={t.description}><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3} style={{...css.input,resize:"vertical"}}/></F>
       <div style={{display:"flex",gap:"10px",marginTop:"20px"}}>
-        <Btn onClick={add} style={{flex:1}} disabled={loading}>{loading?"...":t.createRace}</Btn>
+        <Btn onClick={save} style={{flex:1}} disabled={loading}>{loading?"...":(editId?t.saveChanges:t.createRace)}</Btn>
         <Btn v="sec" onClick={()=>{setShowForm(false);resetForm();}} style={{flex:1}}>{t.cancel}</Btn>
       </div>
     </Modal>}
