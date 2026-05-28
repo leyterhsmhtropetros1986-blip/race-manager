@@ -719,41 +719,62 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         catch(e){await loadScript("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js");}
       }
     }catch(e){
-      alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF.\n\nΠιθανόν το AdBlock τη μπλοκάρει. Απενεργοποίησέ το ή χρησιμοποίησε το κουμπί Excel.");
+      alert("⚠️ Δεν φόρτωσε η βιβλιοθήκη PDF. Απενεργοποίησε το AdBlock ή χρησιμοποίησε το κουμπί Excel.");
       return;
     }
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF();
-      // Γραμματοσειρά με Ελληνικά
+      // Γραμματοσειρά TTF με Ελληνικά (NotoSans) — συμβατή με jsPDF
       let gf=false;
       try{
-        if(!window.__robotoFont){
-          const resp=await fetch("https://cdn.jsdelivr.net/npm/@fontsource/roboto@5.0.8/files/roboto-greek-400-normal.woff");
-          if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__robotoFont=btoa(bin);}
+        if(!window.__greekFont){
+          const urls=[
+            "https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf",
+            "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5.0.0/files/noto-sans-greek-400-normal.woff"
+          ];
+          for(const u of urls){
+            try{
+              const resp=await fetch(u);
+              if(resp.ok){
+                const buf=await resp.arrayBuffer();
+                let bin="";const b=new Uint8Array(buf);
+                for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
+                window.__greekFont=btoa(bin);
+                break;
+              }
+            }catch(e){}
+          }
         }
-        if(window.__robotoFont){doc.addFileToVFS("Roboto.ttf",window.__robotoFont);doc.addFont("Roboto.ttf","Roboto","normal");doc.setFont("Roboto");gf=true;}
+        if(window.__greekFont){
+          doc.addFileToVFS("Greek.ttf",window.__greekFont);
+          doc.addFont("Greek.ttf","GreekFont","normal");
+          doc.setFont("GreekFont");
+          gf=true;
+        }
       }catch(e){gf=false;}
-      const L=(el,en)=>gf?el:en;
-      // Τίτλος
+
+      // Συνάρτηση: αν δεν έχουμε ελληνική γραμματοσειρά, μετατροπή σε λατινικά
+      const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"TH","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"CH","Ψ":"PS","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y"};
+      const fix=(txt)=>{if(gf)return String(txt);return String(txt).split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
+
       doc.setFontSize(16);doc.setTextColor(40);
-      doc.text(race.name,14,18);
+      doc.text(fix(race.name),14,18);
       doc.setFontSize(10);doc.setTextColor(120);
-      doc.text(`${L("Ημ/νία","Date")}: ${race.date}   ${L("Τοποθεσία","Location")}: ${race.location||"-"}   ${L("Σύνολο","Total")}: ${regs.length}`,14,26);
-      // Πίνακας χειροκίνητα
-      const cols=[{x:14,w:14,h:L("Α/Α","No")},{x:28,w:18,h:"BIB"},{x:46,w:75,h:L("Ονοματεπώνυμο","Full Name")},{x:121,w:40,h:L("Διαδρομή","Distance")},{x:161,w:35,h:L("Τηλέφωνο","Phone")}];
+      doc.text(fix(`Hmeromhnia: ${race.date}   Topothesia: ${race.location||"-"}   Synolo: ${regs.length}`),14,26);
+
+      const cols=[{x:14,w:14,h:"A/A"},{x:28,w:18,h:"BIB"},{x:46,w:75,h:fix("Onomateponymo")},{x:121,w:40,h:fix("Diadromi")},{x:161,w:35,h:fix("Tilefono")}];
       let y=34;
-      // Header row
       doc.setFillColor(74,93,199);doc.rect(14,y,182,9,"F");
       doc.setTextColor(255);doc.setFontSize(9);
       cols.forEach(c=>doc.text(String(c.h),c.x+2,y+6));
       y+=9;
-      // Data rows
       doc.setTextColor(40);
       regs.forEach((reg,i)=>{
         const r=runners.find(x=>x.id===reg.runner_id)||{};
         if(i%2===0){doc.setFillColor(245,243,239);doc.rect(14,y,182,8,"F");}
-        const row=[String(i+1),String(reg.bib_number),`${r.first_name||""} ${r.last_name||""}`,reg.distance||"",r.phone||""];
+        let nm=`${r.first_name||""} ${r.last_name||""}`;
+        const row=[String(i+1),String(reg.bib_number),fix(nm),fix(reg.distance||""),String(r.phone||"")];
         cols.forEach((c,ci)=>{let txt=row[ci];if(txt.length>40)txt=txt.slice(0,38)+"..";doc.text(txt,c.x+2,y+5.5);});
         y+=8;
         if(y>280){doc.addPage();y=20;}
@@ -989,4 +1010,3 @@ export default function App(){
     <AppContent/>
   </LangContext.Provider>;
 }
-
