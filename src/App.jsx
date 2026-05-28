@@ -33,7 +33,7 @@ const STR = {
     tabRaces:"🏟 Αγώνες", tabRegs:"📋 Εγγραφές", tabAdmin:"👑 Admin",
     availableRaces:"🏟 Διαθέσιμοι Αγώνες", myRegs:"📋 Οι Εγγραφές μου",
     availableRacesTitle:"Διαθέσιμοι Αγώνες", noAvailable:"Δεν υπάρχουν διαθέσιμοι αγώνες",
-    myRegsTitle:"Οι Εγγραφές μου", noRegs:"Δεν έχεις εγγραφές ακόμα",
+    myRegsTitle:"Οι Εγγραφές μου", noRegs:"Δεν έχεις εγγραφές ακόμα", bibCardBtn:"🎟️ BIB Card", bibCardLoading:"Δημιουργία...",
     registered:"εγγεγραμμένοι", alreadyReg:"Είσαι ήδη εγγεγραμμένος! Διαδρομή:",
     regBtn:"+ Εγγραφή στον Αγώνα", regForRace:"Εγγραφή στον",
     statusUpcoming:"ΠΡΟΣΕΧΩΣ", statusActive:"ΕΝΕΡΓΟΣ", statusFinished:"ΟΛΟΚΛΗΡΩΘΗΚΕ",
@@ -101,7 +101,7 @@ const STR = {
     tabRaces:"🏟 Races", tabRegs:"📋 Registrations", tabAdmin:"👑 Admin",
     availableRaces:"🏟 Available Races", myRegs:"📋 My Registrations",
     availableRacesTitle:"Available Races", noAvailable:"No available races",
-    myRegsTitle:"My Registrations", noRegs:"You have no registrations yet",
+    myRegsTitle:"My Registrations", noRegs:"You have no registrations yet", bibCardBtn:"🎟️ BIB Card", bibCardLoading:"Generating...",
     registered:"registered", alreadyReg:"You're already registered! Distance:",
     regBtn:"+ Register for Race", regForRace:"Register for",
     statusUpcoming:"UPCOMING", statusActive:"ACTIVE", statusFinished:"FINISHED",
@@ -630,11 +630,68 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
   const {t}=useLang();
   const [registerRace,setRegisterRace]=useState(null);
   const [tab,setTab]=useState("available");
+  const [bibLoading,setBibLoading]=useState(null);
   const myRunner=runners.find(r=>r.email===session.user.email);
   const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
   const myRaceIds=myRegs.map(r=>r.race_id);
   const availableRaces=races.filter(r=>r.status==="upcoming");
   const myRaces=races.filter(r=>myRaceIds.includes(r.id));
+
+  async function downloadBibCard(race,reg,runner){
+    setBibLoading(reg.id);
+    function loadScript(src){return new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("blocked"));document.head.appendChild(sc);});}
+    try{
+      if(!window.jspdf){
+        try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");}
+        catch(e){await loadScript("https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js");}
+      }
+      const grMap={"Α":"A","Β":"V","Γ":"G","Δ":"D","Ε":"E","Ζ":"Z","Η":"I","Θ":"Th","Ι":"I","Κ":"K","Λ":"L","Μ":"M","Ν":"N","Ξ":"X","Ο":"O","Π":"P","Ρ":"R","Σ":"S","Τ":"T","Υ":"Y","Φ":"F","Χ":"Ch","Ψ":"Ps","Ω":"O","ά":"a","έ":"e","ή":"i","ί":"i","ό":"o","ύ":"y","ώ":"o","α":"a","β":"v","γ":"g","δ":"d","ε":"e","ζ":"z","η":"i","θ":"th","ι":"i","κ":"k","λ":"l","μ":"m","ν":"n","ξ":"x","ο":"o","π":"p","ρ":"r","σ":"s","ς":"s","τ":"t","υ":"y","φ":"f","χ":"ch","ψ":"ps","ω":"o","ΐ":"i","ϊ":"i","ϋ":"y","Ά":"A","Έ":"E","Ή":"I","Ί":"I","Ό":"O","Ύ":"Y","Ώ":"O"};
+      const tr=(txt)=>{const v=txt==null?"":String(txt);return v.split("").map(c=>grMap[c]!==undefined?grMap[c]:c).join("");};
+      const {jsPDF}=window.jspdf;
+      // A6 landscape (κάρτα)
+      const doc=new jsPDF({orientation:"landscape",unit:"mm",format:[148,105]});
+      // Background gradient effect (μπλε γωνία)
+      doc.setFillColor(74,93,199);doc.rect(0,0,148,18,"F");
+      doc.setFillColor(45,167,127);doc.rect(0,87,148,18,"F");
+      // Τίτλος πάνω
+      doc.setTextColor(255);doc.setFontSize(11);doc.setFont("helvetica","bold");
+      doc.text("RACE MANAGEMENT - OFFICIAL BIB",74,11,{align:"center"});
+      // Όνομα αγώνα
+      doc.setTextColor(40);doc.setFontSize(15);doc.setFont("helvetica","bold");
+      doc.text(tr(race.name),74,28,{align:"center",maxWidth:140});
+      // Πληροφορίες
+      doc.setFontSize(9);doc.setTextColor(100);doc.setFont("helvetica","normal");
+      doc.text(`${race.date}  |  ${tr(race.location||"")}`,74,36,{align:"center"});
+      // ΜΕΓΑΛΟ BIB στο κέντρο
+      doc.setFillColor(245,243,239);doc.roundedRect(50,42,48,38,3,3,"F");
+      doc.setDrawColor(74,93,199);doc.setLineWidth(0.6);
+      doc.roundedRect(50,42,48,38,3,3,"S");
+      doc.setTextColor(74,93,199);doc.setFontSize(9);doc.setFont("helvetica","bold");
+      doc.text("BIB",74,50,{align:"center"});
+      doc.setFontSize(38);
+      doc.text(`#${reg.bib_number}`,74,72,{align:"center"});
+      // Όνομα αθλητή - δεξιά από BIB
+      doc.setTextColor(40);doc.setFontSize(11);doc.setFont("helvetica","bold");
+      doc.text(tr(`${runner.first_name||""} ${runner.last_name||""}`),105,50,{maxWidth:42});
+      doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(100);
+      doc.text(`Distance: ${tr(reg.distance||"-")}`,105,58);
+      doc.text(`Category: ${tr(reg.category||"-")}`,105,63);
+      doc.text(`T-Shirt: ${reg.tshirt||"-"}`,105,68);
+      if(runner.club)doc.text(`Club: ${tr(runner.club)}`,105,73);
+      // Αριστερά - όνομα αθλητή
+      doc.setTextColor(40);doc.setFontSize(11);doc.setFont("helvetica","bold");
+      doc.text(tr(`${runner.first_name||""}`),22,50,{maxWidth:25});
+      doc.text(tr(`${runner.last_name||""}`),22,56,{maxWidth:25});
+      // Footer
+      doc.setTextColor(255);doc.setFontSize(8);doc.setFont("helvetica","bold");
+      doc.text("PRESENT THIS CARD AT THE START LINE",74,98,{align:"center"});
+      doc.save(`BIB-${reg.bib_number}-${race.name.replace(/[^\w]+/g,"-")}.pdf`);
+    }catch(e){
+      alert("⚠️ "+e.message);
+    }
+    setBibLoading(null);
+  }
+
   return <div>
     <div style={{display:"flex",gap:"6px",marginBottom:"24px",flexWrap:"wrap"}}>
       <button onClick={()=>setTab("available")} style={{background:tab==="available"?T.primary:T.bgAlt,color:tab==="available"?"#fff":T.textMid,border:`1px solid ${tab==="available"?T.primary:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="available"?700:500,fontFamily:"inherit"}}>{t.availableRaces} ({availableRaces.length})</button>
@@ -657,7 +714,8 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
               <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
               {reg.price_paid>0&&<span style={{color:T.accent,fontSize:"13px",fontWeight:600}}>💰 {parseFloat(reg.price_paid).toFixed(2)}€</span>}
             </div>
-            <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8"}}>📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 🏃 {reg.distance||"—"}<br/>{t.category}: {reg.category} · {t.tshirt}: {reg.tshirt}{reg.medical_cert?" · ✅":""}</div>
+            <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"12px"}}>📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 🏃 {reg.distance||"—"}<br/>{t.category}: {reg.category} · {t.tshirt}: {reg.tshirt}{reg.medical_cert?" · ✅":""}</div>
+            <Btn sm v="grn" onClick={()=>downloadBibCard(race,reg,myRunner)} disabled={bibLoading===reg.id}>{bibLoading===reg.id?t.bibCardLoading:t.bibCardBtn}</Btn>
           </div>;
         })}
       </div>
