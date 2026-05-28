@@ -725,9 +725,22 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       let gf=false;
       try{
         if(!window.__greekFont){
-          const u="https://cdn.jsdelivr.net/fontsource/fonts/noto-sans@latest/greek-400-normal.ttf";
-          const resp=await fetch(u);
-          if(resp.ok){const buf=await resp.arrayBuffer();let bin="";const b=new Uint8Array(buf);for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);window.__greekFont=btoa(bin);}
+          const urls=[
+            "https://cdn.jsdelivr.net/npm/dejavu-sans-ttf@2.37.3/ttf/DejaVuSans.ttf",
+            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@version_2_37/ttf/DejaVuSans.ttf"
+          ];
+          for(const u of urls){
+            try{
+              const resp=await fetch(u);
+              if(resp.ok){
+                const buf=await resp.arrayBuffer();
+                let bin="";const b=new Uint8Array(buf);
+                for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
+                window.__greekFont=btoa(bin);
+                break;
+              }
+            }catch(e){}
+          }
         }
         if(window.__greekFont){doc.addFileToVFS("Greek.ttf",window.__greekFont);doc.addFont("Greek.ttf","GreekFont","normal");doc.setFont("GreekFont");gf=true;}
       }catch(e){gf=false;}
