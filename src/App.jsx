@@ -414,7 +414,7 @@ function LoginPage(){
     <div style={{position:"absolute",top:"20px",right:"20px"}}><LangToggle/></div>
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"20px",padding:"40px",width:"100%",maxWidth:"460px",boxShadow:T.shadow}}>
       <div style={{textAlign:"center",marginBottom:"32px"}}>
-        <div style={{width:"60px",height:"60px",background:T.primary,borderRadius:"16px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",margin:"0 auto 16px"}}>🏃</div>
+        <img src="/11085.png" alt="Race Management" style={{width:"80px",height:"80px",borderRadius:"50%",margin:"0 auto 16px",display:"block",objectFit:"cover"}}/>
         <h1 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.appName}</h1>
         <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.tagline}</p>
       </div>
@@ -979,7 +979,7 @@ function AppContent(){
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"16px 24px",background:T.bgAlt,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
       <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
-        <div style={{width:"36px",height:"36px",background:isAthlete?T.accent:T.primary,borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"}}>🏃</div>
+        <img src="/11085.png" alt="Race Management" style={{width:"40px",height:"40px",borderRadius:"50%",objectFit:"cover"}}/>
         <div><div style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{t.appName}</div><div style={{color:T.textLight,fontSize:"10px",letterSpacing:"0.15em",textTransform:"uppercase"}}>{isAthlete?t.athletePanel:t.adminPanel}</div></div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
