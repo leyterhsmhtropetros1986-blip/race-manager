@@ -365,7 +365,25 @@ function LoginPage(){
     setError("");
     if(!email||!password){setError(t.fillEmailPass);return;}
     if(mode==="signup"&&!name){setError(t.fillName);return;}
+    if(mode==="signup"&&!name){setError(t.fillName);return;}
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+if (!emailRegex.test(email)) {
+  setError("Βάλε σωστό email");
+  setLoading(false);
+  return;
+}
+
+setLoading(true);
     setLoading(true);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+if (!emailRegex.test(email)) {
+  setError("Βάλε σωστό email");
+  setLoading(false);
+  return;
+}
     if(mode==="login"){
       const {error}=await supabase.auth.signInWithPassword({email,password});
       if(error)setError(t.wrongCreds);
