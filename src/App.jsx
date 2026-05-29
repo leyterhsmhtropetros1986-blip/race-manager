@@ -1419,7 +1419,6 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
             <Btn sm v="ghost" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
           </div>
-          </div>
         </div>;
       })}
     </div>
