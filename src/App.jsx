@@ -96,6 +96,16 @@ const STR = {
     searchPlaceholder:"🔍 Αναζήτηση αγώνα (όνομα, τοποθεσία)...",
     pendingApprovals:"εκκρεμείς εγκρίσεις",
     notFound:"Δεν βρέθηκαν αγώνες",
+    statsTab:"📊 Στατιστικά", statsTitle:"Στατιστικά Διοργανωτή",
+    statsTotalRaces:"Συνολικοί Αγώνες", statsTotalRegs:"Συνολικές Εγγραφές",
+    statsTotalRevenue:"Συνολικά Έσοδα", statsAvgPerRace:"Μ.Ο. ανά Αγώνα",
+    statsRegsPerRace:"Εγγραφές ανά Αγώνα", statsRevPerRace:"Έσοδα ανά Αγώνα",
+    statsLast7Days:"Εγγραφές τελευταίες 7 ημέρες", statsNoData:"Δεν υπάρχουν δεδομένα",
+    paymentStatus:"Πληρωμή", paymentPaid:"✅ Πληρωμένο", paymentPending:"⏳ Εκκρεμές",
+    paymentRefunded:"↩️ Επιστροφή", paymentMarkPaid:"Σήμανση Πληρωμένο", paymentMarkPending:"Σήμανση Εκκρεμές",
+    publicRunnersToggle:"👥 Δημόσια λίστα εγγεγραμμένων", publicRunnersHint:"Οι εγγεγραμμένοι αθλητές θα φαίνονται στη δημόσια σελίδα",
+    publicRunnersList:"👥 Εγγεγραμμένοι Αθλητές", showRunnersBtn:"👥 Δες Εγγεγραμμένους",
+    welcomeEmailSubject:"Επιβεβαίωση Εγγραφής - %RACE%",
     forgotPassword:"Ξέχασα τον κωδικό μου;", resetPasswordTitle:"Επαναφορά Κωδικού",
     resetPasswordDesc:"Δώσε το email σου και θα σου στείλουμε σύνδεσμο για επαναφορά κωδικού.",
     resetPasswordBtn:"📧 Αποστολή Email Επαναφοράς", resetPasswordSent:"✅ Σου στείλαμε email με τις οδηγίες! Έλεγξε το inbox (και τα spam).",
@@ -195,6 +205,16 @@ const STR = {
     searchPlaceholder:"🔍 Search race (name, location)...",
     pendingApprovals:"pending approvals",
     notFound:"No races found",
+    statsTab:"📊 Statistics", statsTitle:"Organizer Statistics",
+    statsTotalRaces:"Total Races", statsTotalRegs:"Total Registrations",
+    statsTotalRevenue:"Total Revenue", statsAvgPerRace:"Avg per Race",
+    statsRegsPerRace:"Registrations per Race", statsRevPerRace:"Revenue per Race",
+    statsLast7Days:"Registrations last 7 days", statsNoData:"No data available",
+    paymentStatus:"Payment", paymentPaid:"✅ Paid", paymentPending:"⏳ Pending",
+    paymentRefunded:"↩️ Refunded", paymentMarkPaid:"Mark as Paid", paymentMarkPending:"Mark as Pending",
+    publicRunnersToggle:"👥 Public registrations list", publicRunnersHint:"Registered athletes will be visible on the public page",
+    publicRunnersList:"👥 Registered Athletes", showRunnersBtn:"👥 View Athletes",
+    welcomeEmailSubject:"Registration Confirmation - %RACE%",
     forgotPassword:"Forgot password?", resetPasswordTitle:"Reset Password",
     resetPasswordDesc:"Enter your email and we'll send you a password reset link.",
     resetPasswordBtn:"📧 Send Reset Email", resetPasswordSent:"✅ Email sent! Check your inbox (and spam).",
@@ -447,6 +467,7 @@ function PublicHomePage(){
   const [publicRaces,setPublicRaces]=useState([]);
   const [loading,setLoading]=useState(true);
   const [searchQuery,setSearchQuery]=useState("");
+  const [viewRunners,setViewRunners]=useState(null);
   useEffect(()=>{
     (async()=>{
       const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
@@ -454,6 +475,7 @@ function PublicHomePage(){
       setLoading(false);
     })();
   },[]);
+  if(viewRunners)return <PublicRunnersPage raceId={viewRunners} onBack={()=>setViewRunners(null)}/>;
   if(viewResults)return <PublicResultsPage raceId={viewResults} onBack={()=>setViewResults(null)}/>;
   if(showLogin)return <LoginPage onBack={()=>setShowLogin(false)}/>;
   return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
@@ -517,8 +539,8 @@ function PublicHomePage(){
               </div>
               <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"12px"}}>
                 📅 {race.date} &nbsp; 📍 {race.location||"—"}
-                {race.description&&<><br/>💬 {race.description}</>}
               </div>
+              {race.description&&<div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 16px",color:T.text,fontSize:"13px",lineHeight:"1.6",marginBottom:"12px",whiteSpace:"pre-wrap"}}>{race.description}</div>}
               {distances.length>0&&(
                 <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"10px"}}>
                   {distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}
@@ -528,6 +550,7 @@ function PublicHomePage(){
               <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
                 <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
                 <Btn v="sec" onClick={()=>setViewResults(race.id)}>{t.viewResultsBtn}</Btn>
+                {race.public_runners_list&&<Btn v="ghost" onClick={()=>setViewRunners(race.id)}>{t.showRunnersBtn}</Btn>}
               </div>
               </div>
             </div>;
@@ -618,6 +641,83 @@ function PublicResultsPage({raceId,onBack}){
               <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:isMobile?"12px":"14px"}}>{formatTime(reg.finish_time)}</div>
             </div>;
           })}
+        </div>
+      )}
+    </div>
+  </div>;
+}
+
+function PublicRunnersPage({raceId,onBack}){
+  const {t,lang}=useLang();
+  const [race,setRace]=useState(null);
+  const [regs,setRegs]=useState([]);
+  const [runners,setRunners]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [filterDistance,setFilterDistance]=useState("all");
+  const [search,setSearch]=useState("");
+  useEffect(()=>{
+    (async()=>{
+      const [r1,r2,r3]=await Promise.all([
+        supabase.from("races").select("*").eq("id",raceId).single(),
+        supabase.from("registrations").select("*").eq("race_id",raceId),
+        supabase.from("runners").select("id,first_name,last_name,city,club,avatar_url")
+      ]);
+      if(r1.data)setRace(r1.data);
+      if(r2.data)setRegs(r2.data);
+      if(r3.data)setRunners(r3.data);
+      setLoading(false);
+    })();
+  },[raceId]);
+  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMid,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
+  if(!race)return <div style={{minHeight:"100vh",background:T.bg,padding:"40px",fontFamily:"Inter,sans-serif",textAlign:"center"}}>—</div>;
+
+  const distances=race.distance?race.distance.split(" | "):[];
+  const sq=search.trim().toLowerCase();
+  const filtered=regs
+    .filter(r=>filterDistance==="all"||r.distance===filterDistance)
+    .map(r=>{const runner=runners.find(x=>x.id===r.runner_id)||{};return{...r,runner};})
+    .filter(r=>!sq||((r.runner.first_name||"")+" "+(r.runner.last_name||"")).toLowerCase().includes(sq))
+    .sort((a,b)=>(a.bib_number||0)-(b.bib_number||0));
+
+  return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <div style={{maxWidth:"960px",margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px",flexWrap:"wrap",gap:"12px"}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.backToHome}</button>
+        <LangToggle/>
+      </div>
+
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",overflow:"hidden",marginBottom:"20px",boxShadow:T.shadow}}>
+        {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
+        <div style={{padding:"24px"}}>
+          <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>👥 {race.name}</h1>
+          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+        </div>
+      </div>
+
+      <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Αναζήτηση αθλητή..." style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:"14px"}}/>
+
+      {distances.length>1&&(
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"16px"}}>
+          <button onClick={()=>setFilterDistance("all")} style={{background:filterDistance==="all"?T.primary:T.bgAlt,color:filterDistance==="all"?"#fff":T.textMid,border:`1px solid ${filterDistance==="all"?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>{t.allRaces}</button>
+          {distances.map(d=><button key={d} onClick={()=>setFilterDistance(d)} style={{background:filterDistance===d?T.primary:T.bgAlt,color:filterDistance===d?"#fff":T.textMid,border:`1px solid ${filterDistance===d?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>🏃 {d}</button>)}
+        </div>
+      )}
+
+      {filtered.length===0?(
+        <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.notFound}</div>
+      ):(
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",boxShadow:T.shadow}}>
+          {filtered.map((reg,i)=>(
+            <div key={reg.id} style={{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",borderTop:i?`1px solid ${T.border}`:"none",background:i%2===0?T.bg:T.bgAlt}}>
+              <div style={{background:T.primary,color:"#fff",borderRadius:"8px",padding:"4px 10px",fontWeight:700,fontSize:"13px",minWidth:"45px",textAlign:"center"}}>#{reg.bib_number}</div>
+              {reg.runner.avatar_url?(<img src={reg.runner.avatar_url} alt="" style={{width:"40px",height:"40px",borderRadius:"50%",objectFit:"cover"}}/>):(<div style={{width:"40px",height:"40px",borderRadius:"50%",background:T.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{(reg.runner.first_name?.[0]||"?").toUpperCase()}</div>)}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{reg.runner.first_name} {reg.runner.last_name}</div>
+                <div style={{color:T.textLight,fontSize:"12px"}}>{reg.runner.club||""}{reg.runner.club&&reg.distance?" · ":""}{reg.distance||""}{reg.runner.city?` · ${reg.runner.city}`:""}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1212,15 +1312,15 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:""});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||""});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
     if(form.distances.length===0){alert(t.addDistance);return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
@@ -1457,6 +1557,16 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         </div>
         <div style={{fontSize:"11px",color:T.textLight,marginTop:"4px"}}>{t.bannerHint}</div>
       </div>
+      {/* PUBLIC RUNNERS TOGGLE */}
+      <div style={{marginBottom:"14px",background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 16px"}}>
+        <label style={{display:"flex",alignItems:"center",gap:"10px",cursor:"pointer"}}>
+          <input type="checkbox" checked={!!form.public_runners_list} onChange={e=>setForm({...form,public_runners_list:e.target.checked})} style={{width:"18px",height:"18px",cursor:"pointer"}}/>
+          <div>
+            <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{t.publicRunnersToggle}</div>
+            <div style={{color:T.textLight,fontSize:"11px"}}>{t.publicRunnersHint}</div>
+          </div>
+        </label>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
         <In label={t.location} value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/>
@@ -1480,6 +1590,12 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   const {t}=useLang();
   const [filterRace,setFilterRace]=useState("all");
   const [timeReg,setTimeReg]=useState(null);
+  async function togglePayment(reg){
+    const newStatus=reg.payment_status==="paid"?"pending":"paid";
+    const {error}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
+    if(error){alert("Σφάλμα: "+error.message);return;}
+    window.location.reload();
+  }
   const [timeForm,setTimeForm]=useState({finish_time:"",overall_rank:"",category_rank:""});
   function openTime(reg){setTimeReg(reg);setTimeForm({finish_time:reg.finish_time||"",overall_rank:reg.overall_rank||"",category_rank:reg.category_rank||""});}
   async function saveTime(){
@@ -1517,6 +1633,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
             <div style={{color:T.text,fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
               {runner.first_name} {runner.last_name}
               {reg.price_paid>0&&<span style={{color:T.accent,fontSize:"12px",fontWeight:600}}>💰 {parseFloat(reg.price_paid).toFixed(2)}€</span>}
+              <span onClick={()=>togglePayment(reg)} style={{cursor:"pointer",background:reg.payment_status==="paid"?`${T.accent}20`:`${T.warning}20`,color:reg.payment_status==="paid"?T.accent:T.warning,border:`1px solid ${reg.payment_status==="paid"?T.accent:T.warning}55`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:700}} title={reg.payment_status==="paid"?t.paymentMarkPending:t.paymentMarkPaid}>{reg.payment_status==="paid"?t.paymentPaid:t.paymentPending}</span>
               {reg.finish_time&&<span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontFamily:"monospace",fontWeight:700}}>⏱️ {formatTime(reg.finish_time)}</span>}
               {reg.overall_rank&&<span style={{background:T.warning,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>🏆 #{reg.overall_rank}</span>}
             </div>
@@ -1679,14 +1796,15 @@ function AppContent(){
     </div>)}
 
     {isOrganizer&&(<>
-      <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt}}>
-        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
+      <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt,flexWrap:"wrap"}}>
+        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
           <button key={tb.id} onClick={()=>setTab(tb.id)} style={{background:tab===tb.id?T.primary:"none",color:tab===tb.id?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"13px",fontWeight:tab===tb.id?700:500,fontFamily:"inherit"}}>{tb.label}</button>
         ))}
       </div>
       <div style={{padding:"28px",maxWidth:"960px",margin:"0 auto"}}>
         {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile}/>}
         {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile}/>}
+        {tab==="stats"&&<OrganizerStats races={races} registrations={registrations} session={session} profile={profile}/>}
         {tab==="admin"&&isAdmin&&<AdminPanel/>}
       </div>
     </>)}
