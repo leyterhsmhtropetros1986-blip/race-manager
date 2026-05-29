@@ -76,7 +76,10 @@ const STR = {
     rejectConfirm:"Απόρριψη;", makeAdminConfirm:"Να γίνει admin;",
     statusPending:"⏳ ΣΕ ΑΝΑΜΟΝΗ", statusApproved:"✅ ΕΓΚΡΙΘΗΚΕ", statusRejected:"❌ ΑΠΟΡΡΙΦΘΗΚΕ",
     badgeAdmin:"👑 ADMIN", badgeOrganizer:"ΔΙΟΡΓΑΝΩΤΗΣ", badgePending:"⏳ ΣΕ ΑΝΑΜΟΝΗ", badgeAthlete:"ΑΘΛΗΤΗΣ",
-    profileTab:"👤 Προφίλ", profileTitle:"Το Προφίλ μου", profileInfo:"📋 Στοιχεία μου", profileStats:"🏆 Στατιστικά",
+    profileTab:"👤 Προφίλ", profileTitle:"Το Προφίλ μου",
+    publicRacesTitle:"🏟 Διαθέσιμοι Αγώνες", publicRacesSub:"Δείτε τους αγώνες & εγγραφείτε",
+    publicRegisterBtn:"+ Εγγραφή", publicNoRaces:"Δεν υπάρχουν διαθέσιμοι αγώνες αυτή τη στιγμή",
+    publicLoginToReg:"Συνδεθείτε για εγγραφή", profileInfo:"📋 Στοιχεία μου", profileStats:"🏆 Στατιστικά",
     profileHistory:"📅 Ιστορικό Αγώνων", profileSave:"💾 Αποθήκευση", profileSaved:"✅ Αποθηκεύτηκε!",
     statTotalRaces:"Σύνολο Αγώνων", statFinished:"Ολοκληρωμένοι", statUpcoming:"Σε Αναμονή", statTotalKm:"Σύνολο km",
     prsTitle:"🏅 Personal Records", prsNone:"Δεν υπάρχουν χρόνοι ακόμα", overallRank:"Γενική Κατάταξη", catRank:"Κατάταξη Κατηγορίας",
@@ -152,7 +155,10 @@ const STR = {
     rejectConfirm:"Reject?", makeAdminConfirm:"Make admin?",
     statusPending:"⏳ PENDING", statusApproved:"✅ APPROVED", statusRejected:"❌ REJECTED",
     badgeAdmin:"👑 ADMIN", badgeOrganizer:"ORGANIZER", badgePending:"⏳ PENDING", badgeAthlete:"ATHLETE",
-    profileTab:"👤 Profile", profileTitle:"My Profile", profileInfo:"📋 My Information", profileStats:"🏆 Statistics",
+    profileTab:"👤 Profile", profileTitle:"My Profile",
+    publicRacesTitle:"🏟 Available Races", publicRacesSub:"Browse races & sign up",
+    publicRegisterBtn:"+ Register", publicNoRaces:"No available races at the moment",
+    publicLoginToReg:"Log in to register", profileInfo:"📋 My Information", profileStats:"🏆 Statistics",
     profileHistory:"📅 Race History", profileSave:"💾 Save", profileSaved:"✅ Saved!",
     statTotalRaces:"Total Races", statFinished:"Finished", statUpcoming:"Upcoming", statTotalKm:"Total km",
     prsTitle:"🏅 Personal Records", prsNone:"No times recorded yet", overallRank:"Overall Rank", catRank:"Category Rank",
@@ -391,6 +397,84 @@ function CustomFieldsPicker({fields,onChange}){
 function parseDistanceKm(d){if(!d)return 0;const m=String(d).match(/(\d+\.?\d*)\s*km/i);if(m)return parseFloat(m[1]);if(/μαραθ/i.test(d)||/marath/i.test(d))return 42.195;if(/ημιμαρ/i.test(d)||/half/i.test(d))return 21.0975;return 0;}
 function timeToSeconds(t){if(!t)return 0;const p=String(t).split(":").map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return 0;}
 function formatTime(t){return t||"—";}
+
+function PublicHomePage(){
+  const {t,lang}=useLang();
+  const [showLogin,setShowLogin]=useState(false);
+  const [publicRaces,setPublicRaces]=useState([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    (async()=>{
+      const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
+      setPublicRaces(data||[]);
+      setLoading(false);
+    })();
+  },[]);
+  if(showLogin)return <LoginPage/>;
+  return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <div style={{maxWidth:"960px",margin:"0 auto"}}>
+      {/* HEADER */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"28px",flexWrap:"wrap",gap:"12px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
+          <img src="/11085.png" alt="Race Management" style={{width:"50px",height:"50px",borderRadius:"50%",objectFit:"cover"}}/>
+          <div>
+            <div style={{color:T.text,fontWeight:900,fontSize:"20px"}}>{t.appName}</div>
+            <div style={{color:T.textLight,fontSize:"11px",letterSpacing:"0.15em",textTransform:"uppercase"}}>{t.tagline}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
+          <LangToggle/>
+          <Btn onClick={()=>setShowLogin(true)}>🔑 {t.login} / {t.signup}</Btn>
+        </div>
+      </div>
+
+      {/* HERO TITLE */}
+      <div style={{textAlign:"center",marginBottom:"32px"}}>
+        <h1 style={{color:T.text,fontSize:"28px",fontWeight:900,margin:"0 0 6px"}}>{t.publicRacesTitle}</h1>
+        <p style={{color:T.textMid,fontSize:"14px",margin:0}}>{t.publicRacesSub}</p>
+      </div>
+
+      {/* RACES */}
+      {loading?(
+        <div style={{textAlign:"center",color:T.textMid,padding:"60px"}}>{t.loading}</div>
+      ):publicRaces.length===0?(
+        <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.publicNoRaces}</div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {publicRaces.map(race=>{
+            const distances=race.distance?race.distance.split(" | "):[];
+            const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
+            const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
+            const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
+            return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px 24px",boxShadow:T.shadow}}>
+              <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px",flexWrap:"wrap"}}>
+                <span style={{color:T.text,fontWeight:700,fontSize:"17px"}}>{race.name}</span>
+                <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
+                {hasEarlyBird&&<span style={{background:`${T.warning}20`,color:T.warning,border:`1px solid ${T.warning}55`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:700}}>🏷️ EARLY BIRD -{race.early_bird.discount_percent}%</span>}
+              </div>
+              <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"12px"}}>
+                📅 {race.date} &nbsp; 📍 {race.location||"—"}
+                {race.description&&<><br/>💬 {race.description}</>}
+              </div>
+              {distances.length>0&&(
+                <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"10px"}}>
+                  {distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}
+                </div>
+              )}
+              {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
+              <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
+            </div>;
+          })}
+        </div>
+      )}
+
+      <div style={{textAlign:"center",marginTop:"40px",color:T.textLight,fontSize:"12px"}}>
+        © {new Date().getFullYear()} {t.appName}
+      </div>
+    </div>
+  </div>;
+}
 
 function LoginPage(){
   const {t}=useLang();
@@ -1263,7 +1347,7 @@ function AppContent(){
   }
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
 
-  if(!session)return <LoginPage/>;
+  if(!session)return <PublicHomePage/>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
 
   const isAthlete=profile?.role==="athlete";
