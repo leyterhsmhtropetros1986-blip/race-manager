@@ -1515,16 +1515,17 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
     </div>
     {timeReg&&<Modal title={t.setTimeTitle} onClose={()=>setTimeReg(null)}>
       <div style={{color:T.textMid,fontSize:"13px",marginBottom:"14px"}}>#{timeReg.bib_number} · {runners.find(r=>r.id===timeReg.runner_id)?.first_name} {runners.find(r=>r.id===timeReg.runner_id)?.last_name}</div>
-      <F label={t.finishTime}>
+      <div style={{marginBottom:"14px"}}>
+        <label style={css.label}>{t.finishTime}</label>
         <input
           value={timeForm.finish_time}
-          onChange={e=>{const v=e.target.value.replace(/[^0-9:]/g,"");setTimeForm({...timeForm,finish_time:v});}}
-          onBlur={e=>{const fmt=validateTime(e.target.value);if(fmt)setTimeForm(prev=>({...prev,finish_time:fmt}));}}
+          onChange={e=>{const v=e.target.value; const cleaned=v.replace(/[^0-9:]/g,""); setTimeForm({...timeForm,finish_time:cleaned});}}
+          onBlur={e=>{const fmt=validateTime(e.target.value); if(fmt)setTimeForm(prev=>({...prev,finish_time:fmt}));}}
           placeholder={t.finishTimePh}
           style={css.input}
         />
-        <div style={{fontSize:"11px",color:T.textLight,marginTop:"-8px",marginBottom:"6px"}}>{t.finishTimePh}</div>
-      </F>
+        <div style={{fontSize:"11px",color:T.textLight,marginTop:"2px"}}>{t.finishTimePh}</div>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.overallRank} type="number" value={timeForm.overall_rank} onChange={e=>setTimeForm({...timeForm,overall_rank:e.target.value})} placeholder={t.overallRankPh}/>
         <In label={t.catRank} type="number" value={timeForm.category_rank} onChange={e=>setTimeForm({...timeForm,category_rank:e.target.value})} placeholder={t.catRankPh}/>
