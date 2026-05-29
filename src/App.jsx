@@ -481,7 +481,7 @@ function PublicHomePage(){
   },[showLogin,viewResults,viewRunners]);
 
   // Push history entry ΜΟΝΟ όταν ανοίγουμε νέο view (όχι όταν κλείνουμε)
-  function openLogin(){window.history.pushState({view:"login"},"");openLogin();}
+  function openLogin(){window.history.pushState({view:"login"},"");setShowLogin(true);}
   function openResults(id){window.history.pushState({view:"results",id},"");setViewResults(id);}
   function openRunners(id){window.history.pushState({view:"runners",id},"");setViewRunners(id);}
   function closeView(){if(window.history.state)window.history.back();}
