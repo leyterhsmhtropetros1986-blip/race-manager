@@ -100,7 +100,7 @@ const STR = {
     profileHistory:"📅 Ιστορικό Αγώνων", profileSave:"💾 Αποθήκευση", profileSaved:"✅ Αποθηκεύτηκε!",
     statTotalRaces:"Σύνολο Αγώνων", statFinished:"Ολοκληρωμένοι", statUpcoming:"Σε Αναμονή", statTotalKm:"Σύνολο km",
     prsTitle:"🏅 Personal Records", prsNone:"Δεν υπάρχουν χρόνοι ακόμα", overallRank:"Γενική Κατάταξη", catRank:"Κατάταξη Κατηγορίας",
-    finishTime:"⏱️ Χρόνος Τερματισμού", finishTimePh:"π.χ. 1:25:30 ή 25:30", noTime:"—",
+    finishTime:"⏱️ Χρόνος Τερματισμού", finishTimePh:"Μορφή: ΩΩ:ΛΛ:ΔΔ (π.χ. 1:25:30) ή ΛΛ:ΔΔ (π.χ. 25:30)", noTime:"—",
     avatarUpload:"📷 Φωτογραφία Προφίλ", avatarChange:"Αλλαγή", uploadingAvatar:"Ανέβασμα...",
     setTimeBtn:"⏱️ Χρόνος", setTimeTitle:"Καταχώρηση Χρόνου", overallRankPh:"π.χ. 5", catRankPh:"π.χ. 2",
     notes:"Σημειώσεις", notesPh:"Προσωπικές σημειώσεις...",
@@ -196,7 +196,7 @@ const STR = {
     profileHistory:"📅 Race History", profileSave:"💾 Save", profileSaved:"✅ Saved!",
     statTotalRaces:"Total Races", statFinished:"Finished", statUpcoming:"Upcoming", statTotalKm:"Total km",
     prsTitle:"🏅 Personal Records", prsNone:"No times recorded yet", overallRank:"Overall Rank", catRank:"Category Rank",
-    finishTime:"⏱️ Finish Time", finishTimePh:"e.g. 1:25:30 or 25:30", noTime:"—",
+    finishTime:"⏱️ Finish Time", finishTimePh:"Format: HH:MM:SS (e.g. 1:25:30) or MM:SS (e.g. 25:30)", noTime:"—",
     avatarUpload:"📷 Profile Photo", avatarChange:"Change", uploadingAvatar:"Uploading...",
     setTimeBtn:"⏱️ Time", setTimeTitle:"Set Finish Time", overallRankPh:"e.g. 5", catRankPh:"e.g. 2",
     notes:"Notes", notesPh:"Personal notes...",
@@ -430,7 +430,9 @@ function CustomFieldsPicker({fields,onChange}){
 // Format χρόνου & εξαγωγή km
 function parseDistanceKm(d){if(!d)return 0;const m=String(d).match(/(\d+\.?\d*)\s*km/i);if(m)return parseFloat(m[1]);if(/μαραθ/i.test(d)||/marath/i.test(d))return 42.195;if(/ημιμαρ/i.test(d)||/half/i.test(d))return 21.0975;return 0;}
 function timeToSeconds(t){if(!t)return 0;const p=String(t).split(":").map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return 0;}
-function formatTime(t){return t||"—";}
+function formatTime(t){if(!t)return "—";const p=String(t).split(":").map(x=>x.trim());if(p.length===3)return `${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}:${String(parseInt(p[2])||0).padStart(2,"0")}`;if(p.length===2)return `00:${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}`;return t;}
+// Επικυρώνει χρόνο - επιστρέφει HH:MM:SS ή null αν λάθος
+function validateTime(t){if(!t||!t.trim())return null;const clean=t.trim();if(!/^\d+(:\d+)?(:\d+)?$/.test(clean))return null;const p=clean.split(":").map(x=>parseInt(x)||0);if(p.length===3){if(p[1]>=60||p[2]>=60)return null;return `${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}:${String(p[2]).padStart(2,"0")}`;}if(p.length===2){if(p[1]>=60)return null;return `00:${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}`;}if(p.length===1){return `00:00:${String(p[0]).padStart(2,"0")}`;}return null;}
 
 function PublicHomePage(){
   const {t,lang}=useLang();
@@ -598,7 +600,7 @@ function PublicResultsPage({raceId,onBack}){
               <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:"36px",height:"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:"36px",height:"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
               <div><div style={{color:T.text,fontWeight:600}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:"11px"}}>{r.club||""}{r.club&&reg.distance?" · ":""}{reg.distance||""}</div></div>
               <div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>
-              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:"14px"}}>{reg.finish_time}</div>
+              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:"14px"}}>{formatTime(reg.finish_time)}</div>
             </div>;
           })}
         </div>
@@ -987,7 +989,7 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
                 <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>🏃 {pr.distance}</div>
                 <div style={{color:T.textMid,fontSize:"12px"}}>{pr.raceName} · {pr.raceDate}</div>
               </div>
-              <div style={{background:T.primary,color:"#fff",borderRadius:"6px",padding:"6px 14px",fontWeight:700,fontSize:"15px",fontFamily:"monospace"}}>{pr.finish_time}</div>
+              <div style={{background:T.primary,color:"#fff",borderRadius:"6px",padding:"6px 14px",fontWeight:700,fontSize:"15px",fontFamily:"monospace"}}>{formatTime(pr.finish_time)}</div>
             </div>
           ))}
         </div>
@@ -1057,7 +1059,7 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px",flexWrap:"wrap",gap:"6px"}}>
                 <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>#{h.bib_number} · {h.race.name}</div>
                 {h.finish_time?(
-                  <span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"3px 10px",fontSize:"12px",fontFamily:"monospace",fontWeight:700}}>⏱️ {h.finish_time}</span>
+                  <span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"3px 10px",fontSize:"12px",fontFamily:"monospace",fontWeight:700}}>⏱️ {formatTime(h.finish_time)}</span>
                 ):(
                   <span style={{color:T.textLight,fontSize:"12px"}}>{t.noTime}</span>
                 )}
@@ -1271,7 +1273,9 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       // Βρες registration για αυτόν τον δρομέα σε αυτόν τον αγώνα
       const reg=raceRegs.find(r=>r.runner_id===runner.id);
       if(!reg){notFound.push(`${email}/${phone} (όχι σε αυτόν τον αγώνα)`);continue;}
-      const payload={finish_time:time};
+      const validated=validateTime(time);
+      if(!validated){notFound.push(`${email}/${phone} (λάθος χρόνος: ${time})`);continue;}
+      const payload={finish_time:validated};
       if(idx.overall!==-1&&cols[idx.overall])payload.overall_rank=parseInt(cols[idx.overall])||null;
       if(idx.cat!==-1&&cols[idx.cat])payload.category_rank=parseInt(cols[idx.cat])||null;
       if(idx.bib!==-1&&cols[idx.bib])payload.bib_number=cols[idx.bib];
@@ -1466,8 +1470,13 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   function openTime(reg){setTimeReg(reg);setTimeForm({finish_time:reg.finish_time||"",overall_rank:reg.overall_rank||"",category_rank:reg.category_rank||""});}
   async function saveTime(){
     if(!timeReg)return;
+    let validatedTime=null;
+    if(timeForm.finish_time&&timeForm.finish_time.trim()){
+      validatedTime=validateTime(timeForm.finish_time);
+      if(!validatedTime){alert("⚠️ Λάθος μορφή χρόνου!\n\nΠαραδείγματα σωστής μορφής:\n• 1:25:30 (1 ώρα, 25 λεπτά, 30 δευτ.)\n• 25:30 (25 λεπτά, 30 δευτ.)\n• 30 (30 δευτ.)");return;}
+    }
     const payload={
-      finish_time:timeForm.finish_time||null,
+      finish_time:validatedTime,
       overall_rank:timeForm.overall_rank?parseInt(timeForm.overall_rank):null,
       category_rank:timeForm.category_rank?parseInt(timeForm.category_rank):null
     };
@@ -1494,7 +1503,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
             <div style={{color:T.text,fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
               {runner.first_name} {runner.last_name}
               {reg.price_paid>0&&<span style={{color:T.accent,fontSize:"12px",fontWeight:600}}>💰 {parseFloat(reg.price_paid).toFixed(2)}€</span>}
-              {reg.finish_time&&<span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontFamily:"monospace",fontWeight:700}}>⏱️ {reg.finish_time}</span>}
+              {reg.finish_time&&<span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontFamily:"monospace",fontWeight:700}}>⏱️ {formatTime(reg.finish_time)}</span>}
               {reg.overall_rank&&<span style={{background:T.warning,color:"#fff",borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>🏆 #{reg.overall_rank}</span>}
             </div>
             <div style={{color:T.textMid,fontSize:"12px"}}>{race.name}{reg.distance?` · 🏃 ${reg.distance}`:""} · {reg.category} · {reg.tshirt}{reg.medical_cert?" · ✅":""}</div>
@@ -1506,7 +1515,16 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
     </div>
     {timeReg&&<Modal title={t.setTimeTitle} onClose={()=>setTimeReg(null)}>
       <div style={{color:T.textMid,fontSize:"13px",marginBottom:"14px"}}>#{timeReg.bib_number} · {runners.find(r=>r.id===timeReg.runner_id)?.first_name} {runners.find(r=>r.id===timeReg.runner_id)?.last_name}</div>
-      <In label={t.finishTime} value={timeForm.finish_time} onChange={e=>setTimeForm({...timeForm,finish_time:e.target.value})} placeholder={t.finishTimePh}/>
+      <F label={t.finishTime}>
+        <input
+          value={timeForm.finish_time}
+          onChange={e=>{const v=e.target.value.replace(/[^0-9:]/g,"");setTimeForm({...timeForm,finish_time:v});}}
+          onBlur={e=>{const fmt=validateTime(e.target.value);if(fmt)setTimeForm(prev=>({...prev,finish_time:fmt}));}}
+          placeholder={t.finishTimePh}
+          style={css.input}
+        />
+        <div style={{fontSize:"11px",color:T.textLight,marginTop:"-8px",marginBottom:"6px"}}>{t.finishTimePh}</div>
+      </F>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.overallRank} type="number" value={timeForm.overall_rank} onChange={e=>setTimeForm({...timeForm,overall_rank:e.target.value})} placeholder={t.overallRankPh}/>
         <In label={t.catRank} type="number" value={timeForm.category_rank} onChange={e=>setTimeForm({...timeForm,category_rank:e.target.value})} placeholder={t.catRankPh}/>
