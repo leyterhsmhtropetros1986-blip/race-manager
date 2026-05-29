@@ -471,21 +471,20 @@ function PublicHomePage(){
 
   // Browser back button support
   useEffect(()=>{
-    function handlePop(){
-      if(showLogin){setShowLogin(false);return;}
-      if(viewResults){setViewResults(null);return;}
+    function handlePop(e){
       if(viewRunners){setViewRunners(null);return;}
+      if(viewResults){setViewResults(null);return;}
+      if(showLogin){setShowLogin(false);return;}
     }
     window.addEventListener("popstate",handlePop);
     return()=>window.removeEventListener("popstate",handlePop);
   },[showLogin,viewResults,viewRunners]);
 
-  // Push history όταν αλλάζει view
-  useEffect(()=>{
-    if(showLogin||viewResults||viewRunners){
-      try{window.history.pushState({},"","");}catch(e){}
-    }
-  },[showLogin,viewResults,viewRunners]);
+  // Push history entry ΜΟΝΟ όταν ανοίγουμε νέο view (όχι όταν κλείνουμε)
+  function openLogin(){window.history.pushState({view:"login"},"");openLogin();}
+  function openResults(id){window.history.pushState({view:"results",id},"");setViewResults(id);}
+  function openRunners(id){window.history.pushState({view:"runners",id},"");setViewRunners(id);}
+  function closeView(){if(window.history.state)window.history.back();}
   useEffect(()=>{
     (async()=>{
       const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
@@ -493,9 +492,9 @@ function PublicHomePage(){
       setLoading(false);
     })();
   },[]);
-  if(viewRunners)return <PublicRunnersPage raceId={viewRunners} onBack={()=>setViewRunners(null)}/>;
-  if(viewResults)return <PublicResultsPage raceId={viewResults} onBack={()=>setViewResults(null)}/>;
-  if(showLogin)return <LoginPage onBack={()=>setShowLogin(false)}/>;
+  if(viewRunners)return <PublicRunnersPage raceId={viewRunners} onBack={closeView}/>;
+  if(viewResults)return <PublicResultsPage raceId={viewResults} onBack={closeView}/>;
+  if(showLogin)return <LoginPage onBack={closeView}/>;
   return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <div style={{maxWidth:"960px",margin:"0 auto"}}>
@@ -510,7 +509,7 @@ function PublicHomePage(){
         </div>
         <div style={{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
           <LangToggle/>
-          <Btn onClick={()=>setShowLogin(true)}>🔑 {t.login} / {t.signup}</Btn>
+          <Btn onClick={()=>openLogin()}>🔑 {t.login} / {t.signup}</Btn>
         </div>
       </div>
 
@@ -566,9 +565,9 @@ function PublicHomePage(){
               )}
               {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
               <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
-                <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
-                <Btn v="sec" onClick={()=>setViewResults(race.id)}>{t.viewResultsBtn}</Btn>
-                {race.public_runners_list&&<Btn v="ghost" onClick={()=>setViewRunners(race.id)}>{t.showRunnersBtn}</Btn>}
+                <Btn onClick={()=>openLogin()}>{t.publicLoginToReg}</Btn>
+                <Btn v="sec" onClick={()=>openResults(race.id)}>{t.viewResultsBtn}</Btn>
+                {race.public_runners_list&&<Btn v="ghost" onClick={()=>openRunners(race.id)}>{t.showRunnersBtn}</Btn>}
               </div>
               </div>
             </div>;
