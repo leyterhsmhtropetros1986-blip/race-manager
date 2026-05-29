@@ -79,7 +79,11 @@ const STR = {
     profileTab:"👤 Προφίλ", profileTitle:"Το Προφίλ μου",
     publicRacesTitle:"🏟 Διαθέσιμοι Αγώνες", publicRacesSub:"Δείτε τους αγώνες & εγγραφείτε",
     publicRegisterBtn:"+ Εγγραφή", publicNoRaces:"Δεν υπάρχουν διαθέσιμοι αγώνες αυτή τη στιγμή",
-    publicLoginToReg:"Συνδεθείτε για εγγραφή", profileInfo:"📋 Στοιχεία μου", profileStats:"🏆 Στατιστικά",
+    publicLoginToReg:"Συνδεθείτε για εγγραφή", backToRaces:"← Πίσω στους Αγώνες",
+    forgotPassword:"Ξέχασα τον κωδικό μου;", resetPasswordTitle:"Επαναφορά Κωδικού",
+    resetPasswordDesc:"Δώσε το email σου και θα σου στείλουμε σύνδεσμο για επαναφορά κωδικού.",
+    resetPasswordBtn:"📧 Αποστολή Email Επαναφοράς", resetPasswordSent:"✅ Σου στείλαμε email με τις οδηγίες! Έλεγξε το inbox (και τα spam).",
+    resetPasswordCancel:"← Επιστροφή στη Σύνδεση", profileInfo:"📋 Στοιχεία μου", profileStats:"🏆 Στατιστικά",
     profileHistory:"📅 Ιστορικό Αγώνων", profileSave:"💾 Αποθήκευση", profileSaved:"✅ Αποθηκεύτηκε!",
     statTotalRaces:"Σύνολο Αγώνων", statFinished:"Ολοκληρωμένοι", statUpcoming:"Σε Αναμονή", statTotalKm:"Σύνολο km",
     prsTitle:"🏅 Personal Records", prsNone:"Δεν υπάρχουν χρόνοι ακόμα", overallRank:"Γενική Κατάταξη", catRank:"Κατάταξη Κατηγορίας",
@@ -158,7 +162,11 @@ const STR = {
     profileTab:"👤 Profile", profileTitle:"My Profile",
     publicRacesTitle:"🏟 Available Races", publicRacesSub:"Browse races & sign up",
     publicRegisterBtn:"+ Register", publicNoRaces:"No available races at the moment",
-    publicLoginToReg:"Log in to register", profileInfo:"📋 My Information", profileStats:"🏆 Statistics",
+    publicLoginToReg:"Log in to register", backToRaces:"← Back to Races",
+    forgotPassword:"Forgot password?", resetPasswordTitle:"Reset Password",
+    resetPasswordDesc:"Enter your email and we'll send you a password reset link.",
+    resetPasswordBtn:"📧 Send Reset Email", resetPasswordSent:"✅ Email sent! Check your inbox (and spam).",
+    resetPasswordCancel:"← Back to Login", profileInfo:"📋 My Information", profileStats:"🏆 Statistics",
     profileHistory:"📅 Race History", profileSave:"💾 Save", profileSaved:"✅ Saved!",
     statTotalRaces:"Total Races", statFinished:"Finished", statUpcoming:"Upcoming", statTotalKm:"Total km",
     prsTitle:"🏅 Personal Records", prsNone:"No times recorded yet", overallRank:"Overall Rank", catRank:"Category Rank",
@@ -410,7 +418,7 @@ function PublicHomePage(){
       setLoading(false);
     })();
   },[]);
-  if(showLogin)return <LoginPage/>;
+  if(showLogin)return <LoginPage onBack={()=>setShowLogin(false)}/>;
   return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <div style={{maxWidth:"960px",margin:"0 auto"}}>
@@ -476,7 +484,7 @@ function PublicHomePage(){
   </div>;
 }
 
-function LoginPage(){
+function LoginPage({onBack}){
   const {t}=useLang();
   const [step,setStep]=useState("role");
   const [role,setRole]=useState(null);
@@ -486,6 +494,16 @@ function LoginPage(){
   const [name,setName]=useState("");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
+  const [forgotMode,setForgotMode]=useState(false);
+  async function sendResetEmail(){
+    setError("");
+    if(!email){setError(t.fillEmailPass);return;}
+    setLoading(true);
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+    if(error)setError(error.message);
+    else setError(t.resetPasswordSent);
+    setLoading(false);
+  }
 
   function selectRole(r){setRole(r);setStep("auth");setError("");}
   function backToRole(){setStep("role");setRole(null);setError("");setEmail("");setPassword("");setName("");}
@@ -523,6 +541,7 @@ function LoginPage(){
         <h1 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.appName}</h1>
         <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.tagline}</p>
       </div>
+      {onBack&&<button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",marginBottom:"14px",padding:"4px 0",fontFamily:"inherit"}}>{t.backToRaces}</button>}
       {step==="role"&&(
         <div>
           <h3 style={{color:T.text,textAlign:"center",fontSize:"15px",marginBottom:"6px",fontWeight:600}}>{t.welcome}</h3>
@@ -535,7 +554,19 @@ function LoginPage(){
           </button>
         </div>
       )}
-      {step==="auth"&&(
+      {step==="auth"&&forgotMode&&(
+        <div>
+          <div style={{textAlign:"center",marginBottom:"20px"}}>
+            <h3 style={{color:T.text,fontSize:"16px",margin:"0 0 8px",fontWeight:700}}>{t.resetPasswordTitle}</h3>
+            <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.resetPasswordDesc}</p>
+          </div>
+          <div style={{marginBottom:"14px"}}><label style={css.label}>{t.email}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={css.input}/></div>
+          {error&&<div style={{background:error.startsWith("✅")?`${T.accent}15`:`${T.danger}15`,border:`1px solid ${error.startsWith("✅")?T.accent+"44":T.danger+"44"}`,borderRadius:"8px",padding:"10px 14px",color:error.startsWith("✅")?T.accent:T.danger,fontSize:"13px",marginBottom:"16px",lineHeight:"1.5"}}>{error}</div>}
+          <button onClick={sendResetEmail} disabled={loading} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"14px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:"12px",opacity:loading?0.6:1,boxShadow:T.shadow}}>{loading?"...":t.resetPasswordBtn}</button>
+          <button onClick={()=>{setForgotMode(false);setError("");}} style={{width:"100%",background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"10px",padding:"10px",fontSize:"13px",cursor:"pointer",fontFamily:"inherit"}}>{t.resetPasswordCancel}</button>
+        </div>
+      )}
+      {step==="auth"&&!forgotMode&&(
         <div>
           <div style={{textAlign:"center",marginBottom:"20px"}}>
             <span style={{background:`${roleColor}15`,color:roleColor,border:`1px solid ${roleColor}44`,borderRadius:"99px",padding:"6px 16px",fontSize:"13px",fontWeight:700}}>{roleIcon} {roleLabel}</span>
@@ -550,6 +581,7 @@ function LoginPage(){
           <div style={{marginBottom:"20px"}}><label style={css.label}>{t.password}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={css.input}/></div>
           {error&&<div style={{background:error.startsWith("✅")?`${T.accent}15`:`${T.danger}15`,border:`1px solid ${error.startsWith("✅")?T.accent+"44":T.danger+"44"}`,borderRadius:"8px",padding:"10px 14px",color:error.startsWith("✅")?T.accent:T.danger,fontSize:"13px",marginBottom:"16px",lineHeight:"1.5"}}>{error}</div>}
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:roleColor,color:"#fff",border:"none",borderRadius:"10px",padding:"14px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:"12px",opacity:loading?0.6:1,boxShadow:T.shadow}}>{loading?"...":(mode==="signup"?`${t.signupBtn} ${roleLabel}`:t.loginBtn)}</button>
+          {mode==="login"&&!forgotMode&&<button onClick={()=>{setForgotMode(true);setError("");}} style={{width:"100%",background:"none",border:"none",color:T.primary,cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginBottom:"8px",textDecoration:"underline"}}>{t.forgotPassword}</button>}
           <button onClick={backToRole} style={{width:"100%",background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"10px",padding:"10px",fontSize:"13px",cursor:"pointer",fontFamily:"inherit"}}>{t.changeRole}</button>
         </div>
       )}
