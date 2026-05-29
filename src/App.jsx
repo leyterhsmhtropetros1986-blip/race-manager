@@ -93,6 +93,9 @@ const STR = {
     bannerUploading:"Ανέβασμα...", heroTitle:"Βρες τον αγώνα σου",
     heroSubtitle:"Εγγραφή σε αγώνες σε όλη την Ελλάδα",
     galleryTitle:"📸 Φωτογραφίες",
+    searchPlaceholder:"🔍 Αναζήτηση αγώνα (όνομα, τοποθεσία)...",
+    pendingApprovals:"εκκρεμείς εγκρίσεις",
+    notFound:"Δεν βρέθηκαν αγώνες",
     forgotPassword:"Ξέχασα τον κωδικό μου;", resetPasswordTitle:"Επαναφορά Κωδικού",
     resetPasswordDesc:"Δώσε το email σου και θα σου στείλουμε σύνδεσμο για επαναφορά κωδικού.",
     resetPasswordBtn:"📧 Αποστολή Email Επαναφοράς", resetPasswordSent:"✅ Σου στείλαμε email με τις οδηγίες! Έλεγξε το inbox (και τα spam).",
@@ -189,6 +192,9 @@ const STR = {
     bannerUploading:"Uploading...", heroTitle:"Find Your Race",
     heroSubtitle:"Sign up for races across Greece",
     galleryTitle:"📸 Photos",
+    searchPlaceholder:"🔍 Search race (name, location)...",
+    pendingApprovals:"pending approvals",
+    notFound:"No races found",
     forgotPassword:"Forgot password?", resetPasswordTitle:"Reset Password",
     resetPasswordDesc:"Enter your email and we'll send you a password reset link.",
     resetPasswordBtn:"📧 Send Reset Email", resetPasswordSent:"✅ Email sent! Check your inbox (and spam).",
@@ -440,6 +446,7 @@ function PublicHomePage(){
   const [viewResults,setViewResults]=useState(null);
   const [publicRaces,setPublicRaces]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [searchQuery,setSearchQuery]=useState("");
   useEffect(()=>{
     (async()=>{
       const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
@@ -468,28 +475,34 @@ function PublicHomePage(){
       </div>
 
       {/* HERO TITLE */}
-      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"20px",padding:"48px 32px",textAlign:"center",marginBottom:"32px",color:"#fff",boxShadow:"0 8px 32px rgba(74,93,199,0.25)",position:"relative",overflow:"hidden"}}>
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"20px",padding:"clamp(28px, 6vw, 48px) clamp(20px, 4vw, 32px)",textAlign:"center",marginBottom:"32px",color:"#fff",boxShadow:"0 8px 32px rgba(74,93,199,0.25)",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-40px",right:"-40px",width:"180px",height:"180px",borderRadius:"50%",background:"rgba(255,255,255,0.08)"}}/>
         <div style={{position:"absolute",bottom:"-60px",left:"-60px",width:"220px",height:"220px",borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
         <div style={{position:"relative",zIndex:1}}>
-          <div style={{fontSize:"48px",marginBottom:"10px"}}>🏃‍♂️💨</div>
-          <h1 style={{fontSize:"34px",fontWeight:900,margin:"0 0 10px",letterSpacing:"-0.02em"}}>{t.heroTitle}</h1>
+          <div style={{fontSize:"clamp(32px, 8vw, 48px)",marginBottom:"10px"}}>🏃‍♂️💨</div>
+          <h1 style={{fontSize:"clamp(22px, 6vw, 34px)",fontWeight:900,margin:"0 0 10px",letterSpacing:"-0.02em"}}>{t.heroTitle}</h1>
           <p style={{fontSize:"15px",margin:0,opacity:0.95}}>{t.heroSubtitle}</p>
         </div>
       </div>
-      <div style={{textAlign:"left",marginBottom:"20px"}}>
+      <div style={{textAlign:"left",marginBottom:"16px"}}>
         <h2 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.publicRacesTitle}</h2>
         <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.publicRacesSub}</p>
+      </div>
+      <div style={{marginBottom:"20px"}}>
+        <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={t.searchPlaceholder} style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
       </div>
 
       {/* RACES */}
       {loading?(
         <div style={{textAlign:"center",color:T.textMid,padding:"60px"}}>{t.loading}</div>
-      ):publicRaces.length===0?(
-        <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.publicNoRaces}</div>
-      ):(
+      ):(()=>{
+        const q=searchQuery.trim().toLowerCase();
+        const filtered=q?publicRaces.filter(r=>(r.name||"").toLowerCase().includes(q)||(r.location||"").toLowerCase().includes(q)):publicRaces;
+        if(publicRaces.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.publicNoRaces}</div>;
+        if(filtered.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.notFound}</div>;
+        return (
         <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
-          {publicRaces.map(race=>{
+          {filtered.map(race=>{
             const distances=race.distance?race.distance.split(" | "):[];
             const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
             const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
@@ -519,8 +532,8 @@ function PublicHomePage(){
               </div>
             </div>;
           })}
-        </div>
-      )}
+        </div>);
+      })()}
 
       <div style={{textAlign:"center",marginTop:"40px",color:T.textLight,fontSize:"12px"}}>
         © {new Date().getFullYear()} {t.appName}
@@ -536,6 +549,8 @@ function PublicResultsPage({raceId,onBack}){
   const [runners,setRunners]=useState([]);
   const [loading,setLoading]=useState(true);
   const [filterDistance,setFilterDistance]=useState("all");
+  const [isMobile,setIsMobile]=useState(typeof window!=="undefined"&&window.innerWidth<640);
+  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<640);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
     (async()=>{
       const [r1,r2,r3]=await Promise.all([
@@ -588,19 +603,19 @@ function PublicResultsPage({raceId,onBack}){
         <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.resultsNoData}</div>
       ):(
         <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",boxShadow:T.shadow}}>
-          <div style={{display:"grid",gridTemplateColumns:"60px 60px 50px 1fr 100px 120px",background:T.primary,color:"#fff",padding:"12px 14px",fontSize:"12px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",gap:"8px"}}>
-            <div>{t.resultsRank}</div><div>{t.resultsBib}</div><div></div><div>{t.resultsName}</div><div>{t.resultsCat}</div><div style={{textAlign:"right"}}>{t.resultsTime}</div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"40px 50px 44px 1fr 80px":"60px 60px 50px 1fr 100px 120px",background:T.primary,color:"#fff",padding:"10px 12px",fontSize:isMobile?"10px":"12px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",gap:"6px"}}>
+            <div>{t.resultsRank}</div><div>{t.resultsBib}</div><div></div><div>{t.resultsName}</div>{!isMobile&&<div>{t.resultsCat}</div>}<div style={{textAlign:"right"}}>{t.resultsTime}</div>
           </div>
           {filtered.map((reg,i)=>{
             const r=runners.find(x=>x.id===reg.runner_id)||{};
             const rank=reg.overall_rank||(i+1);
-            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:"60px 60px 50px 1fr 100px 120px",padding:"12px 14px",fontSize:"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center",gap:"8px"}}>
-              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?"18px":"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
-              <div style={{color:T.textMid,fontWeight:600}}>#{reg.bib_number}</div>
-              <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:"36px",height:"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:"36px",height:"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
-              <div><div style={{color:T.text,fontWeight:600}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:"11px"}}>{r.club||""}{r.club&&reg.distance?" · ":""}{reg.distance||""}</div></div>
-              <div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>
-              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:"14px"}}>{formatTime(reg.finish_time)}</div>
+            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:isMobile?"40px 50px 44px 1fr 80px":"60px 60px 50px 1fr 100px 120px",padding:isMobile?"10px 12px":"12px 14px",fontSize:isMobile?"12px":"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center",gap:"6px"}}>
+              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?(isMobile?"16px":"18px"):"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
+              <div style={{color:T.textMid,fontWeight:600,fontSize:isMobile?"11px":"13px"}}>#{reg.bib_number}</div>
+              <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:isMobile?"12px":"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
+              <div style={{minWidth:0,overflow:"hidden"}}><div style={{color:T.text,fontWeight:600,fontSize:isMobile?"12px":"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:isMobile?"10px":"11px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isMobile?(reg.category||r.club||reg.distance||""):`${r.club||""}${r.club&&reg.distance?" · ":""}${reg.distance||""}`}</div></div>
+              {!isMobile&&<div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>}
+              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:isMobile?"12px":"14px"}}>{formatTime(reg.finish_time)}</div>
             </div>;
           })}
         </div>
@@ -1584,6 +1599,7 @@ function AppContent(){
   const {t}=useLang();
   const [session,setSession]=useState(null);
   const [profile,setProfile]=useState(null);
+  const [pendingCount,setPendingCount]=useState(0);
   const [tab,setTab]=useState("races");
   const [races,setRaces]=useState([]);
   const [runners,setRunners]=useState([]);
@@ -1604,6 +1620,10 @@ function AppContent(){
       supabase.from("profiles").select("*").eq("id",session.user.id).single(),
     ]);
     if(r1.data)setRaces(r1.data);if(r2.data)setRunners(r2.data);if(r3.data)setRegistrations(r3.data);if(r4.data)setProfile(r4.data);
+    if(r4.data?.role==="admin"){
+      const {count}=await supabase.from("profiles").select("*",{count:"exact",head:true}).eq("status","pending");
+      setPendingCount(count||0);
+    }
     setLoading(false);
   }
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
