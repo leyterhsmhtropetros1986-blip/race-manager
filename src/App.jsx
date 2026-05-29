@@ -88,6 +88,11 @@ const STR = {
     resultsNoData:"Δεν υπάρχουν αποτελέσματα ακόμα", resultsRank:"Θέση", resultsBib:"BIB",
     resultsName:"Αθλητής", resultsTime:"Χρόνος", resultsClub:"Σύλλογος", resultsCat:"Κατηγορία",
     backToHome:"← Αρχική",
+    bannerLabel:"🖼️ Αφίσα/Banner Αγώνα", bannerHint:"Προτεινόμενο: 1600x600px",
+    bannerUpload:"📷 Ανέβασμα Αφίσας", bannerRemove:"🗑 Αφαίρεση",
+    bannerUploading:"Ανέβασμα...", heroTitle:"Βρες τον αγώνα σου",
+    heroSubtitle:"Εγγραφή σε αγώνες σε όλη την Ελλάδα",
+    galleryTitle:"📸 Φωτογραφίες",
     forgotPassword:"Ξέχασα τον κωδικό μου;", resetPasswordTitle:"Επαναφορά Κωδικού",
     resetPasswordDesc:"Δώσε το email σου και θα σου στείλουμε σύνδεσμο για επαναφορά κωδικού.",
     resetPasswordBtn:"📧 Αποστολή Email Επαναφοράς", resetPasswordSent:"✅ Σου στείλαμε email με τις οδηγίες! Έλεγξε το inbox (και τα spam).",
@@ -179,6 +184,11 @@ const STR = {
     resultsNoData:"No results yet", resultsRank:"Rank", resultsBib:"BIB",
     resultsName:"Athlete", resultsTime:"Time", resultsClub:"Club", resultsCat:"Category",
     backToHome:"← Home",
+    bannerLabel:"🖼️ Race Banner/Poster", bannerHint:"Recommended: 1600x600px",
+    bannerUpload:"📷 Upload Banner", bannerRemove:"🗑 Remove",
+    bannerUploading:"Uploading...", heroTitle:"Find Your Race",
+    heroSubtitle:"Sign up for races across Greece",
+    galleryTitle:"📸 Photos",
     forgotPassword:"Forgot password?", resetPasswordTitle:"Reset Password",
     resetPasswordDesc:"Enter your email and we'll send you a password reset link.",
     resetPasswordBtn:"📧 Send Reset Email", resetPasswordSent:"✅ Email sent! Check your inbox (and spam).",
@@ -456,9 +466,18 @@ function PublicHomePage(){
       </div>
 
       {/* HERO TITLE */}
-      <div style={{textAlign:"center",marginBottom:"32px"}}>
-        <h1 style={{color:T.text,fontSize:"28px",fontWeight:900,margin:"0 0 6px"}}>{t.publicRacesTitle}</h1>
-        <p style={{color:T.textMid,fontSize:"14px",margin:0}}>{t.publicRacesSub}</p>
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"20px",padding:"48px 32px",textAlign:"center",marginBottom:"32px",color:"#fff",boxShadow:"0 8px 32px rgba(74,93,199,0.25)",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-40px",right:"-40px",width:"180px",height:"180px",borderRadius:"50%",background:"rgba(255,255,255,0.08)"}}/>
+        <div style={{position:"absolute",bottom:"-60px",left:"-60px",width:"220px",height:"220px",borderRadius:"50%",background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"48px",marginBottom:"10px"}}>🏃‍♂️💨</div>
+          <h1 style={{fontSize:"34px",fontWeight:900,margin:"0 0 10px",letterSpacing:"-0.02em"}}>{t.heroTitle}</h1>
+          <p style={{fontSize:"15px",margin:0,opacity:0.95}}>{t.heroSubtitle}</p>
+        </div>
+      </div>
+      <div style={{textAlign:"left",marginBottom:"20px"}}>
+        <h2 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.publicRacesTitle}</h2>
+        <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.publicRacesSub}</p>
       </div>
 
       {/* RACES */}
@@ -473,7 +492,9 @@ function PublicHomePage(){
             const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
             const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
             const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
-            return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px 24px",boxShadow:T.shadow}}>
+            return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",boxShadow:T.shadow,overflow:"hidden"}}>
+              {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"180px",objectFit:"cover",display:"block"}}/>}
+              <div style={{padding:"20px 24px"}}>
               <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px",flexWrap:"wrap"}}>
                 <span style={{color:T.text,fontWeight:700,fontSize:"17px"}}>{race.name}</span>
                 <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
@@ -492,6 +513,7 @@ function PublicHomePage(){
               <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
                 <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
                 <Btn v="sec" onClick={()=>setViewResults(race.id)}>{t.viewResultsBtn}</Btn>
+              </div>
               </div>
             </div>;
           })}
@@ -545,9 +567,12 @@ function PublicResultsPage({raceId,onBack}){
         <LangToggle/>
       </div>
 
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",marginBottom:"20px",boxShadow:T.shadow}}>
-        <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>🏆 {race.name}</h1>
-        <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",overflow:"hidden",marginBottom:"20px",boxShadow:T.shadow}}>
+        {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
+        <div style={{padding:"24px"}}>
+          <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>🏆 {race.name}</h1>
+          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+        </div>
       </div>
 
       {distances.length>1&&(
@@ -561,15 +586,16 @@ function PublicResultsPage({raceId,onBack}){
         <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.resultsNoData}</div>
       ):(
         <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",boxShadow:T.shadow}}>
-          <div style={{display:"grid",gridTemplateColumns:"60px 60px 1fr 100px 120px",background:T.primary,color:"#fff",padding:"12px 14px",fontSize:"12px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>
-            <div>{t.resultsRank}</div><div>{t.resultsBib}</div><div>{t.resultsName}</div><div>{t.resultsCat}</div><div style={{textAlign:"right"}}>{t.resultsTime}</div>
+          <div style={{display:"grid",gridTemplateColumns:"60px 60px 50px 1fr 100px 120px",background:T.primary,color:"#fff",padding:"12px 14px",fontSize:"12px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",gap:"8px"}}>
+            <div>{t.resultsRank}</div><div>{t.resultsBib}</div><div></div><div>{t.resultsName}</div><div>{t.resultsCat}</div><div style={{textAlign:"right"}}>{t.resultsTime}</div>
           </div>
           {filtered.map((reg,i)=>{
             const r=runners.find(x=>x.id===reg.runner_id)||{};
             const rank=reg.overall_rank||(i+1);
-            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:"60px 60px 1fr 100px 120px",padding:"12px 14px",fontSize:"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center"}}>
-              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?"16px":"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
+            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:"60px 60px 50px 1fr 100px 120px",padding:"12px 14px",fontSize:"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center",gap:"8px"}}>
+              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?"18px":"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
               <div style={{color:T.textMid,fontWeight:600}}>#{reg.bib_number}</div>
+              <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:"36px",height:"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:"36px",height:"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
               <div><div style={{color:T.text,fontWeight:600}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:"11px"}}>{r.club||""}{r.club&&reg.distance?" · ":""}{reg.distance||""}</div></div>
               <div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>
               <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:"14px"}}>{reg.finish_time}</div>
@@ -704,7 +730,9 @@ function AthleteRaceCard({race,registrations,runners,session,onRegister}){
   const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
   const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
   const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
-  return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px 24px",boxShadow:T.shadow}}>
+  return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",boxShadow:T.shadow,overflow:"hidden"}}>
+    {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"160px",objectFit:"cover",display:"block"}}/>}
+    <div style={{padding:"20px 24px"}}>
     <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"8px",flexWrap:"wrap"}}>
       <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
       <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
@@ -727,6 +755,7 @@ function AthleteRaceCard({race,registrations,runners,session,onRegister}){
         <span style={{color:T.accentDark,fontSize:"13px"}}>{t.alreadyReg} {myReg.distance||"—"}</span>
       </div>
     ):race.status==="upcoming"&&(<Btn onClick={()=>onRegister(race)}>{t.regBtn}</Btn>)}
+    </div>
   </div>;
 }
 
@@ -1149,19 +1178,32 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
+  const [uploadingBanner,setUploadingBanner]=useState(false);
+  async function uploadBanner(e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setUploadingBanner(true);
+    const ext=file.name.split(".").pop();
+    const path=`race-${Date.now()}.${ext}`;
+    const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+    if(upErr){alert("⚠️ "+upErr.message);setUploadingBanner(false);return;}
+    const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
+    setForm(f=>({...f,banner_url:publicUrl}));
+    setUploadingBanner(false);
+  }
   const [loading,setLoading]=useState(false);
   const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[]});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[]});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:""});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||""});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
     if(form.distances.length===0){alert(t.addDistance);return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
@@ -1373,11 +1415,30 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
             <Btn sm v="ghost" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
           </div>
+          </div>
         </div>;
       })}
     </div>
     {showForm&&<Modal title={editId?t.editRaceTitle:t.newRaceTitle} onClose={()=>{setShowForm(false);resetForm();}} wide>
       <In label={t.raceName} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
+      {/* BANNER UPLOAD */}
+      <div style={{marginBottom:"14px"}}>
+        <label style={css.label}>{t.bannerLabel}</label>
+        <div style={{display:"flex",gap:"10px",alignItems:"center",marginTop:"6px"}}>
+          {form.banner_url?(
+            <div style={{position:"relative",flex:1}}>
+              <img src={form.banner_url} alt="" style={{width:"100%",maxHeight:"120px",objectFit:"cover",borderRadius:"8px",border:`1px solid ${T.border}`}}/>
+              <button type="button" onClick={()=>setForm({...form,banner_url:""})} style={{position:"absolute",top:"6px",right:"6px",background:T.danger,color:"#fff",border:"none",borderRadius:"6px",padding:"4px 10px",fontSize:"11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>{t.bannerRemove}</button>
+            </div>
+          ):(
+            <label style={{flex:1,background:T.bg,border:`2px dashed ${T.border}`,borderRadius:"8px",padding:"20px",textAlign:"center",cursor:"pointer",color:T.textMid,fontSize:"13px"}}>
+              {uploadingBanner?t.bannerUploading:t.bannerUpload}
+              <input type="file" accept="image/*" onChange={uploadBanner} style={{display:"none"}} disabled={uploadingBanner}/>
+            </label>
+          )}
+        </div>
+        <div style={{fontSize:"11px",color:T.textLight,marginTop:"4px"}}>{t.bannerHint}</div>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
         <In label={t.location} value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/>
