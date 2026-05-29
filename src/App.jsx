@@ -80,6 +80,14 @@ const STR = {
     publicRacesTitle:"🏟 Διαθέσιμοι Αγώνες", publicRacesSub:"Δείτε τους αγώνες & εγγραφείτε",
     publicRegisterBtn:"+ Εγγραφή", publicNoRaces:"Δεν υπάρχουν διαθέσιμοι αγώνες αυτή τη στιγμή",
     publicLoginToReg:"Συνδεθείτε για εγγραφή", backToRaces:"← Πίσω στους Αγώνες",
+    importResultsBtn:"📥 Import Αποτελεσμάτων", importResultsTitle:"Εισαγωγή Αποτελεσμάτων από CSV",
+    importResultsDesc:"Το CSV πρέπει να έχει στήλες: bib_number, finish_time (προαιρετικά: overall_rank, category_rank). Παράδειγμα: 1,1:25:30,3,1",
+    importResultsBtn2:"⬆️ Επιλογή Αρχείου CSV", importResultsProcessing:"Επεξεργασία...",
+    importResultsDone:"✅ Ενημερώθηκαν %N αποτελέσματα!", importResultsErr:"❌ Σφάλμα στο αρχείο.",
+    viewResultsBtn:"🏆 Αποτελέσματα", resultsPageTitle:"Αποτελέσματα Αγώνα",
+    resultsNoData:"Δεν υπάρχουν αποτελέσματα ακόμα", resultsRank:"Θέση", resultsBib:"BIB",
+    resultsName:"Αθλητής", resultsTime:"Χρόνος", resultsClub:"Σύλλογος", resultsCat:"Κατηγορία",
+    backToHome:"← Αρχική",
     forgotPassword:"Ξέχασα τον κωδικό μου;", resetPasswordTitle:"Επαναφορά Κωδικού",
     resetPasswordDesc:"Δώσε το email σου και θα σου στείλουμε σύνδεσμο για επαναφορά κωδικού.",
     resetPasswordBtn:"📧 Αποστολή Email Επαναφοράς", resetPasswordSent:"✅ Σου στείλαμε email με τις οδηγίες! Έλεγξε το inbox (και τα spam).",
@@ -163,6 +171,14 @@ const STR = {
     publicRacesTitle:"🏟 Available Races", publicRacesSub:"Browse races & sign up",
     publicRegisterBtn:"+ Register", publicNoRaces:"No available races at the moment",
     publicLoginToReg:"Log in to register", backToRaces:"← Back to Races",
+    importResultsBtn:"📥 Import Results", importResultsTitle:"Import Results from CSV",
+    importResultsDesc:"CSV must have columns: bib_number, finish_time (optional: overall_rank, category_rank). Example: 1,1:25:30,3,1",
+    importResultsBtn2:"⬆️ Choose CSV File", importResultsProcessing:"Processing...",
+    importResultsDone:"✅ %N results updated!", importResultsErr:"❌ File error.",
+    viewResultsBtn:"🏆 Results", resultsPageTitle:"Race Results",
+    resultsNoData:"No results yet", resultsRank:"Rank", resultsBib:"BIB",
+    resultsName:"Athlete", resultsTime:"Time", resultsClub:"Club", resultsCat:"Category",
+    backToHome:"← Home",
     forgotPassword:"Forgot password?", resetPasswordTitle:"Reset Password",
     resetPasswordDesc:"Enter your email and we'll send you a password reset link.",
     resetPasswordBtn:"📧 Send Reset Email", resetPasswordSent:"✅ Email sent! Check your inbox (and spam).",
@@ -409,6 +425,7 @@ function formatTime(t){return t||"—";}
 function PublicHomePage(){
   const {t,lang}=useLang();
   const [showLogin,setShowLogin]=useState(false);
+  const [viewResults,setViewResults]=useState(null);
   const [publicRaces,setPublicRaces]=useState([]);
   const [loading,setLoading]=useState(true);
   useEffect(()=>{
@@ -418,6 +435,7 @@ function PublicHomePage(){
       setLoading(false);
     })();
   },[]);
+  if(viewResults)return <PublicResultsPage raceId={viewResults} onBack={()=>setViewResults(null)}/>;
   if(showLogin)return <LoginPage onBack={()=>setShowLogin(false)}/>;
   return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
@@ -471,7 +489,10 @@ function PublicHomePage(){
                 </div>
               )}
               {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
-              <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
+              <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+                <Btn onClick={()=>setShowLogin(true)}>{t.publicLoginToReg}</Btn>
+                <Btn v="sec" onClick={()=>setViewResults(race.id)}>{t.viewResultsBtn}</Btn>
+              </div>
             </div>;
           })}
         </div>
@@ -480,6 +501,82 @@ function PublicHomePage(){
       <div style={{textAlign:"center",marginTop:"40px",color:T.textLight,fontSize:"12px"}}>
         © {new Date().getFullYear()} {t.appName}
       </div>
+    </div>
+  </div>;
+}
+
+function PublicResultsPage({raceId,onBack}){
+  const {t,lang}=useLang();
+  const [race,setRace]=useState(null);
+  const [results,setResults]=useState([]);
+  const [runners,setRunners]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [filterDistance,setFilterDistance]=useState("all");
+  useEffect(()=>{
+    (async()=>{
+      const [r1,r2,r3]=await Promise.all([
+        supabase.from("races").select("*").eq("id",raceId).single(),
+        supabase.from("registrations").select("*").eq("race_id",raceId),
+        supabase.from("runners").select("*")
+      ]);
+      if(r1.data)setRace(r1.data);
+      if(r2.data)setResults(r2.data);
+      if(r3.data)setRunners(r3.data);
+      setLoading(false);
+    })();
+  },[raceId]);
+  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMid,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
+  if(!race)return <div style={{minHeight:"100vh",background:T.bg,padding:"40px",fontFamily:"Inter,sans-serif",textAlign:"center"}}>—</div>;
+
+  const distances=race.distance?race.distance.split(" | "):[];
+  const filtered=results
+    .filter(r=>r.finish_time)
+    .filter(r=>filterDistance==="all"||r.distance===filterDistance)
+    .sort((a,b)=>{
+      if(a.overall_rank&&b.overall_rank)return a.overall_rank-b.overall_rank;
+      return timeToSeconds(a.finish_time)-timeToSeconds(b.finish_time);
+    });
+
+  return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <div style={{maxWidth:"960px",margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px",flexWrap:"wrap",gap:"12px"}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.backToHome}</button>
+        <LangToggle/>
+      </div>
+
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",marginBottom:"20px",boxShadow:T.shadow}}>
+        <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>🏆 {race.name}</h1>
+        <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+      </div>
+
+      {distances.length>1&&(
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"16px"}}>
+          <button onClick={()=>setFilterDistance("all")} style={{background:filterDistance==="all"?T.primary:T.bgAlt,color:filterDistance==="all"?"#fff":T.textMid,border:`1px solid ${filterDistance==="all"?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>{t.allRaces}</button>
+          {distances.map(d=><button key={d} onClick={()=>setFilterDistance(d)} style={{background:filterDistance===d?T.primary:T.bgAlt,color:filterDistance===d?"#fff":T.textMid,border:`1px solid ${filterDistance===d?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>🏃 {d}</button>)}
+        </div>
+      )}
+
+      {filtered.length===0?(
+        <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.resultsNoData}</div>
+      ):(
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",boxShadow:T.shadow}}>
+          <div style={{display:"grid",gridTemplateColumns:"60px 60px 1fr 100px 120px",background:T.primary,color:"#fff",padding:"12px 14px",fontSize:"12px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+            <div>{t.resultsRank}</div><div>{t.resultsBib}</div><div>{t.resultsName}</div><div>{t.resultsCat}</div><div style={{textAlign:"right"}}>{t.resultsTime}</div>
+          </div>
+          {filtered.map((reg,i)=>{
+            const r=runners.find(x=>x.id===reg.runner_id)||{};
+            const rank=reg.overall_rank||(i+1);
+            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:"60px 60px 1fr 100px 120px",padding:"12px 14px",fontSize:"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center"}}>
+              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?"16px":"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
+              <div style={{color:T.textMid,fontWeight:600}}>#{reg.bib_number}</div>
+              <div><div style={{color:T.text,fontWeight:600}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:"11px"}}>{r.club||""}{r.club&&reg.distance?" · ":""}{reg.distance||""}</div></div>
+              <div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>
+              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:"14px"}}>{reg.finish_time}</div>
+            </div>;
+          })}
+        </div>
+      )}
     </div>
   </div>;
 }
@@ -1094,6 +1191,29 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     });
   }
 
+  async function importResultsCSV(race,event){
+    const file=event.target.files?.[0];
+    if(!file)return;
+    const text=await file.text();
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length<1){alert(t.importResultsErr);return;}
+    // Header detection
+    const first=lines[0].toLowerCase();
+    const hasHeader=first.includes("bib")||first.includes("time");
+    const dataLines=hasHeader?lines.slice(1):lines;
+    let updated=0;
+    for(const line of dataLines){
+      const cols=line.split(/[,;\t]/).map(c=>c.trim());
+      if(cols.length<2)continue;
+      const bib=cols[0];const time=cols[1];const overall=cols[2]?parseInt(cols[2]):null;const cat=cols[3]?parseInt(cols[3]):null;
+      if(!bib||!time)continue;
+      const {error}=await supabase.from("registrations").update({finish_time:time,overall_rank:overall,category_rank:cat}).eq("race_id",race.id).eq("bib_number",bib);
+      if(!error)updated++;
+    }
+    alert(t.importResultsDone.replace("%N",updated));
+    window.location.reload();
+  }
+
   async function exportExcel(race){
     const data=getRegData(race);
     if(!data.length){alert(t.noRegsCsv);return;}
@@ -1219,6 +1339,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
             <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
             <Btn sm v="sec" onClick={()=>openEdit(race)}>{t.editBtn}</Btn>
+            <label style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,borderRadius:"8px",padding:"6px 12px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t.importResultsBtn}<input type="file" accept=".csv,text/csv" onChange={e=>importResultsCSV(race,e)} style={{display:"none"}}/></label>
             <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
             <Btn sm v="ghost" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
