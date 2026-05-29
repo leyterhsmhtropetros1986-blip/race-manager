@@ -468,6 +468,24 @@ function PublicHomePage(){
   const [loading,setLoading]=useState(true);
   const [searchQuery,setSearchQuery]=useState("");
   const [viewRunners,setViewRunners]=useState(null);
+
+  // Browser back button support
+  useEffect(()=>{
+    function handlePop(){
+      if(showLogin){setShowLogin(false);return;}
+      if(viewResults){setViewResults(null);return;}
+      if(viewRunners){setViewRunners(null);return;}
+    }
+    window.addEventListener("popstate",handlePop);
+    return()=>window.removeEventListener("popstate",handlePop);
+  },[showLogin,viewResults,viewRunners]);
+
+  // Push history όταν αλλάζει view
+  useEffect(()=>{
+    if(showLogin||viewResults||viewRunners){
+      try{window.history.pushState({},"","");}catch(e){}
+    }
+  },[showLogin,viewResults,viewRunners]);
   useEffect(()=>{
     (async()=>{
       const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
