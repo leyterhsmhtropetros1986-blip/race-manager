@@ -1687,6 +1687,90 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   </div>;
 }
 
+// ─── ORGANIZER STATS ────────────────────────────────────────────────────────────
+function OrganizerStats({races,registrations,session,profile}){
+  const {t}=useLang();
+  const isAdmin=profile?.role==="admin";
+  const safeRaces=races||[];
+  const safeRegs=registrations||[];
+  const myRaces=isAdmin?safeRaces:safeRaces.filter(r=>r.user_id===session?.user?.id);
+  const myRaceIds=myRaces.map(r=>r.id);
+  const myRegs=safeRegs.filter(r=>myRaceIds.includes(r.race_id));
+
+  const totalRaces=myRaces.length;
+  const totalRegs=myRegs.length;
+  const totalRevenue=myRegs.reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
+  const paidRegs=myRegs.filter(r=>r.payment_status==="paid").length;
+  const pendingRegs=myRegs.filter(r=>r.payment_status!=="paid").length;
+  const avgPerRace=totalRaces>0?(totalRegs/totalRaces).toFixed(1):"0";
+
+  const racesData=myRaces.map(r=>{
+    const regs=myRegs.filter(reg=>reg.race_id===r.id);
+    const revenue=regs.reduce((sum,reg)=>sum+(parseFloat(reg.price_paid)||0),0);
+    return{...r,regCount:regs.length,revenue};
+  }).sort((a,b)=>b.regCount-a.regCount);
+
+  const maxRegCount=racesData.length>0?Math.max(...racesData.map(r=>r.regCount||0),1):1;
+
+  return <div>
+    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.statsTitle}</h2>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"24px"}}>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.primary}}>{totalRaces}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRaces}</div>
+      </div>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.accent}}>{totalRegs}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRegs}</div>
+      </div>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
+        <div style={{fontSize:"24px",fontWeight:900,color:T.warning}}>{totalRevenue.toFixed(2)}€</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRevenue}</div>
+      </div>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.text}}>{avgPerRace}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsAvgPerRace}</div>
+      </div>
+    </div>
+
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",marginBottom:"20px",boxShadow:T.shadow}}>
+      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>💳 {t.paymentStatus}</h3>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+        <div style={{background:`${T.accent}10`,border:`1px solid ${T.accent}44`,borderRadius:"10px",padding:"14px"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.accent}}>{paidRegs}</div>
+          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPaid}</div>
+        </div>
+        <div style={{background:`${T.warning}10`,border:`1px solid ${T.warning}44`,borderRadius:"10px",padding:"14px"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.warning}}>{pendingRegs}</div>
+          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPending}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow}}>
+      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>📊 {t.statsRegsPerRace}</h3>
+      {racesData.length===0?(
+        <div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"20px"}}>{t.statsNoData}</div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          {racesData.map(r=>(
+            <div key={r.id}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px",flexWrap:"wrap",gap:"6px"}}>
+                <span style={{color:T.text,fontSize:"13px",fontWeight:600}}>{r.name}</span>
+                <span style={{color:T.textMid,fontSize:"12px"}}>{r.regCount} · 💰 {r.revenue.toFixed(2)}€</span>
+              </div>
+              <div style={{background:T.bg,height:"10px",borderRadius:"99px",overflow:"hidden"}}>
+                <div style={{background:`linear-gradient(90deg, ${T.primary} 0%, ${T.accent} 100%)`,height:"100%",width:`${(r.regCount/maxRegCount)*100}%`,transition:"width 0.3s"}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>;
+}
+
 // ─── ADMIN PANEL ────────────────────────────────────────────────────────────────
 function AdminPanel(){
   const {t}=useLang();
