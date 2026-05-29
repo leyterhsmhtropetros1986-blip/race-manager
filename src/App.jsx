@@ -1196,21 +1196,50 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     if(!file)return;
     const text=await file.text();
     const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    if(lines.length<1){alert(t.importResultsErr);return;}
-    // Header detection
-    const first=lines[0].toLowerCase();
-    const hasHeader=first.includes("bib")||first.includes("time");
-    const dataLines=hasHeader?lines.slice(1):lines;
-    let updated=0;
-    for(const line of dataLines){
-      const cols=line.split(/[,;\t]/).map(c=>c.trim());
-      if(cols.length<2)continue;
-      const bib=cols[0];const time=cols[1];const overall=cols[2]?parseInt(cols[2]):null;const cat=cols[3]?parseInt(cols[3]):null;
-      if(!bib||!time)continue;
-      const {error}=await supabase.from("registrations").update({finish_time:time,overall_rank:overall,category_rank:cat}).eq("race_id",race.id).eq("bib_number",bib);
+    if(lines.length<2){alert(t.importResultsErr);return;}
+    // Διάβασε headers
+    const headers=lines[0].split(/[,;\t]/).map(h=>h.trim().toLowerCase());
+    const idx={
+      email:headers.findIndex(h=>h.includes("email")),
+      phone:headers.findIndex(h=>h.includes("phone")||h.includes("τηλ")||h.includes("tilefono")),
+      time:headers.findIndex(h=>h.includes("time")||h.includes("χρον")||h.includes("xronos")),
+      bib:headers.findIndex(h=>h==="bib"||h==="bib_number"||h.includes("νουμερο")),
+      overall:headers.findIndex(h=>h.includes("overall")||h.includes("γενικ")||h==="rank"),
+      cat:headers.findIndex(h=>h.includes("category_rank")||h.includes("κατηγ"))
+    };
+    if(idx.email===-1||idx.phone===-1||idx.time===-1){
+      alert("⚠️ Το CSV πρέπει να έχει στήλες: email, phone (ή τηλέφωνο), finish_time (ή χρόνος).\n\nΠαράδειγμα:\nemail,phone,finish_time,bib,overall_rank,category_rank\nuser@gmail.com,6900000000,1:25:30,1001,3,1");
+      event.target.value="";return;
+    }
+    // Φόρτωσε όλους τους runners για να αντιστοιχίσουμε
+    const {data:allRunners}=await supabase.from("runners").select("id,email,phone");
+    const {data:raceRegs}=await supabase.from("registrations").select("id,runner_id").eq("race_id",race.id);
+    if(!allRunners||!raceRegs){alert(t.importResultsErr);return;}
+    function norm(s){return String(s||"").trim().toLowerCase().replace(/\s+/g,"").replace(/[^\w@.+]/g,"");}
+    let updated=0,notFound=[];
+    for(let i=1;i<lines.length;i++){
+      const cols=lines[i].split(/[,;\t]/).map(c=>c.trim());
+      const email=norm(cols[idx.email]);
+      const phone=norm(cols[idx.phone]);
+      const time=cols[idx.time];
+      if(!email||!phone||!time)continue;
+      // Βρες runner με ΚΑΙ email ΚΑΙ τηλέφωνο
+      const runner=allRunners.find(r=>norm(r.email)===email&&norm(r.phone)===phone);
+      if(!runner){notFound.push(`${email}/${phone}`);continue;}
+      // Βρες registration για αυτόν τον δρομέα σε αυτόν τον αγώνα
+      const reg=raceRegs.find(r=>r.runner_id===runner.id);
+      if(!reg){notFound.push(`${email}/${phone} (όχι σε αυτόν τον αγώνα)`);continue;}
+      const payload={finish_time:time};
+      if(idx.overall!==-1&&cols[idx.overall])payload.overall_rank=parseInt(cols[idx.overall])||null;
+      if(idx.cat!==-1&&cols[idx.cat])payload.category_rank=parseInt(cols[idx.cat])||null;
+      if(idx.bib!==-1&&cols[idx.bib])payload.bib_number=cols[idx.bib];
+      const {error}=await supabase.from("registrations").update(payload).eq("id",reg.id);
       if(!error)updated++;
     }
-    alert(t.importResultsDone.replace("%N",updated));
+    let msg=t.importResultsDone.replace("%N",updated);
+    if(notFound.length>0)msg+="\n\n⚠️ Δεν βρέθηκαν "+notFound.length+" εγγραφές:\n"+notFound.slice(0,5).join("\n")+(notFound.length>5?"\n...":"");
+    alert(msg);
+    event.target.value="";
     window.location.reload();
   }
 
