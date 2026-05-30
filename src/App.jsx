@@ -290,6 +290,30 @@ function Modal({title,onClose,children,wide}){
   </div>;
 }
 
+function getDaysUntilRace(date){
+  if(!date)return null;
+  try{
+    const raceDate=new Date(date);
+    raceDate.setHours(23,59,59,999);
+    const now=new Date();
+    const diffMs=raceDate-now;
+    return Math.ceil(diffMs/(1000*60*60*24));
+  }catch(e){return null;}
+}
+
+function RaceCountdown({date,compact,lang}){
+  const days=getDaysUntilRace(date);
+  if(days===null)return null;
+  const isMobile=compact;
+  if(days<0)return <span style={{background:"rgba(107,114,128,0.92)",color:"#fff",padding:isMobile?"3px 9px":"5px 11px",borderRadius:"999px",fontSize:isMobile?"10px":"11px",fontWeight:800,letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:"4px",whiteSpace:"nowrap"}}>🏁 {lang==="el"?"Ολοκληρώθηκε":"Completed"}</span>;
+  let bg,emoji;
+  if(days>30){bg="rgba(16,185,129,0.92)";emoji="⏳";}
+  else if(days>=7){bg="rgba(217,119,6,0.92)";emoji="⏰";}
+  else{bg="rgba(220,38,38,0.92)";emoji="🔥";}
+  const label=days===0?(lang==="el"?"Σήμερα!":"Today!"):days===1?(lang==="el"?"Αύριο!":"Tomorrow!"):lang==="el"?`${days} ημέρες`:`${days} days`;
+  return <span style={{background:bg,color:"#fff",padding:isMobile?"3px 9px":"5px 11px",borderRadius:"999px",fontSize:isMobile?"10px":"11px",fontWeight:800,letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:"4px",whiteSpace:"nowrap"}}>{emoji} {label}</span>;
+}
+
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -447,6 +471,90 @@ function parseDistanceKm(d){if(!d)return 0;const m=String(d).match(/(\d+\.?\d*)\
 function timeToSeconds(t){if(!t)return 0;const p=String(t).split(":").map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return 0;}
 function formatTime(t){if(!t)return "—";const p=String(t).split(":").map(x=>x.trim());if(p.length===3)return `${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}:${String(parseInt(p[2])||0).padStart(2,"0")}`;if(p.length===2)return `00:${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}`;return t;}
 function validateTime(t){if(!t||!t.trim())return null;const clean=t.trim();if(!/^\d+(:\d+)?(:\d+)?$/.test(clean))return null;const p=clean.split(":").map(x=>parseInt(x)||0);if(p.length===3){if(p[1]>=60||p[2]>=60)return null;return `${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}:${String(p[2]).padStart(2,"0")}`;}if(p.length===2){if(p[1]>=60)return null;return `00:${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}`;}if(p.length===1){return `00:00:${String(p[0]).padStart(2,"0")}`;}return null;}
+
+function SponsorsPicker({sponsors,onChange}){
+  const {lang}=useLang();
+  const [newSp,setNewSp]=useState({name:"",logo_url:"",website:""});
+  const [uploading,setUploading]=useState(false);
+  async function uploadLogo(e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setUploading(true);
+    const ext=file.name.split(".").pop();
+    const path=`sponsor-${Date.now()}.${ext}`;
+    const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+    if(upErr){alert("⚠️ "+upErr.message);setUploading(false);return;}
+    const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
+    setNewSp(s=>({...s,logo_url:publicUrl}));
+    setUploading(false);
+  }
+  function addSponsor(){
+    if(!newSp.name.trim()){alert(lang==="el"?"Συμπληρώστε όνομα χορηγού!":"Please enter sponsor name!");return;}
+    onChange([...(sponsors||[]),{...newSp,id:Date.now().toString()}]);
+    setNewSp({name:"",logo_url:"",website:""});
+  }
+  function removeSponsor(id){onChange((sponsors||[]).filter(s=>s.id!==id));}
+  return <F label={lang==="el"?"🤝 Χορηγοί":"🤝 Sponsors"}>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{lang==="el"?"Προσθέστε χορηγούς του αγώνα με όνομα, λογότυπο και ιστοσελίδα.":"Add race sponsors with name, logo and website."}</div>
+    {(sponsors||[]).length>0&&(
+      <div style={{display:"flex",flexDirection:"column",gap:"8px",marginBottom:"12px"}}>
+        {sponsors.map(s=>(
+          <div key={s.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"12px"}}>
+            {s.logo_url?<img src={s.logo_url} alt="" style={{width:"40px",height:"40px",objectFit:"contain",borderRadius:"6px",background:"#fff",border:`1px solid ${T.border}`}}/>:<div style={{width:"40px",height:"40px",borderRadius:"6px",background:`${T.primary}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"}}>🏢</div>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>{s.name}</div>
+              {s.website&&<div style={{color:T.textLight,fontSize:"11px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.website}</div>}
+            </div>
+            <button onClick={()=>removeSponsor(s.id)} style={{background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"18px"}}>×</button>
+          </div>
+        ))}
+      </div>
+    )}
+    <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"14px"}}>
+      <input value={newSp.name} onChange={e=>setNewSp({...newSp,name:e.target.value})} placeholder={lang==="el"?"Όνομα χορηγού":"Sponsor name"} style={{...css.input,marginBottom:"8px"}}/>
+      <input value={newSp.website} onChange={e=>setNewSp({...newSp,website:e.target.value})} placeholder={lang==="el"?"Ιστοσελίδα (π.χ. https://...)":"Website (e.g. https://...)"} style={{...css.input,marginBottom:"8px"}}/>
+      <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+        {newSp.logo_url?(<><img src={newSp.logo_url} alt="" style={{width:"40px",height:"40px",objectFit:"contain",borderRadius:"6px",background:"#fff",border:`1px solid ${T.border}`}}/><button type="button" onClick={()=>setNewSp({...newSp,logo_url:""})} style={{background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✕</button></>):(<label style={{cursor:uploading?"wait":"pointer",background:T.bgAlt,border:`1px dashed ${T.border}`,borderRadius:"8px",padding:"8px 14px",fontSize:"12px",color:T.textMid,fontFamily:"inherit",opacity:uploading?0.6:1}}>{uploading?"...":(lang==="el"?"📷 Λογότυπο":"📷 Logo")}<input type="file" accept="image/*" onChange={uploadLogo} style={{display:"none"}} disabled={uploading}/></label>)}
+        <button type="button" onClick={addSponsor} style={{marginLeft:"auto",background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="el"?"+ Προσθήκη":"+ Add"}</button>
+      </div>
+    </div>
+  </F>;
+}
+
+function FAQPicker({faq,onChange}){
+  const {lang}=useLang();
+  const [newQ,setNewQ]=useState({question:"",answer:""});
+  function addFaq(){
+    if(!newQ.question.trim()||!newQ.answer.trim()){alert(lang==="el"?"Συμπληρώστε ερώτηση και απάντηση!":"Please fill question and answer!");return;}
+    onChange([...(faq||[]),{...newQ,id:Date.now().toString()}]);
+    setNewQ({question:"",answer:""});
+  }
+  function removeFaq(id){onChange((faq||[]).filter(f=>f.id!==id));}
+  return <F label={lang==="el"?"❓ Συχνές Ερωτήσεις":"❓ FAQ"}>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{lang==="el"?"Προσθέστε συχνές ερωτήσεις και απαντήσεις για τους αθλητές.":"Add frequently asked questions for athletes."}</div>
+    {(faq||[]).length>0&&(
+      <div style={{display:"flex",flexDirection:"column",gap:"8px",marginBottom:"12px"}}>
+        {faq.map(f=>(
+          <div key={f.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 14px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"10px"}}>
+              <div style={{flex:1}}>
+                <div style={{color:T.text,fontWeight:700,fontSize:"13px",marginBottom:"4px"}}>Q: {f.question}</div>
+                <div style={{color:T.textMid,fontSize:"12px",lineHeight:1.5,whiteSpace:"pre-wrap"}}>A: {f.answer}</div>
+              </div>
+              <button onClick={()=>removeFaq(f.id)} style={{background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"18px",flexShrink:0}}>×</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+    <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"14px"}}>
+      <input value={newQ.question} onChange={e=>setNewQ({...newQ,question:e.target.value})} placeholder={lang==="el"?"Ερώτηση π.χ. Πότε λήγουν οι εγγραφές;":"Question e.g. When do registrations close?"} style={{...css.input,marginBottom:"8px"}}/>
+      <textarea value={newQ.answer} onChange={e=>setNewQ({...newQ,answer:e.target.value})} rows={2} placeholder={lang==="el"?"Απάντηση...":"Answer..."} style={{...css.input,resize:"vertical",marginBottom:"8px"}}/>
+      <button type="button" onClick={addFaq} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",float:"right"}}>{lang==="el"?"+ Προσθήκη":"+ Add"}</button>
+      <div style={{clear:"both"}}/>
+    </div>
+  </F>;
+}
 
 function calculatePrice(race,distance){
   const basePrice=(race.pricing||[]).find(p=>p.distance===distance)?.price||0;
@@ -688,6 +796,198 @@ function RoutesPicker({distances,routes,onChange}){
   </F>;
 }
 
+function WeatherWidget({location,raceDate}){
+  const {lang}=useLang();
+  const [weather,setWeather]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState(null);
+
+  useEffect(()=>{
+    if(!location){setLoading(false);setError("nolocation");return;}
+    let cancelled=false;
+    (async()=>{
+      try{
+        const geoUrl=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en`;
+        const geoRes=await fetch(geoUrl);
+        const geoData=await geoRes.json();
+        if(!geoData.results||geoData.results.length===0){if(!cancelled){setError("nogeo");setLoading(false);}return;}
+        const {latitude,longitude}=geoData.results[0];
+        const today=new Date();
+        const race=raceDate?new Date(raceDate):today;
+        race.setHours(12,0,0,0);
+        const daysAhead=Math.ceil((race-today)/(1000*60*60*24));
+        if(daysAhead>16){if(!cancelled){setError("toofar");setLoading(false);}return;}
+        const dateStr=race.toISOString().split("T")[0];
+        const wUrl=`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max,precipitation_probability_max,relative_humidity_2m_max&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+        const wRes=await fetch(wUrl);
+        const wData=await wRes.json();
+        if(!wData.daily){if(!cancelled){setError("noweather");setLoading(false);}return;}
+        if(!cancelled){
+          setWeather({
+            tempMax:Math.round(wData.daily.temperature_2m_max[0]),
+            tempMin:Math.round(wData.daily.temperature_2m_min[0]),
+            wind:Math.round(wData.daily.wind_speed_10m_max[0]),
+            precipitation:wData.daily.precipitation_probability_max[0]||0,
+            humidity:Math.round(wData.daily.relative_humidity_2m_max[0]||0),
+            code:wData.daily.weather_code[0]
+          });
+          setLoading(false);
+        }
+      }catch(e){if(!cancelled){setError("err");setLoading(false);}}
+    })();
+    return()=>{cancelled=true;};
+  },[location,raceDate]);
+
+  function weatherIcon(code){
+    if(code===0)return"☀️";
+    if(code>=1&&code<=3)return"⛅";
+    if(code>=45&&code<=48)return"🌫️";
+    if(code>=51&&code<=67)return"🌧️";
+    if(code>=71&&code<=77)return"🌨️";
+    if(code>=80&&code<=82)return"🌦️";
+    if(code>=95&&code<=99)return"⛈️";
+    return"🌤️";
+  }
+  function weatherLabel(code){
+    if(code===0)return lang==="el"?"Καθαρός":"Clear";
+    if(code>=1&&code<=3)return lang==="el"?"Μερικώς νεφελώδης":"Partly cloudy";
+    if(code>=45&&code<=48)return lang==="el"?"Ομίχλη":"Fog";
+    if(code>=51&&code<=67)return lang==="el"?"Βροχή":"Rain";
+    if(code>=71&&code<=77)return lang==="el"?"Χιόνι":"Snow";
+    if(code>=80&&code<=82)return lang==="el"?"Καταιγίδα":"Showers";
+    if(code>=95&&code<=99)return lang==="el"?"Καταιγίδα με κεραυνούς":"Thunderstorm";
+    return lang==="el"?"Νεφώσεις":"Cloudy";
+  }
+
+  if(loading)return <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",textAlign:"center",color:T.textLight,fontSize:"13px"}}>🌤 {lang==="el"?"Φόρτωση καιρού...":"Loading weather..."}</div>;
+  if(error||!weather){
+    const msg=error==="toofar"?(lang==="el"?"Πρόγνωση διαθέσιμη 16 ημέρες πριν":"Forecast available 16 days before"):(lang==="el"?"Δεν είναι διαθέσιμη η πρόγνωση":"Weather not available");
+    return <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+      <div style={{width:"44px",height:"44px",borderRadius:"12px",background:`${T.primary}15`,color:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",marginBottom:"14px"}}>🌤</div>
+      <div style={{color:T.textMid,fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"4px"}}>{lang==="el"?"Πρόγνωση Καιρού":"Weather"}</div>
+      <div style={{color:T.textLight,fontSize:"13px"}}>{msg}</div>
+    </div>;
+  }
+  return <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}}>
+      <div style={{color:T.textMid,fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase"}}>{lang==="el"?"🌤 Πρόγνωση":"🌤 Weather"}</div>
+      <div style={{fontSize:"36px"}}>{weatherIcon(weather.code)}</div>
+    </div>
+    <div style={{display:"flex",alignItems:"baseline",gap:"6px",marginBottom:"4px"}}>
+      <span style={{color:T.text,fontSize:"30px",fontWeight:900}}>{weather.tempMax}°</span>
+      <span style={{color:T.textLight,fontSize:"16px",fontWeight:600}}>/ {weather.tempMin}°C</span>
+    </div>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"12px"}}>{weatherLabel(weather.code)}</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px"}}>
+      <div style={{background:T.bg,borderRadius:"8px",padding:"8px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"16px",marginBottom:"2px"}}>💨</div>
+        <div style={{color:T.text,fontSize:"13px",fontWeight:700}}>{weather.wind}</div>
+        <div style={{color:T.textLight,fontSize:"9px",letterSpacing:"0.06em",textTransform:"uppercase"}}>km/h</div>
+      </div>
+      <div style={{background:T.bg,borderRadius:"8px",padding:"8px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"16px",marginBottom:"2px"}}>💧</div>
+        <div style={{color:T.text,fontSize:"13px",fontWeight:700}}>{weather.humidity}%</div>
+        <div style={{color:T.textLight,fontSize:"9px",letterSpacing:"0.06em",textTransform:"uppercase"}}>{lang==="el"?"Υγρ.":"Hum."}</div>
+      </div>
+      <div style={{background:T.bg,borderRadius:"8px",padding:"8px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"16px",marginBottom:"2px"}}>☔</div>
+        <div style={{color:T.text,fontSize:"13px",fontWeight:700}}>{weather.precipitation}%</div>
+        <div style={{color:T.textLight,fontSize:"9px",letterSpacing:"0.06em",textTransform:"uppercase"}}>{lang==="el"?"Βροχή":"Rain"}</div>
+      </div>
+    </div>
+  </div>;
+}
+
+function SponsorsDisplay({sponsors}){
+  const {lang}=useLang();
+  if(!sponsors||sponsors.length===0)return null;
+  return <div style={{background:T.bgAlt,borderRadius:"16px",padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <h3 style={{margin:"0 0 18px",color:T.text,fontSize:"15px",fontWeight:800,letterSpacing:"-0.01em"}}>🤝 {lang==="el"?"Χορηγοί":"Sponsors"}</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:"14px"}}>
+      {sponsors.map((s,i)=>{
+        const inner=<>
+          {s.logo_url?<img src={s.logo_url} alt={s.name} style={{maxWidth:"100%",maxHeight:"60px",objectFit:"contain"}}/>:<div style={{fontSize:"30px"}}>🏢</div>}
+          <div style={{color:T.text,fontSize:"12px",fontWeight:700,textAlign:"center",lineHeight:1.3}}>{s.name}</div>
+        </>;
+        const style={background:T.bg,borderRadius:"12px",padding:"18px 14px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",minHeight:"110px",textDecoration:"none",color:"inherit",transition:"transform 0.15s"};
+        return s.website?<a key={i} href={s.website} target="_blank" rel="noopener noreferrer" style={style} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";}}>{inner}</a>:<div key={i} style={style}>{inner}</div>;
+      })}
+    </div>
+  </div>;
+}
+
+function FAQDisplay({faq}){
+  const {lang}=useLang();
+  const [open,setOpen]=useState({});
+  if(!faq||faq.length===0)return null;
+  return <div style={{background:T.bgAlt,borderRadius:"16px",padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <h3 style={{margin:"0 0 18px",color:T.text,fontSize:"15px",fontWeight:800,letterSpacing:"-0.01em"}}>❓ {lang==="el"?"Συχνές Ερωτήσεις":"FAQ"}</h3>
+    <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+      {faq.map((f,i)=>{
+        const isOpen=!!open[f.id||i];
+        return <div key={f.id||i} style={{background:T.bg,borderRadius:"12px",overflow:"hidden"}}>
+          <button onClick={()=>setOpen({...open,[f.id||i]:!isOpen})} style={{width:"100%",background:"none",border:"none",padding:"14px 18px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
+            <span style={{color:T.text,fontWeight:700,fontSize:"14px",flex:1}}>{f.question}</span>
+            <span style={{color:T.textMid,fontSize:"18px",transform:isOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>⌄</span>
+          </button>
+          {isOpen&&<div style={{padding:"0 18px 16px",color:T.textMid,fontSize:"13px",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{f.answer}</div>}
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
+function ShareMenu({raceName,raceDate,onClose}){
+  const {lang}=useLang();
+  const url=typeof window!=="undefined"?window.location.href:"";
+  const shareText=`${raceName} - ${raceDate}`;
+  function shareTo(platform){
+    const encUrl=encodeURIComponent(url);
+    const encText=encodeURIComponent(shareText);
+    let target="";
+    if(platform==="facebook")target=`https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
+    else if(platform==="whatsapp")target=`https://wa.me/?text=${encText}%20${encUrl}`;
+    else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
+    else if(platform==="telegram")target=`https://t.me/share/url?url=${encUrl}&text=${encText}`;
+    else if(platform==="twitter")target=`https://twitter.com/intent/tweet?text=${encText}&url=${encUrl}`;
+    if(target)window.open(target,"_blank","noopener,noreferrer");
+  }
+  async function copyLink(){
+    try{
+      await navigator.clipboard.writeText(url);
+      alert(lang==="el"?"✅ Σύνδεσμος αντιγράφηκε!":"✅ Link copied!");
+    }catch(e){alert(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy");}
+    onClose();
+  }
+  const opts=[
+    {id:"facebook",label:"Facebook",icon:"📘",bg:"#1877f2"},
+    {id:"whatsapp",label:"WhatsApp",icon:"💬",bg:"#25d366"},
+    {id:"viber",label:"Viber",icon:"📞",bg:"#7360f2"},
+    {id:"telegram",label:"Telegram",icon:"✈️",bg:"#0088cc"},
+    {id:"twitter",label:"X / Twitter",icon:"🐦",bg:"#000"}
+  ];
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:T.bgAlt,borderRadius:"20px",padding:"24px",width:"100%",maxWidth:"380px",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800}}>📲 {lang==="el"?"Κοινοποίηση":"Share"}</h3>
+        <button onClick={onClose} style={{background:"none",border:"none",color:T.textLight,cursor:"pointer",fontSize:"24px"}}>×</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px",marginBottom:"14px"}}>
+        {opts.map(o=>(
+          <button key={o.id} onClick={()=>{shareTo(o.id);onClose();}} style={{background:T.bg,border:"none",borderRadius:"14px",padding:"14px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}>
+            <div style={{width:"42px",height:"42px",borderRadius:"50%",background:o.bg,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px"}}>{o.icon}</div>
+            <span style={{color:T.text,fontSize:"11px",fontWeight:700}}>{o.label}</span>
+          </button>
+        ))}
+        <button onClick={copyLink} style={{background:T.bg,border:"none",borderRadius:"14px",padding:"14px 8px",cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}>
+          <div style={{width:"42px",height:"42px",borderRadius:"50%",background:T.text,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px"}}>🔗</div>
+          <span style={{color:T.text,fontSize:"11px",fontWeight:700}}>{lang==="el"?"Αντιγραφή":"Copy"}</span>
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
 function PublicHomePage(){
   const {t,lang}=useLang();
   const [showLogin,setShowLogin]=useState(false);
@@ -779,6 +1079,7 @@ function PublicHomePage(){
                 <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"}}/>
                 <div style={{position:"absolute",top:"14px",right:"14px",display:"flex",gap:"8px",alignItems:"center"}}>
                   {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"5px 11px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.04em"}}>🏷 -{race.early_bird.discount_percent}%</span>}
+                  <RaceCountdown date={race.date} compact lang={lang}/>
                   <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
                 </div>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"24px 22px 18px"}}>
@@ -1072,6 +1373,7 @@ function AthleteRaceCard({race,registrations,runners,session,onSelect}){
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"}}/>
       <div style={{position:"absolute",top:"14px",right:"14px",display:"flex",gap:"8px",alignItems:"center"}}>
         {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"5px 11px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.04em"}}>🏷 -{race.early_bird.discount_percent}%</span>}
+        <RaceCountdown date={race.date} compact lang="el"/>
         <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
       </div>
       {myReg&&<div style={{position:"absolute",top:"14px",left:"14px",background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",color:T.accent,padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>✓ BIB #{myReg.bib_number}</div>}
@@ -1396,13 +1698,12 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
   }
   function getPerkLabel(perk){return (perk||"").replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/u,"").trim()||perk;}
 
+  const [showShareMenu,setShowShareMenu]=useState(false);
   async function share(){
     if(navigator.share){
-      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});}catch(e){}
-    }else if(navigator.clipboard){
-      navigator.clipboard.writeText(window.location.href);
-      alert(lang==="el"?"Σύνδεσμος αντιγράφηκε!":"Link copied!");
+      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch(e){}
     }
+    setShowShareMenu(true);
   }
 
   const tabs=[
@@ -1428,6 +1729,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
         <div style={{maxWidth:"1000px",margin:"0 auto"}}>
           <div style={{display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"}}>
             <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 14px",borderRadius:"999px",fontSize:"11px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
+            <RaceCountdown date={race.date} lang={lang}/>
             {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>🏷 EARLY BIRD -{race.early_bird.discount_percent}%</span>}
             {myReg&&<span style={{background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",color:T.accent,padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>✓ BIB #{myReg.bib_number}</span>}
           </div>
@@ -1471,6 +1773,9 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
             <div style={{color:T.text,fontSize:"16px",fontWeight:700}}>{totalRegs}{race.max_runners?` / ${race.max_runners}`:""}</div>
           </div>
         </div>
+        {race.location&&<div style={{marginTop:"20px"}}><WeatherWidget location={race.location} raceDate={race.date}/></div>}
+        {race.sponsors&&race.sponsors.length>0&&<div style={{marginTop:"20px"}}><SponsorsDisplay sponsors={race.sponsors}/></div>}
+        {race.faq&&race.faq.length>0&&<div style={{marginTop:"20px"}}><FAQDisplay faq={race.faq}/></div>}
       </div>)}
 
       {activeTab==="routes"&&(<div>
@@ -1584,6 +1889,8 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
       </div>)}
     </div>
 
+    {showShareMenu&&<ShareMenu raceName={race.name} raceDate={race.date} onClose={()=>setShowShareMenu(false)}/>}
+
     {canRegister&&distances.length>0&&activeTab!=="routes"&&(
       <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"14px 20px",background:`linear-gradient(180deg, rgba(245,243,239,0) 0%, ${T.bg} 60%)`,zIndex:20}}>
         <div style={{maxWidth:"1000px",margin:"0 auto"}}>
@@ -1641,7 +1948,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[]});
+  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[]});
 
   async function uploadBanner(e){
     const file=e.target.files?.[0];
@@ -1658,8 +1965,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[]});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[]});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[]});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
@@ -1667,7 +1974,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
     const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[]};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
@@ -1764,6 +2071,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       <DistancesPicker distances={form.distances} onChange={d=>setForm({...form,distances:d})}/>
       <PricingPicker distances={form.distances} pricing={form.pricing} onChange={p=>setForm({...form,pricing:p})}/>
       <RoutesPicker distances={form.distances} routes={form.routes||[]} onChange={r=>setForm({...form,routes:r})}/>
+      <SponsorsPicker sponsors={form.sponsors||[]} onChange={s=>setForm({...form,sponsors:s})}/>
+      <FAQPicker faq={form.faq||[]} onChange={f=>setForm({...form,faq:f})}/>
       <PerksPicker perks={form.perks} onChange={p=>setForm({...form,perks:p})}/>
       <EarlyBirdPicker earlyBird={form.early_bird} onChange={eb=>setForm({...form,early_bird:eb})}/>
       <CustomFieldsPicker fields={form.custom_fields} onChange={cf=>setForm({...form,custom_fields:cf})}/>
