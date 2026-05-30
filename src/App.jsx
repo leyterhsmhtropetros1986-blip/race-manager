@@ -1336,8 +1336,12 @@ function PublicRunnersPage({raceId,onBack}){
               <div style={{background:T.primary,color:"#fff",borderRadius:"8px",padding:"4px 10px",fontWeight:700,fontSize:"13px",minWidth:"45px",textAlign:"center"}}>#{reg.bib_number}</div>
               {reg.runner.avatar_url?(<img src={reg.runner.avatar_url} alt="" style={{width:"40px",height:"40px",borderRadius:"50%",objectFit:"cover"}}/>):(<div style={{width:"40px",height:"40px",borderRadius:"50%",background:T.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{(reg.runner.first_name?.[0]||"?").toUpperCase()}</div>)}
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{reg.runner.first_name} {reg.runner.last_name}</div>
-                <div style={{color:T.textLight,fontSize:"12px"}}>{reg.runner.club||""}{reg.runner.club&&reg.distance?" · ":""}{reg.distance||""}{reg.runner.city?` · ${reg.runner.city}`:""}</div>
+                <div style={{color:T.text,fontWeight:700,fontSize:"15px",marginBottom:"4px"}}>{reg.runner.first_name} {reg.runner.last_name}</div>
+                <div style={{display:"flex",gap:"8px",flexWrap:"wrap",fontSize:"12px"}}>
+                  {reg.distance&&<span style={{background:`${T.primary}15`,color:T.primary,padding:"2px 8px",borderRadius:"6px",fontWeight:600}}>🏃 {reg.distance}</span>}
+                  {reg.runner.club&&<span style={{background:`${T.accent}15`,color:T.accent,padding:"2px 8px",borderRadius:"6px",fontWeight:600}}>👥 {reg.runner.club}</span>}
+                  {reg.runner.city&&<span style={{background:T.bg,color:T.textMid,padding:"2px 8px",borderRadius:"6px",fontWeight:600}}>📍 {reg.runner.city}</span>}
+                </div>
               </div>
             </div>
           ))}
