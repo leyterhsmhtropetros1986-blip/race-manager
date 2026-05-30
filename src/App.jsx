@@ -1280,7 +1280,7 @@ function PublicResultsPage({raceId,onBack}){
 }
 
 function PublicRunnersPage({raceId,onBack}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [race,setRace]=useState(null);
   const [regs,setRegs]=useState([]);
   const [runners,setRunners]=useState([]);
@@ -1345,9 +1345,9 @@ function PublicRunnersPage({raceId,onBack}){
               </div>
               <div style={{flexShrink:0}}>
                 {reg.payment_status==="paid"?(
-                  <span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>✅ {lang==="el"?"Confirmed":"Confirmed"}</span>
+                  <span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>✅ {lang==="el"?"Επιβεβαιώθηκε":"Confirmed"}</span>
                 ):(
-                  <span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>⏳ {lang==="el"?"Pending":"Pending"}</span>
+                  <span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>⏳ {lang==="el"?"Εκκρεμεί":"Pending"}</span>
                 )}
               </div>
             </div>
