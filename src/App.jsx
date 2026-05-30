@@ -528,43 +528,44 @@ function PublicHomePage(){
         if(publicRaces.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.publicNoRaces}</div>;
         if(filtered.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.notFound}</div>;
         return (
-        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>
           {filtered.map(race=>{
             const distances=race.distance?race.distance.split(" | "):[];
             const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
-            const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
-            const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
-            return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",boxShadow:T.shadow,overflow:"hidden"}}>
-              {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"180px",objectFit:"cover",display:"block"}}/>}
-              <div style={{padding:"20px 24px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px",flexWrap:"wrap"}}>
-                <span style={{color:T.text,fontWeight:700,fontSize:"17px"}}>{race.name}</span>
-                <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
-                {hasEarlyBird&&<span style={{background:`${T.warning}20`,color:T.warning,border:`1px solid ${T.warning}55`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:700}}>🏷️ EARLY BIRD -{race.early_bird.discount_percent}%</span>}
-              </div>
-              <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"12px"}}>
-                📅 {race.date} &nbsp; 📍 {race.location||"—"}
-              </div>
-              {race.description&&<div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 16px",color:T.text,fontSize:"13px",lineHeight:"1.6",marginBottom:"12px",whiteSpace:"pre-wrap"}}>{race.description}</div>}
-              {distances.length>0&&(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"10px",marginBottom:"12px"}}>
-                  {distances.map((d,i)=>{
-                    const pr=(race.pricing||[]).find(p=>p.distance===d);
-                    return <button key={i} type="button" onClick={()=>openLogin()} style={{background:`${T.primary}10`,border:`2px solid ${T.primary}55`,borderRadius:"12px",padding:"16px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",width:"100%"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px",gap:"6px"}}>
-                        <span style={{color:T.primary,fontWeight:700,fontSize:"15px"}}>🏃 {d}</span>
-                        {pr?.price>0&&<span style={{background:T.primary,color:"#fff",borderRadius:"6px",padding:"3px 10px",fontSize:"12px",fontWeight:700}}>{pr.price}€</span>}
-                      </div>
-                      <div style={{color:T.primary,fontSize:"12px",fontWeight:700,textAlign:"center",borderTop:`1px dashed ${T.primary}55`,paddingTop:"8px",marginTop:"4px"}}>{t.clickToRegister}</div>
-                    </button>;
-                  })}
+            const statusConfig={
+              upcoming:{label:t.statusUpcoming,bg:"rgba(16,185,129,0.92)"},
+              active:{label:t.statusActive,bg:"rgba(59,130,246,0.92)"},
+              finished:{label:t.statusFinished,bg:"rgba(107,114,128,0.92)"}
+            };
+            const status=statusConfig[race.status]||statusConfig.upcoming;
+            return <div key={race.id} onClick={()=>openLogin()} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openLogin();}}} style={{background:T.bgAlt,borderRadius:"20px",overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",transition:"transform 0.2s ease, box-shadow 0.2s ease"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 12px 28px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)";}}>
+              <div style={{position:"relative",width:"100%",aspectRatio:"16/10",background:`linear-gradient(135deg,${T.primary},${T.accent})`,overflow:"hidden"}}>
+                {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>}
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"}}/>
+                <div style={{position:"absolute",top:"14px",right:"14px",display:"flex",gap:"8px",alignItems:"center"}}>
+                  {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"5px 11px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.04em"}}>🏷 -{race.early_bird.discount_percent}%</span>}
+                  <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
                 </div>
-              )}
-              {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
-              <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
-                <Btn v="sec" onClick={()=>openResults(race.id)}>{t.viewResultsBtn}</Btn>
-                {race.public_runners_list&&<Btn v="ghost" onClick={()=>openRunners(race.id)}>{t.showRunnersBtn}</Btn>}
+                <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"24px 22px 18px"}}>
+                  <h3 style={{margin:"0 0 8px",color:"#fff",fontSize:"clamp(20px,4vw,24px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.15,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>{race.name}</h3>
+                  <div style={{display:"flex",alignItems:"center",gap:"14px",color:"rgba(255,255,255,0.95)",fontSize:"13px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
+                    <span>📅 {race.date}</span>
+                    <span>📍 {race.location||"—"}</span>
+                  </div>
+                </div>
               </div>
+              <div style={{padding:"18px 22px 20px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",flexWrap:"wrap",marginBottom:"14px"}}>
+                  <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+                    {distances.slice(0,4).map((d,i)=>(<span key={i} style={{background:T.bg,color:T.text,fontSize:"12px",fontWeight:700,padding:"5px 11px",borderRadius:"8px"}}>{d}</span>))}
+                    {distances.length>4&&<span style={{color:T.textMid,fontSize:"12px",fontWeight:600,padding:"5px 4px"}}>+{distances.length-4}</span>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
+                  <button onClick={()=>openLogin()} style={{flex:1,minWidth:"120px",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 16px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 12px rgba(74,93,199,0.25)"}}>{t.clickToRegister}</button>
+                  <button onClick={()=>openResults(race.id)} style={{background:T.bg,color:T.text,border:"none",borderRadius:"10px",padding:"10px 14px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t.viewResultsBtn}</button>
+                  {race.public_runners_list&&<button onClick={()=>openRunners(race.id)} style={{background:T.bg,color:T.text,border:"none",borderRadius:"10px",padding:"10px 14px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t.showRunnersBtn}</button>}
+                </div>
               </div>
             </div>;
           })}
