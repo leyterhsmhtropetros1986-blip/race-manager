@@ -1,4 +1,22 @@
 import { useState, useEffect, createContext, useContext } from "react";
+
+// Global keyframe injection for skeleton animation
+if (typeof document !== "undefined" && !document.getElementById("rm-global-styles")) {
+  const s = document.createElement("style");
+  s.id = "rm-global-styles";
+  s.innerHTML = `
+    @keyframes skeletonPulse {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  if (document.head) document.head.appendChild(s);
+  else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
+}
 import { createClient } from "@supabase/supabase-js";
 import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -312,6 +330,40 @@ function RaceCountdown({date,compact,lang}){
   else{bg="rgba(220,38,38,0.92)";emoji="🔥";}
   const label=days===0?(lang==="el"?"Σήμερα!":"Today!"):days===1?(lang==="el"?"Αύριο!":"Tomorrow!"):lang==="el"?`${days} ημέρες`:`${days} days`;
   return <span style={{background:bg,color:"#fff",padding:isMobile?"3px 9px":"5px 11px",borderRadius:"999px",fontSize:isMobile?"10px":"11px",fontWeight:800,letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:"4px",whiteSpace:"nowrap"}}>{emoji} {label}</span>;
+}
+
+function Skeleton({width,height,radius,style}){
+  return <div style={{background:"linear-gradient(90deg, #e8e6df 0%, #f0eee7 50%, #e8e6df 100%)",backgroundSize:"200% 100%",animation:"skeletonPulse 1.4s ease-in-out infinite",width:width||"100%",height:height||"16px",borderRadius:radius||"6px",...style}}/>;
+}
+
+function SkeletonCard(){
+  return <div style={{background:T.bgAlt,borderRadius:"20px",overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)"}}>
+    <Skeleton height="200px" radius="0"/>
+    <div style={{padding:"18px 22px 20px"}}>
+      <Skeleton height="22px" width="70%" style={{marginBottom:"12px"}}/>
+      <Skeleton height="14px" width="50%" style={{marginBottom:"16px"}}/>
+      <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+        <Skeleton height="22px" width="60px" radius="8px"/>
+        <Skeleton height="22px" width="60px" radius="8px"/>
+        <Skeleton height="22px" width="60px" radius="8px"/>
+      </div>
+    </div>
+  </div>;
+}
+
+function SkeletonGrid({count}){
+  return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>
+    {Array.from({length:count||3}).map((_,i)=><SkeletonCard key={i}/>)}
+  </div>;
+}
+
+function EmptyState({icon,title,message,action,actionLabel,onAction}){
+  return <div style={{textAlign:"center",padding:"60px 24px",background:T.bgAlt,borderRadius:"16px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <div style={{fontSize:"56px",marginBottom:"14px",opacity:0.9}}>{icon||"📭"}</div>
+    <h3 style={{margin:"0 0 6px",color:T.text,fontSize:"17px",fontWeight:800,letterSpacing:"-0.01em"}}>{title}</h3>
+    {message&&<p style={{margin:"0 0 18px",color:T.textMid,fontSize:"14px",lineHeight:1.6,maxWidth:"360px",marginLeft:"auto",marginRight:"auto"}}>{message}</p>}
+    {action&&actionLabel&&<button onClick={onAction} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(74,93,199,0.2)"}}>{actionLabel}</button>}
+  </div>;
 }
 
 function LangToggle(){
@@ -1148,12 +1200,12 @@ function PublicHomePage(){
       </div>
 
       {loading?(
-        <div style={{textAlign:"center",color:T.textMid,padding:"60px"}}>{t.loading}</div>
+        <SkeletonGrid count={4}/>
       ):(()=>{
         const q=searchQuery.trim().toLowerCase();
         const filtered=q?publicRaces.filter(r=>(r.name||"").toLowerCase().includes(q)||(r.location||"").toLowerCase().includes(q)):publicRaces;
-        if(publicRaces.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.publicNoRaces}</div>;
-        if(filtered.length===0)return <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.notFound}</div>;
+        if(publicRaces.length===0)return <EmptyState icon="🏃" title={lang==="el"?"Δεν υπάρχουν διαθέσιμοι αγώνες":"No available races"} message={lang==="el"?"Επίσκεψέ μας ξανά σύντομα για νέους αγώνες!":"Check back soon for new races!"}/>;
+        if(filtered.length===0)return <EmptyState icon="🔍" title={lang==="el"?"Δεν βρέθηκαν αγώνες":"No races found"} message={lang==="el"?"Δοκίμασε διαφορετική αναζήτηση":"Try a different search"}/>;
         return (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>
           {filtered.map(race=>{
@@ -2036,12 +2088,12 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
     </div>
     {tab==="available"&&(<div>
       <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.availableRacesTitle}</h2>
-      {availableRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noAvailable}</div>}
+      {availableRaces.length===0&&<EmptyState icon="🏁" title={t.noAvailable} message="Επίσκεψέ μας ξανά σύντομα!"/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}</div>
     </div>)}
     {tab==="my"&&(<div>
       <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.myRegsTitle}</h2>
-      {myRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noRegs}</div>}
+      {myRaces.length===0&&<EmptyState icon="🎯" title={t.noRegs} message="Βρες αγώνα και ξεκίνα να συμμετέχεις!"/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>
         {myRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}
       </div>
@@ -2123,7 +2175,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.myRacesTitle} {isAdmin&&<span style={{color:T.textMid,fontSize:"13px"}}>{t.adminAll}</span>}</h2>
       <Btn onClick={()=>setShowForm(true)}>{t.newRace}</Btn>
     </div>
-    {myRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noRacesYet}</div>}
+    {myRaces.length===0&&<EmptyState icon="🏟" title={t.noRacesYet} message="Δημιούργησε τον πρώτο σου αγώνα!" actionLabel={t.newRace} onAction={()=>setShowForm(true)} action={true}/>}
     <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
       {myRaces.map(race=>{
         const regCount=registrations.filter(r=>r.race_id===race.id).length;
@@ -2213,7 +2265,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   return <div>
     <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.regsTitle} ({filtered.length}){totalRevenue>0&&<span style={{color:T.accent,fontSize:"15px",marginLeft:"12px"}}>💰 {totalRevenue.toFixed(2)}€</span>}</h2>
     <Sel value={filterRace} onChange={e=>setFilterRace(e.target.value)}><option value="all">{t.allRaces}</option>{myRaces.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel>
-    {filtered.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noRegsList}</div>}
+    {filtered.length===0&&<EmptyState icon="📋" title={t.noRegsList} message="Όταν εγγραφούν αθλητές θα τους δεις εδώ"/>}
     <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
       {filtered.map(reg=>{
         const runner=runners.find(r=>r.id===reg.runner_id);const race=races.find(r=>r.id===reg.race_id);
