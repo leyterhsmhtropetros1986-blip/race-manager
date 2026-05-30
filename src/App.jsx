@@ -493,6 +493,116 @@ function calculateRouteStats(points){
   return{totalKm:Math.round(totalKm*100)/100,gain:Math.round(gain),loss:Math.round(loss)};
 }
 
+function escapeXml(s){return String(s||"").replace(/[<>&'"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));}
+
+function generateGPX(route){
+  const pts=(route.points||[]).map(([lat,lng,ele])=>`      <trkpt lat="${lat}" lon="${lng}"><ele>${ele||0}</ele></trkpt>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Race Management" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${escapeXml(route.distance)} Route</name>
+  </metadata>
+  <trk>
+    <name>${escapeXml(route.distance)}</name>
+    <trkseg>
+${pts}
+    </trkseg>
+  </trk>
+</gpx>`;
+}
+
+function downloadGPX(route,raceName){
+  try{
+    const gpx=generateGPX(route);
+    const blob=new Blob([gpx],{type:"application/gpx+xml"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`${(raceName||"race").replace(/[^a-zA-Z0-9]/gi,"-")}-${(route.distance||"route").replace(/[^a-zA-Z0-9]/gi,"-")}.gpx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){alert("Σφάλμα: "+e.message);}
+}
+
+function buildElevationData(points){
+  if(!points||points.length<2)return[];
+  let cumKm=0;
+  const data=[{x:0,y:points[0][2]||0}];
+  for(let i=1;i<points.length;i++){
+    cumKm+=haversineKm(points[i-1],points[i]);
+    data.push({x:cumKm,y:points[i][2]||0});
+  }
+  return data;
+}
+
+function downsampleProfile(data,maxPoints){
+  if(data.length<=maxPoints)return data;
+  const step=Math.ceil(data.length/maxPoints);
+  const out=[];
+  for(let i=0;i<data.length;i+=step)out.push(data[i]);
+  if(out[out.length-1]!==data[data.length-1])out.push(data[data.length-1]);
+  return out;
+}
+
+function ElevationProfile({points,height}){
+  if(!points||points.length<2)return null;
+  const data=buildElevationData(points);
+  const sampled=downsampleProfile(data,250);
+  const totalKm=data[data.length-1].x;
+  if(totalKm<=0)return null;
+  const eles=data.map(d=>d.y);
+  const minEle=Math.min(...eles);
+  const maxEle=Math.max(...eles);
+  const range=Math.max(maxEle-minEle,1);
+  const W=1000,H=240;
+  const PAD={top:24,right:14,bottom:30,left:56};
+  const chartW=W-PAD.left-PAD.right;
+  const chartH=H-PAD.top-PAD.bottom;
+  const xScale=km=>PAD.left+(km/totalKm)*chartW;
+  const yScale=ele=>PAD.top+chartH-((ele-minEle)/range)*chartH;
+  const linePts=sampled.map(d=>`${xScale(d.x).toFixed(1)},${yScale(d.y).toFixed(1)}`).join(" ");
+  const areaPath=`M ${xScale(0).toFixed(1)} ${(PAD.top+chartH).toFixed(1)} L ${sampled.map(d=>`${xScale(d.x).toFixed(1)} ${yScale(d.y).toFixed(1)}`).join(" L ")} L ${xScale(totalKm).toFixed(1)} ${(PAD.top+chartH).toFixed(1)} Z`;
+  const maxP=data.reduce((a,b)=>b.y>a.y?b:a,data[0]);
+  const minP=data.reduce((a,b)=>b.y<a.y?b:a,data[0]);
+  const midEle=(minEle+maxEle)/2;
+  const kmTicks=totalKm<=10?[0,totalKm/2,totalKm]:totalKm<=30?[0,totalKm*0.25,totalKm*0.5,totalKm*0.75,totalKm]:[0,totalKm*0.2,totalKm*0.4,totalKm*0.6,totalKm*0.8,totalKm];
+  return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{width:"100%",height:height||200,display:"block"}}>
+    <defs>
+      <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#4a5dc7" stopOpacity="0.45"/>
+        <stop offset="100%" stopColor="#4a5dc7" stopOpacity="0.02"/>
+      </linearGradient>
+    </defs>
+    {/* gridlines */}
+    <line x1={PAD.left} y1={PAD.top} x2={W-PAD.right} y2={PAD.top} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3,3"/>
+    <line x1={PAD.left} y1={PAD.top+chartH/2} x2={W-PAD.right} y2={PAD.top+chartH/2} stroke="#f1f1f1" strokeWidth="1" strokeDasharray="3,3"/>
+    <line x1={PAD.left} y1={PAD.top+chartH} x2={W-PAD.right} y2={PAD.top+chartH} stroke="#e5e7eb" strokeWidth="1"/>
+    {/* Y labels */}
+    <text x={PAD.left-8} y={PAD.top+5} fill="#9a9aa3" fontSize="12" textAnchor="end" fontFamily="Inter,sans-serif" fontWeight="600">{Math.round(maxEle)}m</text>
+    <text x={PAD.left-8} y={PAD.top+chartH/2+4} fill="#bbb" fontSize="11" textAnchor="end" fontFamily="Inter,sans-serif">{Math.round(midEle)}m</text>
+    <text x={PAD.left-8} y={PAD.top+chartH+5} fill="#9a9aa3" fontSize="12" textAnchor="end" fontFamily="Inter,sans-serif" fontWeight="600">{Math.round(minEle)}m</text>
+    {/* Area */}
+    <path d={areaPath} fill="url(#elevGrad)"/>
+    {/* Line */}
+    <polyline points={linePts} fill="none" stroke="#4a5dc7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+    {/* X axis ticks */}
+    {kmTicks.map((k,i)=>(
+      <g key={i}>
+        <line x1={xScale(k)} y1={PAD.top+chartH} x2={xScale(k)} y2={PAD.top+chartH+5} stroke="#9a9aa3"/>
+        <text x={xScale(k)} y={H-8} fill="#9a9aa3" fontSize="12" textAnchor={i===0?"start":i===kmTicks.length-1?"end":"middle"} fontFamily="Inter,sans-serif" fontWeight="600">{k.toFixed(k<10?1:0)}km</text>
+      </g>
+    ))}
+    {/* Max marker */}
+    <circle cx={xScale(maxP.x)} cy={yScale(maxP.y)} r="5" fill="#10b981" stroke="#fff" strokeWidth="2.5"/>
+    <text x={xScale(maxP.x)} y={yScale(maxP.y)-12} fill="#10b981" fontSize="11" fontWeight="800" textAnchor="middle" fontFamily="Inter,sans-serif">▲ {Math.round(maxP.y)}m</text>
+    {/* Min marker */}
+    <circle cx={xScale(minP.x)} cy={yScale(minP.y)} r="5" fill="#ef4444" stroke="#fff" strokeWidth="2.5"/>
+    <text x={xScale(minP.x)} y={yScale(minP.y)+20} fill="#ef4444" fontSize="11" fontWeight="800" textAnchor="middle" fontFamily="Inter,sans-serif">▼ {Math.round(minP.y)}m</text>
+  </svg>;
+}
+
 function RouteMap({points,height}){
   if(!points||points.length===0)return null;
   const positions=points.map(p=>[p[0],p[1]]);
@@ -1418,6 +1528,16 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
                   </div>
                 </div>
                 <RouteMap points={route.points} height="400px"/>
+                {route.points&&route.points.length>1&&(
+                  <div style={{padding:"20px 24px",borderTop:`1px solid ${T.border}`}}>
+                    <div style={{color:T.textMid,fontSize:"11px",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700,marginBottom:"10px"}}>{lang==="el"?"Υψομετρικό προφίλ":"Elevation profile"}</div>
+                    <ElevationProfile points={route.points} height={200}/>
+                  </div>
+                )}
+                <div style={{padding:"16px 24px",borderTop:`1px solid ${T.border}`,display:"flex",gap:"10px",flexWrap:"wrap",alignItems:"center"}}>
+                  <button onClick={()=>downloadGPX(route,race.name)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 18px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(74,93,199,0.2)",display:"inline-flex",alignItems:"center",gap:"6px"}}>📥 {lang==="el"?"Κατέβασμα GPX":"Download GPX"}</button>
+                  {route.file_name&&<span style={{color:T.textLight,fontSize:"11px"}}>{route.file_name}</span>}
+                </div>
               </div>
             ))}
           </div>
