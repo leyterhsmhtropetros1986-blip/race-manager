@@ -711,7 +711,8 @@ function ElevationProfile({points,height}){
   </svg>;
 }
 
-function RouteMap({points,height}){
+function RouteMap({points,height,defaultLayer}){
+  const [layer,setLayer]=useState(defaultLayer||"satellite");
   if(!points||points.length===0)return null;
   const positions=points.map(p=>[p[0],p[1]]);
   const start=positions[0];
@@ -719,14 +720,30 @@ function RouteMap({points,height}){
   const lats=positions.map(p=>p[0]);
   const lngs=positions.map(p=>p[1]);
   const center=[(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2];
-  const startIcon=L.divIcon({html:'<div style="background:#10b981;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;font-family:system-ui">▶</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
-  const finishIcon=L.divIcon({html:'<div style="background:#ef4444;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;font-family:system-ui">END</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
-  return <MapContainer center={center} zoom={13} style={{height:height||"360px",width:"100%",borderRadius:"16px",zIndex:1}} scrollWheelZoom={false}>
-    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png" attribution='&copy; OpenStreetMap'/>
-    <Polyline positions={positions} pathOptions={{color:"#4a5dc7",weight:5,opacity:0.85}}/>
-    <Marker position={start} icon={startIcon}/>
-    <Marker position={finish} icon={finishIcon}/>
-  </MapContainer>;
+  const startIcon=L.divIcon({html:'<div style="background:#10b981;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;font-family:system-ui">▶</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
+  const finishIcon=L.divIcon({html:'<div style="background:#ef4444;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;font-family:system-ui">END</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
+  const layers={
+    standard:{url:"https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png",attribution:'&copy; OpenStreetMap',label:"🗺",routeColor:"#4a5dc7"},
+    satellite:{url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",attribution:'Tiles &copy; Esri',label:"🛰",routeColor:"#fbbf24"},
+    terrain:{url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",attribution:'&copy; OpenTopoMap (CC-BY-SA)',label:"⛰",routeColor:"#dc2626"}
+  };
+  const current=layers[layer]||layers.satellite;
+  const opts=[{id:"standard",label:"Map",icon:"🗺"},{id:"satellite",label:"Satellite",icon:"🛰"},{id:"terrain",label:"Terrain",icon:"⛰"}];
+  return <div style={{position:"relative",width:"100%"}}>
+    <MapContainer key={layer} center={center} zoom={13} style={{height:height||"360px",width:"100%",borderRadius:"16px",zIndex:1}} scrollWheelZoom={false}>
+      <TileLayer url={current.url} attribution={current.attribution} maxZoom={layer==="terrain"?17:19}/>
+      <Polyline positions={positions} pathOptions={{color:current.routeColor,weight:5,opacity:0.92}}/>
+      <Polyline positions={positions} pathOptions={{color:"#fff",weight:7,opacity:0.4}}/>
+      <Polyline positions={positions} pathOptions={{color:current.routeColor,weight:5,opacity:0.92}}/>
+      <Marker position={start} icon={startIcon}/>
+      <Marker position={finish} icon={finishIcon}/>
+    </MapContainer>
+    <div style={{position:"absolute",top:"10px",right:"10px",zIndex:400,background:"rgba(255,255,255,0.96)",backdropFilter:"blur(8px)",borderRadius:"10px",padding:"4px",boxShadow:"0 2px 8px rgba(0,0,0,0.15)",display:"flex",gap:"2px"}}>
+      {opts.map(o=>(
+        <button key={o.id} onClick={()=>setLayer(o.id)} type="button" title={o.label} style={{background:layer===o.id?T.primary:"transparent",color:layer===o.id?"#fff":T.text,border:"none",borderRadius:"7px",padding:"6px 10px",fontSize:"14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,minWidth:"34px"}}>{o.icon}</button>
+      ))}
+    </div>
+  </div>;
 }
 
 function RoutesPicker({distances,routes,onChange}){
@@ -986,6 +1003,81 @@ function ShareMenu({raceName,raceDate,onClose}){
       </div>
     </div>
   </div>;
+}
+
+function GalleryPicker({gallery,onChange}){
+  const {lang}=useLang();
+  const [uploading,setUploading]=useState(false);
+  async function uploadPhoto(e){
+    const files=e.target.files;
+    if(!files||files.length===0)return;
+    setUploading(true);
+    const uploaded=[];
+    for(const file of files){
+      const ext=file.name.split(".").pop();
+      const path=`gallery-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+      if(upErr){alert("⚠️ "+upErr.message);continue;}
+      const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
+      uploaded.push({id:Date.now().toString()+Math.random().toString(36).slice(2,6),url:publicUrl,caption:""});
+    }
+    onChange([...(gallery||[]),...uploaded]);
+    setUploading(false);
+    e.target.value="";
+  }
+  function removePhoto(id){onChange((gallery||[]).filter(p=>p.id!==id));}
+  function updateCaption(id,caption){onChange((gallery||[]).map(p=>p.id===id?{...p,caption}:p));}
+  return <F label={lang==="el"?"📸 Φωτογραφίες / Gallery":"📸 Photo Gallery"}>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{lang==="el"?"Ανεβάστε φωτογραφίες του αγώνα ή προηγούμενων εκδόσεων.":"Upload race photos or photos from past editions."}</div>
+    {(gallery||[]).length>0&&(
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:"10px",marginBottom:"12px"}}>
+        {gallery.map(p=>(
+          <div key={p.id} style={{position:"relative",borderRadius:"10px",overflow:"hidden",background:T.bg,border:`1px solid ${T.border}`}}>
+            <img src={p.url} alt="" style={{width:"100%",height:"100px",objectFit:"cover",display:"block"}}/>
+            <button onClick={()=>removePhoto(p.id)} type="button" style={{position:"absolute",top:"6px",right:"6px",background:"rgba(220,38,38,0.95)",color:"#fff",border:"none",borderRadius:"50%",width:"26px",height:"26px",cursor:"pointer",fontSize:"14px",fontFamily:"inherit",fontWeight:700,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            <input value={p.caption||""} onChange={e=>updateCaption(p.id,e.target.value)} placeholder={lang==="el"?"Λεζάντα...":"Caption..."} style={{width:"100%",border:"none",padding:"6px 8px",fontSize:"11px",background:T.bg,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+          </div>
+        ))}
+      </div>
+    )}
+    <label style={{display:"block",cursor:uploading?"wait":"pointer",background:T.bg,border:`2px dashed ${T.border}`,borderRadius:"10px",padding:"20px",textAlign:"center",color:T.textMid,fontSize:"13px",opacity:uploading?0.6:1}}>
+      {uploading?(lang==="el"?"Ανέβασμα...":"Uploading..."):(lang==="el"?"📷 Επιλέξτε φωτογραφίες (μπορείτε πολλές)":"📷 Choose photos (multiple allowed)")}
+      <input type="file" accept="image/*" multiple onChange={uploadPhoto} style={{display:"none"}} disabled={uploading}/>
+    </label>
+  </F>;
+}
+
+function GalleryDisplay({gallery}){
+  const {lang}=useLang();
+  const [zoomedIndex,setZoomedIndex]=useState(null);
+  if(!gallery||gallery.length===0)return null;
+  function close(){setZoomedIndex(null);}
+  function prev(e){if(e)e.stopPropagation();setZoomedIndex(i=>(i-1+gallery.length)%gallery.length);}
+  function next(e){if(e)e.stopPropagation();setZoomedIndex(i=>(i+1)%gallery.length);}
+  return <>
+    <div style={{background:T.bgAlt,borderRadius:"16px",padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+      <h3 style={{margin:"0 0 18px",color:T.text,fontSize:"15px",fontWeight:800,letterSpacing:"-0.01em"}}>📸 {lang==="el"?"Φωτογραφίες":"Photos"} <span style={{color:T.textLight,fontWeight:600,fontSize:"13px"}}>({gallery.length})</span></h3>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:"10px"}}>
+        {gallery.map((p,i)=>(
+          <button key={p.id||i} onClick={()=>setZoomedIndex(i)} type="button" style={{padding:0,border:"none",background:"none",cursor:"pointer",borderRadius:"12px",overflow:"hidden",position:"relative",aspectRatio:"1/1",transition:"transform 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.03)";}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
+            <img src={p.url} alt={p.caption||""} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
+          </button>
+        ))}
+      </div>
+    </div>
+    {zoomedIndex!==null&&(
+      <div onClick={close} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",cursor:"pointer"}}>
+        <button onClick={e=>{e.stopPropagation();close();}} aria-label="Close" style={{position:"absolute",top:"20px",right:"20px",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",border:"none",color:"#fff",width:"44px",height:"44px",borderRadius:"50%",cursor:"pointer",fontSize:"22px",fontFamily:"inherit",zIndex:2}}>×</button>
+        {gallery.length>1&&<button onClick={prev} aria-label="Previous" style={{position:"absolute",left:"20px",top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",border:"none",color:"#fff",width:"50px",height:"50px",borderRadius:"50%",cursor:"pointer",fontSize:"24px",fontFamily:"inherit",zIndex:2}}>‹</button>}
+        <div onClick={e=>e.stopPropagation()} style={{maxWidth:"90vw",maxHeight:"90vh",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px"}}>
+          <img src={gallery[zoomedIndex].url} alt="" style={{maxWidth:"100%",maxHeight:"80vh",borderRadius:"8px",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}/>
+          {gallery[zoomedIndex].caption&&<div style={{color:"#fff",fontSize:"14px",textAlign:"center",maxWidth:"600px"}}>{gallery[zoomedIndex].caption}</div>}
+          <div style={{color:"rgba(255,255,255,0.7)",fontSize:"12px"}}>{zoomedIndex+1} / {gallery.length}</div>
+        </div>
+        {gallery.length>1&&<button onClick={next} aria-label="Next" style={{position:"absolute",right:"20px",top:"50%",transform:"translateY(-50%)",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(8px)",border:"none",color:"#fff",width:"50px",height:"50px",borderRadius:"50%",cursor:"pointer",fontSize:"24px",fontFamily:"inherit",zIndex:2}}>›</button>}
+      </div>
+    )}
+  </>;
 }
 
 function PublicHomePage(){
@@ -1420,7 +1512,9 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     if(!form.distance){alert(t.selectDistance);return;}
     for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){alert(`${t.pleaseComplete} ${f.label}`);return;}}
     setLoading(true);
-    let {data:runner}=await supabase.from("runners").select("*").eq("email",session.user.email).single();
+    // Step 1. Find or create runner profile
+    const {data:foundRunner}=await supabase.from("runners").select("*").eq("email",session.user.email).maybeSingle();
+    let runner=foundRunner;
     const runnerData={
       first_name:form.first_name.trim(),last_name:form.last_name.trim(),
       email:session.user.email,phone:form.phone,dob:form.dob||null,
@@ -1428,20 +1522,22 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       emergency_name:form.emergency_name,emergency_phone:form.emergency_phone
     };
     if(!runner){
-      const {data,error}=await supabase.from("runners").insert([runnerData]).select();
-      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
-      if(data)runner=data[0];
+      const {data,error}=await supabase.from("runners").insert([runnerData]).select().maybeSingle();
+      if(error){alert("Σφάλμα δημιουργίας προφίλ: "+error.message);setLoading(false);return;}
+      runner=data;
     } else {
       await supabase.from("runners").update(runnerData).eq("id",runner.id);
     }
-    if(!runner){setLoading(false);return;}
-    const {data:existing}=await supabase.from("registrations").select("*").eq("runner_id",runner.id).eq("race_id",race.id);
-    if(existing&&existing.length>0){alert(t.alreadyRegAlert);setLoading(false);return;}
+    if(!runner){alert("Σφάλμα: δεν βρέθηκε προφίλ.");setLoading(false);return;}
+    // Step 2. Check ONLY this specific race - allow same email in other races
+    const {data:existing}=await supabase.from("registrations").select("id,bib_number").eq("runner_id",runner.id).eq("race_id",race.id).maybeSingle();
+    if(existing){alert(t.alreadyRegAlert+(existing.bib_number?` BIB #${existing.bib_number}`:""));setLoading(false);return;}
+    // Step 3. Assign BIB and create the registration
     const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
     const bibNum=(maxBib+1).toString();
     const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final}]);
-    if(regError){alert("Σφάλμα εγγραφής: "+regError.message);setLoading(false);return;}
+    if(regError){alert("Σφάλμα εγγραφής: "+regError.message+"\n\nΠιθανώς υπάρχει UNIQUE constraint πάνω στο runner_id. Τρέξε το διαγνωστικό SQL.");setLoading(false);return;}
     setLoading(false);
     alert("✅ Η εγγραφή ολοκληρώθηκε! BIB #"+bibNum);
     onSuccess();
@@ -1775,6 +1871,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
         </div>
         {race.location&&<div style={{marginTop:"20px"}}><WeatherWidget location={race.location} raceDate={race.date}/></div>}
         {race.sponsors&&race.sponsors.length>0&&<div style={{marginTop:"20px"}}><SponsorsDisplay sponsors={race.sponsors}/></div>}
+        {race.gallery&&race.gallery.length>0&&<div style={{marginTop:"20px"}}><GalleryDisplay gallery={race.gallery}/></div>}
         {race.faq&&race.faq.length>0&&<div style={{marginTop:"20px"}}><FAQDisplay faq={race.faq}/></div>}
       </div>)}
 
@@ -1948,7 +2045,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[]});
+  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[]});
 
   async function uploadBanner(e){
     const file=e.target.files?.[0];
@@ -1965,8 +2062,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[]});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[]});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[]});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
@@ -1974,7 +2071,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
     const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[]};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[]};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
@@ -2073,6 +2170,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       <RoutesPicker distances={form.distances} routes={form.routes||[]} onChange={r=>setForm({...form,routes:r})}/>
       <SponsorsPicker sponsors={form.sponsors||[]} onChange={s=>setForm({...form,sponsors:s})}/>
       <FAQPicker faq={form.faq||[]} onChange={f=>setForm({...form,faq:f})}/>
+      <GalleryPicker gallery={form.gallery||[]} onChange={g=>setForm({...form,gallery:g})}/>
       <PerksPicker perks={form.perks} onChange={p=>setForm({...form,perks:p})}/>
       <EarlyBirdPicker earlyBird={form.early_bird} onChange={eb=>setForm({...form,early_bird:eb})}/>
       <CustomFieldsPicker fields={form.custom_fields} onChange={cf=>setForm({...form,custom_fields:cf})}/>
