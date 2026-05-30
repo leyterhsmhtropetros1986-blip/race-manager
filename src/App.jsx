@@ -1539,7 +1539,8 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final}]);
     if(regError){alert("Σφάλμα εγγραφής: "+regError.message+"\n\nΠιθανώς υπάρχει UNIQUE constraint πάνω στο runner_id. Τρέξε το διαγνωστικό SQL.");setLoading(false);return;}
     setLoading(false);
-    alert("✅ Η εγγραφή ολοκληρώθηκε! BIB #"+bibNum);
+    const msg=`✅ Η εγγραφή σου ολοκληρώθηκε επιτυχώς!\n\n🎫 Αριθμός BIB: #${bibNum}\n🏃 Διαδρομή: ${form.distance}\n💰 Κόστος: ${priceInfo.final.toFixed(2)}€\n\n📋 Παρακαλώ σημείωσε τον αριθμό BIB σου - θα τον χρειαστείς στον αγώνα.\n\nΜπορείς να δεις τις εγγραφές σου στο πάνελ "Οι Εγγραφές μου".`;
+    alert(msg);
     onSuccess();
   }
 
