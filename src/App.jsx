@@ -1282,7 +1282,7 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
     {tab==="available"&&(<div>
       <h2 style={{margin:"0 0 16px",color:T.text,fontSize:"18px"}}>{t.availableRacesTitle}</h2>
       {availableRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noAvailable}</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onRegister={setRegisterRace}/>))}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onRegister={(r)=>setRegisterRace(r)}/>))}</div>
     </div>)}
     {tab==="my"&&(<div>
       <h2 style={{margin:"0 0 16px",color:T.text,fontSize:"18px"}}>{t.myRegsTitle}</h2>
