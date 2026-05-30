@@ -818,71 +818,43 @@ function LoginPage({onBack}){
   </div>;
 }
 
-function AthleteRaceCard({race,registrations,runners,session,onRegister}){
-  const {t,lang}=useLang();
+function AthleteRaceCard({race,registrations,runners,session,onSelect}){
+  const {t}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
   const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
   const distances=race.distance?race.distance.split(" | "):[];
-  const statusColors={upcoming:T.warning,active:T.accent,finished:T.textLight};
-  const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
+  const statusConfig={
+    upcoming:{label:t.statusUpcoming,bg:"rgba(16,185,129,0.92)"},
+    active:{label:t.statusActive,bg:"rgba(59,130,246,0.92)"},
+    finished:{label:t.statusFinished,bg:"rgba(107,114,128,0.92)"}
+  };
+  const status=statusConfig[race.status]||statusConfig.upcoming;
   const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
-  const canRegister=!myReg&&race.status==="upcoming";
-  return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",boxShadow:T.shadow,overflow:"hidden"}}>
-    {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"160px",objectFit:"cover",display:"block"}}/>}
-    <div style={{padding:"20px 24px"}}>
-    <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"8px",flexWrap:"wrap"}}>
-      <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
-      <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
-      {hasEarlyBird&&<span style={{background:`${T.warning}20`,color:T.warning,border:`1px solid ${T.warning}55`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:700}}>🏷️ EARLY BIRD -{race.early_bird.discount_percent}%</span>}
-      {myReg&&<span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:700}}>✓ {t.regEarlyBird}</span>}
-    </div>
-    <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"10px"}}>
-      📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 👤 {totalRegs} {t.registered}
-    </div>
-    {race.description&&<div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 16px",color:T.text,fontSize:"13px",lineHeight:"1.6",marginBottom:"12px",whiteSpace:"pre-wrap"}}>💬 {race.description}</div>}
-    {myReg&&(
-      <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"12px 16px",background:`${T.accent}10`,borderRadius:"10px",border:`1px solid ${T.accent}44`,marginBottom:"12px",flexWrap:"wrap"}}>
-        <span style={{background:T.accent,color:"#fff",borderRadius:"6px",padding:"4px 10px",fontWeight:700,fontSize:"13px"}}>#{myReg.bib_number}</span>
-        <span style={{color:T.accentDark,fontSize:"13px",fontWeight:600}}>{t.alreadyReg} {myReg.distance||"—"}</span>
+  return <div onClick={()=>onSelect(race)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onSelect(race);}}} style={{background:T.bgAlt,borderRadius:"20px",overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",transition:"transform 0.2s ease, box-shadow 0.2s ease"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 12px 28px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)";}}>
+    <div style={{position:"relative",width:"100%",aspectRatio:"16/10",background:`linear-gradient(135deg,${T.primary},${T.accent})`,overflow:"hidden"}}>
+      {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"}}/>
+      <div style={{position:"absolute",top:"14px",right:"14px",display:"flex",gap:"8px",alignItems:"center"}}>
+        {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"5px 11px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.04em"}}>🏷 -{race.early_bird.discount_percent}%</span>}
+        <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
       </div>
-    )}
-    {distances.length>0&&(
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"12px",marginBottom:"12px"}}>
-        {distances.map((d,i)=>{
-          const pr=calculatePrice(race,d);
-          const isMyDistance=myReg&&myReg.distance===d;
-          return <button
-            key={i}
-            type="button"
-            onClick={()=>{if(canRegister)onRegister(race);}}
-            disabled={!canRegister&&!isMyDistance}
-            style={{
-              background:isMyDistance?`${T.accent}15`:(canRegister?`${T.primary}10`:T.bg),
-              border:`2px solid ${isMyDistance?T.accent:(canRegister?T.primary:T.border)}`,
-              borderRadius:"12px",
-              padding:"18px 16px",
-              cursor:canRegister?"pointer":"default",
-              fontFamily:"inherit",
-              textAlign:"left",
-              width:"100%",
-              minHeight:"110px",
-              display:"flex",
-              flexDirection:"column",
-              justifyContent:"space-between",
-              opacity:(!canRegister&&!isMyDistance)?0.6:1
-            }}
-          >
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"6px",marginBottom:"10px"}}>
-              <span style={{color:isMyDistance?T.accent:T.primary,fontWeight:700,fontSize:"16px"}}>🏃 {d}</span>
-              {pr.base>0&&<span style={{background:isMyDistance?T.accent:T.primary,color:"#fff",borderRadius:"6px",padding:"4px 12px",fontSize:"13px",fontWeight:700}}>{pr.isEarlyBird?pr.final.toFixed(2):pr.base}€</span>}
-            </div>
-            {canRegister&&<div style={{color:T.primary,fontSize:"12px",fontWeight:700,textAlign:"center",borderTop:`1px dashed ${T.primary}55`,paddingTop:"10px"}}>{t.clickToRegister}</div>}
-            {isMyDistance&&<div style={{color:T.accent,fontSize:"12px",fontWeight:700,textAlign:"center",borderTop:`1px dashed ${T.accent}55`,paddingTop:"10px"}}>{t.myDistance}</div>}
-          </button>;
-        })}
+      {myReg&&<div style={{position:"absolute",top:"14px",left:"14px",background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",color:T.accent,padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>✓ BIB #{myReg.bib_number}</div>}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"24px 22px 18px"}}>
+        <h3 style={{margin:"0 0 8px",color:"#fff",fontSize:"clamp(20px,4vw,24px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.15,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>{race.name}</h3>
+        <div style={{display:"flex",alignItems:"center",gap:"14px",color:"rgba(255,255,255,0.95)",fontSize:"13px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
+          <span>📅 {race.date}</span>
+          <span>📍 {race.location||"—"}</span>
+        </div>
       </div>
-    )}
-    {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
+    </div>
+    <div style={{padding:"18px 22px 20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+          {distances.slice(0,4).map((d,i)=>(<span key={i} style={{background:T.bg,color:T.text,fontSize:"12px",fontWeight:700,padding:"5px 11px",borderRadius:"8px"}}>{d}</span>))}
+          {distances.length>4&&<span style={{color:T.textMid,fontSize:"12px",fontWeight:600,padding:"5px 4px"}}>+{distances.length-4}</span>}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",color:T.textMid,fontSize:"12px",fontWeight:600}}><span style={{fontSize:"14px"}}>👤</span>{totalRegs}</div>
+      </div>
     </div>
   </div>;
 }
@@ -1154,15 +1126,210 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
   </div>;
 }
 
+function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRegister}){
+  const {t,lang}=useLang();
+  const [activeTab,setActiveTab]=useState("info");
+  const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
+  const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
+  const distances=race.distance?race.distance.split(" | "):[];
+  const canRegister=!myReg&&race.status==="upcoming";
+  const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
+  const statusConfig={
+    upcoming:{label:t.statusUpcoming,bg:"rgba(16,185,129,0.95)"},
+    active:{label:t.statusActive,bg:"rgba(59,130,246,0.95)"},
+    finished:{label:t.statusFinished,bg:"rgba(107,114,128,0.95)"}
+  };
+  const status=statusConfig[race.status]||statusConfig.upcoming;
+  const finishedRegs=registrations.filter(r=>r.race_id===race.id&&r.finish_time).sort((a,b)=>{if(a.overall_rank&&b.overall_rank)return a.overall_rank-b.overall_rank;return timeToSeconds(a.finish_time)-timeToSeconds(b.finish_time);});
+
+  function getPerkIcon(perk){
+    const first=perk?.charAt(0);
+    if(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(first||""))return first;
+    const p=(perk||"").toLowerCase();
+    if(p.includes("shirt")||p.includes("μπλούζ"))return "👕";
+    if(p.includes("medal")||p.includes("μετάλλι"))return "🏅";
+    if(p.includes("food")||p.includes("φαγητ"))return "🍝";
+    if(p.includes("water")||p.includes("νερ"))return "💧";
+    if(p.includes("goody")||p.includes("bag"))return "🎒";
+    if(p.includes("photo")||p.includes("φωτογ"))return "📸";
+    if(p.includes("shower")||p.includes("ντουζ"))return "🚿";
+    if(p.includes("medical")||p.includes("ιατρ"))return "🏥";
+    if(p.includes("timing")||p.includes("χρονο"))return "🎟️";
+    if(p.includes("cert")||p.includes("πιστοπ"))return "📋";
+    return "✓";
+  }
+  function getPerkLabel(perk){return (perk||"").replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/u,"").trim()||perk;}
+
+  async function share(){
+    if(navigator.share){
+      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});}catch(e){}
+    }else if(navigator.clipboard){
+      navigator.clipboard.writeText(window.location.href);
+      alert(lang==="el"?"Σύνδεσμος αντιγράφηκε!":"Link copied!");
+    }
+  }
+
+  const tabs=[
+    {id:"info",label:lang==="el"?"Πληροφορίες":"Information",icon:"ℹ️"},
+    {id:"routes",label:lang==="el"?"Διαδρομές":"Routes",icon:"🏃"},
+    {id:"perks",label:lang==="el"?"Παροχές":"Benefits",icon:"🎁"},
+    {id:"results",label:lang==="el"?"Αποτελέσματα":"Results",icon:"🏆"}
+  ];
+
+  return <div style={{minHeight:"100vh",background:T.bg}}>
+    <div style={{position:"relative",width:"100%",height:"clamp(280px,45vh,420px)",background:`linear-gradient(135deg,${T.primary},${T.accent})`,overflow:"hidden"}}>
+      {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.85) 100%)"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,padding:"18px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:2}}>
+        <button onClick={onBack} aria-label="Back" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"20px",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>←</button>
+        <div style={{display:"flex",gap:"8px"}}>
+          <button aria-label="Favorite" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"18px",fontFamily:"inherit"}}>♡</button>
+          <button onClick={share} aria-label="Share" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"16px",fontFamily:"inherit"}}>↗</button>
+        </div>
+      </div>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"28px 20px 28px"}}>
+        <div style={{maxWidth:"1000px",margin:"0 auto"}}>
+          <div style={{display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"}}>
+            <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 14px",borderRadius:"999px",fontSize:"11px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
+            {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>🏷 EARLY BIRD -{race.early_bird.discount_percent}%</span>}
+            {myReg&&<span style={{background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",color:T.accent,padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>✓ BIB #{myReg.bib_number}</span>}
+          </div>
+          <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)"}}>{race.name}</h1>
+          <div style={{display:"flex",alignItems:"center",gap:"18px",color:"rgba(255,255,255,0.95)",fontSize:"14px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
+            <span>📅 {race.date}</span>
+            <span>📍 {race.location||"—"}</span>
+            <span>👤 {totalRegs}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style={{background:T.bgAlt,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:10,boxShadow:"0 1px 0 rgba(0,0,0,0.02)"}}>
+      <div style={{maxWidth:"1000px",margin:"0 auto",display:"flex",padding:"0 20px",overflowX:"auto"}}>
+        {tabs.map(tb=>(
+          <button key={tb.id} onClick={()=>setActiveTab(tb.id)} aria-pressed={activeTab===tb.id} style={{padding:"16px 18px",fontSize:"13px",fontWeight:activeTab===tb.id?800:600,color:activeTab===tb.id?T.primary:T.textMid,background:"none",border:"none",borderBottom:activeTab===tb.id?`3px solid ${T.primary}`:"3px solid transparent",cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit",marginBottom:"-1px",display:"flex",alignItems:"center",gap:"6px"}}>
+            <span>{tb.icon}</span><span>{tb.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div style={{maxWidth:"1000px",margin:"0 auto",padding:"28px 20px 100px"}}>
+      {activeTab==="info"&&(<div>
+        {race.description&&<div style={{background:T.bgAlt,borderRadius:"16px",padding:"24px",marginBottom:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",color:T.text,fontSize:"15px",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{race.description}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"14px"}}>
+          <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:`${T.primary}15`,color:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",marginBottom:"14px"}}>📅</div>
+            <div style={{color:T.textMid,fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"4px"}}>{lang==="el"?"Ημερομηνία":"Date"}</div>
+            <div style={{color:T.text,fontSize:"16px",fontWeight:700}}>{race.date}</div>
+          </div>
+          <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:`${T.accent}15`,color:T.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",marginBottom:"14px"}}>📍</div>
+            <div style={{color:T.textMid,fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"4px"}}>{lang==="el"?"Τοποθεσία":"Location"}</div>
+            <div style={{color:T.text,fontSize:"16px",fontWeight:700}}>{race.location||"—"}</div>
+          </div>
+          <div style={{background:T.bgAlt,borderRadius:"16px",padding:"22px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:`${T.warning}15`,color:T.warning,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",marginBottom:"14px"}}>👥</div>
+            <div style={{color:T.textMid,fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"4px"}}>{lang==="el"?"Εγγεγραμμένοι":"Registered"}</div>
+            <div style={{color:T.text,fontSize:"16px",fontWeight:700}}>{totalRegs}{race.max_runners?` / ${race.max_runners}`:""}</div>
+          </div>
+        </div>
+      </div>)}
+
+      {activeTab==="routes"&&(<div>
+        {distances.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>—</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {distances.map((d,i)=>{
+            const pr=calculatePrice(race,d);
+            const isMyDistance=myReg&&myReg.distance===d;
+            const km=parseDistanceKm(d);
+            const pricingEntry=(race.pricing||[]).find(p=>p.distance===d);
+            const elevation=pricingEntry?.elevation;
+            return <div key={i} style={{background:T.bgAlt,borderRadius:"18px",padding:"22px 24px",boxShadow:isMyDistance?`0 0 0 2px ${T.accent}, 0 4px 16px rgba(45,167,127,0.12)`:"0 2px 10px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:"18px",flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:"16px",flex:"1 1 280px",minWidth:0}}>
+                <div style={{width:"56px",height:"56px",borderRadius:"16px",background:isMyDistance?T.accent:`${T.primary}15`,color:isMyDistance?"#fff":T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",flexShrink:0}}>🏃</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.text,fontWeight:800,fontSize:"18px",marginBottom:"6px"}}>{d}</div>
+                  <div style={{display:"flex",gap:"14px",flexWrap:"wrap",color:T.textMid,fontSize:"12px",fontWeight:600,alignItems:"center"}}>
+                    {km>0&&<span>📏 {km}km</span>}
+                    {elevation&&<span>⛰ +{elevation}m</span>}
+                    {pr.base>0&&<span style={{color:isMyDistance?T.accent:T.primary,fontSize:"15px",fontWeight:800}}>{pr.isEarlyBird?pr.final.toFixed(2):pr.base}€{pr.isEarlyBird&&<span style={{textDecoration:"line-through",color:T.textLight,marginLeft:"6px",fontSize:"12px",fontWeight:500}}>{pr.base.toFixed(2)}€</span>}</span>}
+                  </div>
+                </div>
+              </div>
+              <button onClick={()=>{if(canRegister)onRegister(race);}} disabled={!canRegister} style={{background:isMyDistance?T.accent:(canRegister?T.primary:T.borderDark),color:"#fff",border:"none",borderRadius:"14px",padding:"14px 28px",fontSize:"14px",fontWeight:800,letterSpacing:"0.02em",cursor:canRegister?"pointer":"default",fontFamily:"inherit",boxShadow:canRegister?"0 4px 14px rgba(74,93,199,0.3)":"none",opacity:canRegister||isMyDistance?1:0.6,minWidth:"140px"}}>{isMyDistance?`✓ ${t.myDistance}`:(canRegister?(lang==="el"?"Εγγραφή →":"Register →"):(race.status==="finished"?t.statusFinished:"—"))}</button>
+            </div>;
+          })}
+        </div>
+      </div>)}
+
+      {activeTab==="perks"&&(<div>
+        {(race.perks||[]).length===0?(<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>—</div>):(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:"14px"}}>
+          {(race.perks||[]).map((p,i)=>{
+            const translated=translatePerk(p,lang);
+            const icon=getPerkIcon(translated);
+            const label=getPerkLabel(translated);
+            return <div key={i} style={{background:T.bgAlt,borderRadius:"16px",padding:"24px 18px",textAlign:"center",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px"}}>
+              <div style={{width:"54px",height:"54px",borderRadius:"16px",background:`linear-gradient(135deg, ${T.accent}25, ${T.primary}25)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px"}}>{icon}</div>
+              <div style={{color:T.text,fontSize:"13px",fontWeight:700,lineHeight:1.3}}>{label}</div>
+            </div>;
+          })}
+        </div>)}
+      </div>)}
+
+      {activeTab==="results"&&(<div>
+        {finishedRegs.length===0?(
+          <div style={{background:T.bgAlt,borderRadius:"16px",padding:"60px 20px",textAlign:"center",color:T.textLight,fontSize:"14px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{fontSize:"40px",marginBottom:"12px"}}>🏁</div>
+            {t.resultsNoData}
+          </div>
+        ):(
+          <div style={{background:T.bgAlt,borderRadius:"16px",overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            {finishedRegs.map((reg,i)=>{
+              const r=runners.find(x=>x.id===reg.runner_id)||{};
+              const rank=reg.overall_rank||(i+1);
+              return <div key={reg.id} style={{display:"flex",alignItems:"center",gap:"14px",padding:"14px 18px",borderTop:i?`1px solid ${T.border}`:"none"}}>
+                <div style={{width:"36px",height:"36px",borderRadius:"50%",background:rank===1?"#fbbf24":rank===2?"#94a3b8":rank===3?"#cd7f32":T.bg,color:rank<=3?"#fff":T.text,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"13px",flexShrink:0}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.text,fontWeight:700,fontSize:"14px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.first_name} {r.last_name}</div>
+                  <div style={{color:T.textLight,fontSize:"12px"}}>#{reg.bib_number}{reg.distance?` · ${reg.distance}`:""}</div>
+                </div>
+                <div style={{fontFamily:"monospace",fontWeight:800,color:T.text,fontSize:"14px"}}>{formatTime(reg.finish_time)}</div>
+              </div>;
+            })}
+          </div>
+        )}
+      </div>)}
+    </div>
+
+    {canRegister&&distances.length>0&&activeTab!=="routes"&&(
+      <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"14px 20px",background:`linear-gradient(180deg, rgba(245,243,239,0) 0%, ${T.bg} 60%)`,zIndex:20}}>
+        <div style={{maxWidth:"1000px",margin:"0 auto"}}>
+          <button onClick={()=>onRegister(race)} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"16px",padding:"16px 24px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 6px 20px rgba(74,93,199,0.35), 0 2px 6px rgba(0,0,0,0.08)",letterSpacing:"0.02em"}}>{lang==="el"?"Εγγραφή στον Αγώνα →":"Register for Race →"}</button>
+        </div>
+      </div>
+    )}
+  </div>;
+}
+
 function AthleteDashboard({races,registrations,runners,profile,session,onRefresh}){
   const {t}=useLang();
   const [registerRace,setRegisterRace]=useState(null);
+  const [selectedRace,setSelectedRace]=useState(null);
   const [tab,setTab]=useState("available");
   const myRunner=runners.find(r=>r.email===session.user.email);
   const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
   const myRaceIds=myRegs.map(r=>r.race_id);
   const availableRaces=races.filter(r=>r.status==="upcoming");
   const myRaces=races.filter(r=>myRaceIds.includes(r.id));
+
+  if(selectedRace){
+    const currentRace=races.find(r=>r.id===selectedRace.id)||selectedRace;
+    return <><RaceDetailsPage race={currentRace} registrations={registrations} runners={runners} profile={profile} session={session} onBack={()=>setSelectedRace(null)} onRegister={r=>setRegisterRace(r)}/>
+      {registerRace&&<AthleteRegistrationForm race={registerRace} profile={profile} session={session} onClose={()=>setRegisterRace(null)} onSuccess={()=>{setRegisterRace(null);onRefresh();}}/>}
+    </>;
+  }
 
   return <div>
     <div style={{display:"flex",gap:"6px",marginBottom:"24px",flexWrap:"wrap"}}>
@@ -1171,25 +1338,15 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
       <button onClick={()=>setTab("profile")} style={{background:tab==="profile"?T.primary:T.bgAlt,color:tab==="profile"?"#fff":T.textMid,border:`1px solid ${tab==="profile"?T.primary:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="profile"?700:500,fontFamily:"inherit"}}>{t.profileTab}</button>
     </div>
     {tab==="available"&&(<div>
-      <h2 style={{margin:"0 0 16px",color:T.text,fontSize:"18px"}}>{t.availableRacesTitle}</h2>
+      <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.availableRacesTitle}</h2>
       {availableRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noAvailable}</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onRegister={setRegisterRace}/>))}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}</div>
     </div>)}
     {tab==="my"&&(<div>
-      <h2 style={{margin:"0 0 16px",color:T.text,fontSize:"18px"}}>{t.myRegsTitle}</h2>
+      <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.myRegsTitle}</h2>
       {myRaces.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{t.noRegs}</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
-        {myRaces.map(race=>{
-          const reg=myRegs.find(r=>r.race_id===race.id);
-          return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px 24px",boxShadow:T.shadow}}>
-            <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"10px",flexWrap:"wrap"}}>
-              <span style={{background:T.accent,color:"#fff",borderRadius:"8px",padding:"4px 12px",fontWeight:700,fontSize:"15px"}}>#{reg.bib_number}</span>
-              <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
-              {reg.price_paid>0&&<span style={{color:T.accent,fontSize:"13px",fontWeight:600}}>💰 {parseFloat(reg.price_paid).toFixed(2)}€</span>}
-            </div>
-            <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8"}}>📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 🏃 {reg.distance||"—"}<br/>{t.category}: {reg.category} · {t.tshirt}: {reg.tshirt}{reg.medical_cert?" · ✅":""}</div>
-          </div>;
-        })}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>
+        {myRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}
       </div>
     </div>)}
     {tab==="profile"&&(<AthleteProfile runners={runners} registrations={registrations} races={races} session={session} onRefresh={onRefresh}/>)}
