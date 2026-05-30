@@ -1,5 +1,8 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const SUPABASE_URL = "https://kcqnykjbgqjlgcxmcaro.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0dnpl6eFXDjB1Ot26f-qsg_B9IasaUw";
@@ -451,6 +454,128 @@ function calculatePrice(race,distance){
   const now=new Date();const deadline=new Date(race.early_bird.deadline);
   if(now<=deadline){const discount=race.early_bird.discount_percent||0;return{base:basePrice,final:basePrice*(1-discount/100),isEarlyBird:true,discount,deadline:race.early_bird.deadline};}
   return{base:basePrice,final:basePrice,isEarlyBird:false};
+}
+
+function parseGPX(gpxText){
+  try{
+    const parser=new DOMParser();
+    const xml=parser.parseFromString(gpxText,"text/xml");
+    if(xml.querySelector("parsererror"))return null;
+    const trkpts=xml.querySelectorAll("trkpt");
+    const points=[];
+    trkpts.forEach(pt=>{
+      const lat=parseFloat(pt.getAttribute("lat"));
+      const lng=parseFloat(pt.getAttribute("lon"));
+      const eleEl=pt.querySelector("ele");
+      const ele=eleEl?parseFloat(eleEl.textContent):0;
+      if(!isNaN(lat)&&!isNaN(lng))points.push([lat,lng,isNaN(ele)?0:ele]);
+    });
+    return points.length>0?points:null;
+  }catch(e){return null;}
+}
+
+function haversineKm(p1,p2){
+  const R=6371;
+  const dLat=(p2[0]-p1[0])*Math.PI/180;
+  const dLng=(p2[1]-p1[1])*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(p1[0]*Math.PI/180)*Math.cos(p2[0]*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function calculateRouteStats(points){
+  if(!points||points.length<2)return{totalKm:0,gain:0,loss:0};
+  let totalKm=0,gain=0,loss=0;
+  for(let i=1;i<points.length;i++){
+    totalKm+=haversineKm(points[i-1],points[i]);
+    const diff=points[i][2]-points[i-1][2];
+    if(diff>0)gain+=diff;else loss+=Math.abs(diff);
+  }
+  return{totalKm:Math.round(totalKm*100)/100,gain:Math.round(gain),loss:Math.round(loss)};
+}
+
+function RouteMap({points,height}){
+  if(!points||points.length===0)return null;
+  const positions=points.map(p=>[p[0],p[1]]);
+  const start=positions[0];
+  const finish=positions[positions.length-1];
+  const lats=positions.map(p=>p[0]);
+  const lngs=positions.map(p=>p[1]);
+  const center=[(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2];
+  const startIcon=L.divIcon({html:'<div style="background:#10b981;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;font-family:system-ui">▶</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
+  const finishIcon=L.divIcon({html:'<div style="background:#ef4444;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;font-family:system-ui">END</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
+  return <MapContainer center={center} zoom={13} style={{height:height||"360px",width:"100%",borderRadius:"16px",zIndex:1}} scrollWheelZoom={false}>
+    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png" attribution='&copy; OpenStreetMap'/>
+    <Polyline positions={positions} pathOptions={{color:"#4a5dc7",weight:5,opacity:0.85}}/>
+    <Marker position={start} icon={startIcon}/>
+    <Marker position={finish} icon={finishIcon}/>
+  </MapContainer>;
+}
+
+function RoutesPicker({distances,routes,onChange}){
+  const {lang}=useLang();
+  const [uploading,setUploading]=useState({});
+  function getRouteFor(d){return (routes||[]).find(r=>r.distance===d);}
+  async function handleUpload(distance,e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setUploading(u=>({...u,[distance]:true}));
+    try{
+      const text=await file.text();
+      const points=parseGPX(text);
+      if(!points||points.length<2){
+        alert(lang==="el"?"Μη έγκυρο αρχείο GPX":"Invalid GPX file");
+        setUploading(u=>({...u,[distance]:false}));
+        return;
+      }
+      const stats=calculateRouteStats(points);
+      const newRoute={distance,points,total_km:stats.totalKm,elevation_gain:stats.gain,elevation_loss:stats.loss,file_name:file.name};
+      const filtered=(routes||[]).filter(r=>r.distance!==distance);
+      onChange([...filtered,newRoute]);
+    }catch(err){
+      alert("Error: "+err.message);
+    }
+    setUploading(u=>({...u,[distance]:false}));
+  }
+  function removeRoute(distance){
+    if(!confirm(lang==="el"?"Διαγραφή χάρτη;":"Delete route map?"))return;
+    onChange((routes||[]).filter(r=>r.distance!==distance));
+  }
+  if(distances.length===0)return <div style={{background:`${T.warning}15`,border:`1px solid ${T.warning}44`,borderRadius:"8px",padding:"12px",color:T.warning,fontSize:"12px",marginBottom:"14px"}}>{lang==="el"?"⚠️ Πρόσθεσε πρώτα διαδρομές για να ανεβάσεις GPX":"⚠️ Add distances first"}</div>;
+  return <F label={lang==="el"?"🗺 Χάρτες Διαδρομών (GPX)":"🗺 Route Maps (GPX)"}>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{lang==="el"?"Ανέβασε .gpx για κάθε διαδρομή. Υπολογίζονται αυτόματα km και υψομετρικά.":"Upload .gpx per distance. KM and elevation calculated automatically."}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+      {distances.map(d=>{
+        const route=getRouteFor(d);
+        return <div key={d} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
+            <div style={{flex:"1 1 200px",minWidth:0}}>
+              <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>🏃 {d}</div>
+              {route?(
+                <div style={{color:T.textMid,fontSize:"12px",marginTop:"4px"}}>📏 {route.total_km} km · ⛰ +{route.elevation_gain}m / -{route.elevation_loss}m</div>
+              ):(
+                <div style={{color:T.textLight,fontSize:"11px",marginTop:"4px"}}>{lang==="el"?"Δεν έχει χάρτη":"No map yet"}</div>
+              )}
+            </div>
+            <div style={{display:"flex",gap:"8px"}}>
+              {route?(
+                <button type="button" onClick={()=>removeRoute(d)} style={{background:"#fce8e8",color:T.danger,border:`1px solid ${T.danger}33`,borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:600}}>🗑 {lang==="el"?"Αφαίρεση":"Remove"}</button>
+              ):(
+                <label style={{cursor:uploading[d]?"wait":"pointer",background:T.primary,color:"#fff",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,fontFamily:"inherit",display:"inline-block",opacity:uploading[d]?0.6:1}}>
+                  {uploading[d]?(lang==="el"?"Επεξεργασία...":"Processing..."):"📤 Upload GPX"}
+                  <input type="file" accept=".gpx" onChange={e=>handleUpload(d,e)} style={{display:"none"}} disabled={!!uploading[d]}/>
+                </label>
+              )}
+            </div>
+          </div>
+          {route&&route.points&&route.points.length>0&&(
+            <div style={{marginTop:"10px"}}>
+              <RouteMap points={route.points} height="220px"/>
+            </div>
+          )}
+        </div>;
+      })}
+    </div>
+  </F>;
 }
 
 function PublicHomePage(){
@@ -1173,6 +1298,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
   const tabs=[
     {id:"info",label:lang==="el"?"Πληροφορίες":"Information",icon:"ℹ️"},
     {id:"routes",label:lang==="el"?"Διαδρομές":"Routes",icon:"🏃"},
+    {id:"map",label:lang==="el"?"Χάρτης":"Map",icon:"🗺"},
     {id:"perks",label:lang==="el"?"Παροχές":"Benefits",icon:"🎁"},
     {id:"results",label:lang==="el"?"Αποτελέσματα":"Results",icon:"🏆"}
   ];
@@ -1262,6 +1388,40 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
             </div>;
           })}
         </div>
+      </div>)}
+
+      {activeTab==="map"&&(<div>
+        {(race.routes||[]).length===0?(
+          <div style={{background:T.bgAlt,borderRadius:"16px",padding:"60px 20px",textAlign:"center",color:T.textLight,fontSize:"14px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+            <div style={{fontSize:"40px",marginBottom:"12px"}}>🗺</div>
+            {lang==="el"?"Δεν υπάρχει χάρτης διαδρομής ακόμα":"No route map available yet"}
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:"20px"}}>
+            {race.routes.map((route,i)=>(
+              <div key={i} style={{background:T.bgAlt,borderRadius:"16px",overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+                <div style={{padding:"20px 24px"}}>
+                  <div style={{color:T.text,fontWeight:800,fontSize:"17px",marginBottom:"10px"}}>🏃 {route.distance}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:"10px"}}>
+                    <div style={{background:T.bg,borderRadius:"10px",padding:"12px 14px"}}>
+                      <div style={{color:T.textMid,fontSize:"10px",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700}}>{lang==="el"?"Απόσταση":"Distance"}</div>
+                      <div style={{color:T.text,fontSize:"18px",fontWeight:900,marginTop:"3px"}}>📏 {route.total_km} km</div>
+                    </div>
+                    <div style={{background:"#dcfce7",borderRadius:"10px",padding:"12px 14px"}}>
+                      <div style={{color:"#15803d",fontSize:"10px",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700}}>{lang==="el"?"Άνοδος":"Gain"}</div>
+                      <div style={{color:"#15803d",fontSize:"18px",fontWeight:900,marginTop:"3px"}}>⛰ +{route.elevation_gain}m</div>
+                    </div>
+                    <div style={{background:"#fee2e2",borderRadius:"10px",padding:"12px 14px"}}>
+                      <div style={{color:"#b91c1c",fontSize:"10px",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700}}>{lang==="el"?"Κάθοδος":"Loss"}</div>
+                      <div style={{color:"#b91c1c",fontSize:"18px",fontWeight:900,marginTop:"3px"}}>⬇ -{route.elevation_loss}m</div>
+                    </div>
+                  </div>
+                </div>
+                <RouteMap points={route.points} height="400px"/>
+              </div>
+            ))}
+          </div>
+        )}
       </div>)}
 
       {activeTab==="perks"&&(<div>
@@ -1361,7 +1521,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false});
+  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[]});
 
   async function uploadBanner(e){
     const file=e.target.files?.[0];
@@ -1378,15 +1538,16 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[]});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){alert(t.fillNameDate);return;}
     if(form.distances.length===0){alert(t.addDistance);return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list};
+    const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
@@ -1482,6 +1643,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       </div>
       <DistancesPicker distances={form.distances} onChange={d=>setForm({...form,distances:d})}/>
       <PricingPicker distances={form.distances} pricing={form.pricing} onChange={p=>setForm({...form,pricing:p})}/>
+      <RoutesPicker distances={form.distances} routes={form.routes||[]} onChange={r=>setForm({...form,routes:r})}/>
       <PerksPicker perks={form.perks} onChange={p=>setForm({...form,perks:p})}/>
       <EarlyBirdPicker earlyBird={form.early_bird} onChange={eb=>setForm({...form,early_bird:eb})}/>
       <CustomFieldsPicker fields={form.custom_fields} onChange={cf=>setForm({...form,custom_fields:cf})}/>
