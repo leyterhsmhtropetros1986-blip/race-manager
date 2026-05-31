@@ -734,6 +734,586 @@ function LocationAutocomplete({value,onChange,label,placeholder}){
   </div>;
 }
 
+const LEGAL_INFO = {
+  responsible: "ΜΗΤΡΟΠΕΤΡΟΣ ΕΛΕΥΘΕΡΙΟΣ",
+  address: "Στύρα Ευβοίας, Ελλάδα",
+  email: "leyterhs.mhtropetros1986@gmail.com",
+  afm: "105127494",
+  domain: "racemanagement.gr",
+  lastUpdate: "31 Μαΐου 2026"
+};
+
+function getPrivacyText(lang){
+  if(lang==="en"){
+    return `# Privacy Policy
+
+Last update: ${LEGAL_INFO.lastUpdate}
+
+## 1. Data Controller
+
+The data controller for personal data collected through ${LEGAL_INFO.domain} is:
+
+- **${LEGAL_INFO.responsible}**
+- Address: ${LEGAL_INFO.address}
+- VAT ID: ${LEGAL_INFO.afm}
+- Email: ${LEGAL_INFO.email}
+
+## 2. Data We Collect
+
+We collect the following personal data:
+
+**For athletes:**
+- Full name, email, phone number
+- Date of birth, gender
+- ID/AMKA number (optional)
+- Address, city
+- Emergency contact info
+- Medical certificate confirmation
+- Club/Team
+- Race registrations and results
+
+**For organizers:**
+- Full name, business/organization name
+- Email, phone, address
+- Tax ID (AFM)
+
+## 3. Purpose of Processing
+
+Your data is processed for the following purposes:
+- Race registration and participation
+- Issuing official race results
+- Communication regarding registered races
+- Compliance with sports federation rules
+- Statistical analysis (anonymized)
+- Compliance with legal obligations
+
+## 4. Legal Basis
+
+The legal basis for processing is:
+- **Contract**: Your registration creates a contractual relationship
+- **Consent**: You explicitly consent during registration
+- **Legal obligation**: Tax records, sports federation reporting
+- **Legitimate interest**: Platform security and improvement
+
+## 5. Data Retention
+
+We retain personal data:
+- **Active registrations**: Until race completion + 3 years
+- **Race results**: 5 years (for historical records)
+- **Accounting data**: 10 years (legal requirement)
+- **Anonymous statistics**: Indefinitely
+
+## 6. Data Sharing
+
+We share your data only with:
+- **Race organizers** (for races you register in)
+- **Supabase** (USA, our database provider - GDPR compliant)
+- **Vercel** (USA, our hosting provider - GDPR compliant)
+- **Greek authorities** (if legally required)
+
+We do **NOT** sell or rent your data to third parties.
+
+## 7. Your Rights (GDPR)
+
+You have the right to:
+- **Access**: Request a copy of your data
+- **Rectification**: Correct inaccurate data
+- **Erasure**: Request deletion ("right to be forgotten")
+- **Portability**: Receive your data in machine-readable format
+- **Objection**: Object to processing
+- **Restriction**: Request limited processing
+- **Withdraw consent**: At any time
+
+To exercise these rights, contact us at: **${LEGAL_INFO.email}**
+
+You may also file a complaint with the **Hellenic Data Protection Authority**:
+- Website: www.dpa.gr
+- Phone: +30 210 6475600
+
+## 8. Cookies
+
+We use essential cookies for authentication and session management. See our [Cookies Policy](#cookies) for details.
+
+## 9. Security
+
+We implement appropriate technical and organizational measures:
+- HTTPS encryption (SSL/TLS)
+- Database-level Row Level Security (RLS)
+- Password encryption
+- Regular security audits
+
+## 10. Changes to This Policy
+
+We may update this policy. Changes will be announced on our website. The "Last update" date indicates the most recent revision.
+
+## 11. Contact
+
+For any privacy-related questions:
+**${LEGAL_INFO.email}**`;
+  }
+  return `# Πολιτική Απορρήτου
+
+Τελευταία ενημέρωση: ${LEGAL_INFO.lastUpdate}
+
+## 1. Υπεύθυνος Επεξεργασίας
+
+Υπεύθυνος επεξεργασίας των προσωπικών δεδομένων που συλλέγονται μέσω της πλατφόρμας ${LEGAL_INFO.domain} είναι:
+
+- **${LEGAL_INFO.responsible}**
+- Διεύθυνση: ${LEGAL_INFO.address}
+- ΑΦΜ: ${LEGAL_INFO.afm}
+- Email: ${LEGAL_INFO.email}
+
+## 2. Δεδομένα που Συλλέγουμε
+
+Συλλέγουμε τα ακόλουθα προσωπικά δεδομένα:
+
+**Για αθλητές:**
+- Ονοματεπώνυμο, email, τηλέφωνο
+- Ημερομηνία γέννησης, φύλο
+- ΑΜΚΑ (προαιρετικό)
+- Διεύθυνση, πόλη
+- Στοιχεία επικοινωνίας έκτακτης ανάγκης
+- Επιβεβαίωση ιατρικής βεβαίωσης
+- Σύλλογος/Ομάδα
+- Εγγραφές σε αγώνες και αποτελέσματα
+
+**Για διοργανωτές:**
+- Ονοματεπώνυμο, επωνυμία επιχείρησης/φορέα
+- Email, τηλέφωνο, διεύθυνση
+- ΑΦΜ
+
+## 3. Σκοπός Επεξεργασίας
+
+Τα δεδομένα σας υφίστανται επεξεργασία για:
+- Εγγραφή και συμμετοχή σε αγώνες
+- Έκδοση επίσημων αποτελεσμάτων αγώνων
+- Επικοινωνία σχετικά με αγώνες στους οποίους εγγραφήκατε
+- Συμμόρφωση με κανόνες αθλητικών ομοσπονδιών
+- Στατιστική ανάλυση (ανώνυμη)
+- Συμμόρφωση με νομικές υποχρεώσεις
+
+## 4. Νομική Βάση
+
+Η νομική βάση για την επεξεργασία είναι:
+- **Σύμβαση**: Η εγγραφή σας δημιουργεί συμβατική σχέση
+- **Συγκατάθεση**: Δίνετε ρητή συγκατάθεση κατά την εγγραφή
+- **Νομική υποχρέωση**: Φορολογικά αρχεία, αναφορές ομοσπονδιών
+- **Έννομο συμφέρον**: Ασφάλεια και βελτίωση πλατφόρμας
+
+## 5. Διατήρηση Δεδομένων
+
+Διατηρούμε προσωπικά δεδομένα:
+- **Ενεργές εγγραφές**: Μέχρι την ολοκλήρωση του αγώνα + 3 χρόνια
+- **Αποτελέσματα αγώνων**: 5 χρόνια (για ιστορικά αρχεία)
+- **Λογιστικά δεδομένα**: 10 χρόνια (νομική υποχρέωση)
+- **Ανώνυμα στατιστικά**: Επ' αόριστον
+
+## 6. Κοινοποίηση Δεδομένων
+
+Μοιραζόμαστε τα δεδομένα σας μόνο με:
+- **Διοργανωτές αγώνων** (για αγώνες στους οποίους εγγραφήκατε)
+- **Supabase** (ΗΠΑ, πάροχος βάσης δεδομένων - GDPR compliant)
+- **Vercel** (ΗΠΑ, πάροχος hosting - GDPR compliant)
+- **Ελληνικές Αρχές** (αν απαιτηθεί νομικά)
+
+**ΔΕΝ** πουλάμε ή ενοικιάζουμε τα δεδομένα σας σε τρίτους.
+
+## 7. Δικαιώματά σας (GDPR)
+
+Έχετε το δικαίωμα:
+- **Πρόσβασης**: Να ζητήσετε αντίγραφο των δεδομένων σας
+- **Διόρθωσης**: Να διορθώσετε ανακριβή δεδομένα
+- **Διαγραφής**: Να ζητήσετε διαγραφή ("δικαίωμα στη λήθη")
+- **Φορητότητας**: Να λάβετε τα δεδομένα σας σε μηχαναγνώσιμη μορφή
+- **Εναντίωσης**: Να εναντιωθείτε στην επεξεργασία
+- **Περιορισμού**: Να ζητήσετε περιορισμένη επεξεργασία
+- **Ανάκλησης συγκατάθεσης**: Οποτεδήποτε
+
+Για να ασκήσετε αυτά τα δικαιώματα, επικοινωνήστε: **${LEGAL_INFO.email}**
+
+Μπορείτε επίσης να υποβάλετε καταγγελία στην **Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα**:
+- Website: www.dpa.gr
+- Τηλέφωνο: +30 210 6475600
+- Email: contact@dpa.gr
+
+## 8. Cookies
+
+Χρησιμοποιούμε απαραίτητα cookies για authentication και διαχείριση session. Δείτε την Πολιτική Cookies για λεπτομέρειες.
+
+## 9. Ασφάλεια
+
+Εφαρμόζουμε κατάλληλα τεχνικά και οργανωτικά μέτρα:
+- HTTPS κρυπτογράφηση (SSL/TLS)
+- Row Level Security (RLS) σε επίπεδο βάσης δεδομένων
+- Κρυπτογράφηση κωδικών
+- Τακτικοί έλεγχοι ασφαλείας
+
+## 10. Αλλαγές στην Πολιτική
+
+Μπορεί να ενημερώσουμε αυτή την πολιτική. Οι αλλαγές θα ανακοινώνονται στον ιστότοπό μας. Η ημερομηνία "Τελευταία ενημέρωση" δείχνει την πιο πρόσφατη αναθεώρηση.
+
+## 11. Επικοινωνία
+
+Για οποιαδήποτε ερώτηση σχετικά με το απόρρητο:
+**${LEGAL_INFO.email}**`;
+}
+
+function getTermsText(lang){
+  if(lang==="en"){
+    return `# Terms of Service
+
+Last update: ${LEGAL_INFO.lastUpdate}
+
+## 1. Acceptance of Terms
+
+By using ${LEGAL_INFO.domain} ("the Platform"), you agree to these Terms of Service. If you do not agree, do not use the Platform.
+
+## 2. Service Description
+
+The Platform provides race registration and management services for organizers and athletes participating in running, trail, and similar sporting events.
+
+## 3. User Accounts
+
+### 3.1 Eligibility
+You must be at least 18 years old (or have parental consent for minors).
+
+### 3.2 Account Security
+You are responsible for maintaining the confidentiality of your account credentials.
+
+### 3.3 Truthful Information
+You must provide accurate and complete information during registration.
+
+## 4. Athlete Responsibilities
+
+By registering for a race, you confirm:
+- You are medically fit to participate
+- You hold a valid medical certificate (where required by race organizer)
+- You will follow race rules and safety guidelines
+- You assume the inherent risks of athletic participation
+- Race entry fees are non-refundable unless the race is cancelled
+
+## 5. Organizer Responsibilities
+
+Race organizers agree to:
+- Provide accurate race information
+- Maintain proper insurance coverage
+- Comply with sports federation rules
+- Honor announced refund policies
+- Properly handle athlete personal data
+- Obtain necessary permits and approvals
+
+## 6. Platform Operator's Role
+
+${LEGAL_INFO.responsible}, as platform operator:
+- Provides technical infrastructure
+- Is NOT responsible for race execution
+- Is NOT liable for injuries during races
+- Is NOT a party to the contract between athletes and organizers
+
+## 7. Payments
+
+- Race fees are paid directly to organizers (currently via bank transfer)
+- The Platform does not currently process payments
+- Refund policies are set by each organizer
+
+## 8. Intellectual Property
+
+All Platform content (excluding user-submitted content) is owned by ${LEGAL_INFO.responsible}. Unauthorized reproduction is prohibited.
+
+## 9. User Content
+
+By submitting content (race information, profile data), you grant us a license to use it for Platform operation.
+
+## 10. Prohibited Conduct
+
+You may NOT:
+- Use the Platform for illegal purposes
+- Attempt to hack or disrupt the Platform
+- Impersonate others
+- Scrape or harvest data
+- Submit false or misleading information
+
+## 11. Limitation of Liability
+
+To the maximum extent permitted by law, ${LEGAL_INFO.responsible} is not liable for:
+- Indirect, incidental, or consequential damages
+- Personal injury during races
+- Loss of data
+- Service interruptions
+
+## 12. Termination
+
+We may suspend or terminate accounts that violate these Terms.
+
+## 13. Governing Law
+
+These Terms are governed by Greek law. Disputes are subject to the courts of Athens, Greece.
+
+## 14. Changes to Terms
+
+We may update these Terms. Continued use after changes constitutes acceptance.
+
+## 15. Contact
+
+For questions about these Terms: **${LEGAL_INFO.email}**`;
+  }
+  return `# Όροι Χρήσης
+
+Τελευταία ενημέρωση: ${LEGAL_INFO.lastUpdate}
+
+## 1. Αποδοχή Όρων
+
+Με τη χρήση του ${LEGAL_INFO.domain} ("η Πλατφόρμα"), συμφωνείτε με αυτούς τους Όρους Χρήσης. Εάν δεν συμφωνείτε, μην χρησιμοποιείτε την Πλατφόρμα.
+
+## 2. Περιγραφή Υπηρεσιών
+
+Η Πλατφόρμα παρέχει υπηρεσίες εγγραφής και διαχείρισης αγώνων για διοργανωτές και αθλητές που συμμετέχουν σε αγώνες δρόμου, trail running και παρόμοιες αθλητικές εκδηλώσεις.
+
+## 3. Λογαριασμοί Χρηστών
+
+### 3.1 Επιλεξιμότητα
+Πρέπει να είστε τουλάχιστον 18 ετών (ή να έχετε γονική συγκατάθεση για ανηλίκους).
+
+### 3.2 Ασφάλεια Λογαριασμού
+Είστε υπεύθυνοι για τη διατήρηση της εμπιστευτικότητας των διαπιστευτηρίων του λογαριασμού σας.
+
+### 3.3 Αληθινές Πληροφορίες
+Πρέπει να παρέχετε ακριβείς και πλήρεις πληροφορίες κατά την εγγραφή.
+
+## 4. Ευθύνες Αθλητή
+
+Εγγραφόμενοι σε αγώνα, επιβεβαιώνετε ότι:
+- Είστε ιατρικά ικανοί να συμμετάσχετε
+- Διαθέτετε έγκυρη ιατρική βεβαίωση (όπου απαιτείται)
+- Θα ακολουθήσετε τους κανονισμούς και τις οδηγίες ασφαλείας του αγώνα
+- Αναλαμβάνετε τους εγγενείς κινδύνους της αθλητικής συμμετοχής
+- Τα τέλη συμμετοχής δεν επιστρέφονται εκτός αν ο αγώνας ακυρωθεί
+
+## 5. Ευθύνες Διοργανωτή
+
+Οι διοργανωτές αγώνων συμφωνούν να:
+- Παρέχουν ακριβείς πληροφορίες αγώνα
+- Διατηρούν κατάλληλη ασφαλιστική κάλυψη
+- Συμμορφώνονται με τους κανονισμούς αθλητικών ομοσπονδιών
+- Τιμούν τις δηλωμένες πολιτικές επιστροφών
+- Διαχειρίζονται σωστά τα προσωπικά δεδομένα αθλητών
+- Λαμβάνουν τις απαραίτητες άδειες
+
+## 6. Ρόλος του Παρόχου Πλατφόρμας
+
+Ο ${LEGAL_INFO.responsible}, ως πάροχος πλατφόρμας:
+- Παρέχει την τεχνική υποδομή
+- ΔΕΝ ευθύνεται για την εκτέλεση των αγώνων
+- ΔΕΝ ευθύνεται για τραυματισμούς κατά τη διάρκεια αγώνων
+- ΔΕΝ είναι συμβαλλόμενο μέρος στη σύμβαση μεταξύ αθλητών και διοργανωτών
+
+## 7. Πληρωμές
+
+- Τα τέλη συμμετοχής καταβάλλονται απευθείας στους διοργανωτές (μέσω τραπεζικού εμβάσματος επί του παρόντος)
+- Η Πλατφόρμα δεν επεξεργάζεται πληρωμές αυτή τη στιγμή
+- Οι πολιτικές επιστροφών καθορίζονται από κάθε διοργανωτή
+
+## 8. Πνευματική Ιδιοκτησία
+
+Όλο το περιεχόμενο της Πλατφόρμας (εξαιρουμένου του περιεχομένου που υποβάλλεται από χρήστες) ανήκει στον ${LEGAL_INFO.responsible}. Η μη εξουσιοδοτημένη αναπαραγωγή απαγορεύεται.
+
+## 9. Περιεχόμενο Χρηστών
+
+Υποβάλλοντας περιεχόμενο (πληροφορίες αγώνα, δεδομένα προφίλ), μας παρέχετε άδεια να το χρησιμοποιήσουμε για τη λειτουργία της Πλατφόρμας.
+
+## 10. Απαγορευμένη Συμπεριφορά
+
+Δεν επιτρέπεται:
+- Χρήση της Πλατφόρμας για παράνομους σκοπούς
+- Προσπάθεια hack ή διακοπής της Πλατφόρμας
+- Πλαστοπροσωπία
+- Συλλογή/scraping δεδομένων
+- Υποβολή ψευδών ή παραπλανητικών πληροφοριών
+
+## 11. Περιορισμός Ευθύνης
+
+Στο μέγιστο βαθμό που επιτρέπεται από το νόμο, ο ${LEGAL_INFO.responsible} δεν ευθύνεται για:
+- Έμμεσες, παρεπόμενες ή αποτελεσματικές ζημιές
+- Σωματικούς τραυματισμούς κατά τη διάρκεια αγώνων
+- Απώλεια δεδομένων
+- Διακοπές υπηρεσίας
+
+## 12. Διακοπή Υπηρεσίας
+
+Μπορούμε να αναστείλουμε ή να τερματίσουμε λογαριασμούς που παραβιάζουν αυτούς τους Όρους.
+
+## 13. Εφαρμοστέο Δίκαιο
+
+Αυτοί οι Όροι διέπονται από το ελληνικό δίκαιο. Οι διαφορές υπάγονται στα δικαστήρια των Αθηνών.
+
+## 14. Αλλαγές στους Όρους
+
+Μπορεί να ενημερώσουμε αυτούς τους Όρους. Η συνεχιζόμενη χρήση μετά από αλλαγές συνιστά αποδοχή.
+
+## 15. Επικοινωνία
+
+Για ερωτήσεις σχετικά με αυτούς τους Όρους: **${LEGAL_INFO.email}**`;
+}
+
+function getCookiesText(lang){
+  if(lang==="en"){
+    return `# Cookies Policy
+
+Last update: ${LEGAL_INFO.lastUpdate}
+
+## What Are Cookies?
+
+Cookies are small text files stored on your device when you visit a website. They help websites remember information about your visit.
+
+## Cookies We Use
+
+### Essential Cookies (Required)
+- **Authentication**: To keep you logged in
+- **Session management**: To maintain your session
+
+These cookies are required for the Platform to function and cannot be disabled.
+
+### Functional Cookies (Optional)
+- **Language preference**: Remembers your language choice (el/en)
+- **Dark mode**: Remembers your theme preference
+
+### Local Storage
+We use browser local storage for:
+- Dark mode preference
+- PWA install prompt dismissal
+- Recently selected race filters
+
+## Third-Party Services
+
+We use:
+- **Supabase Auth** (for authentication cookies)
+- **Vercel** (for hosting analytics, anonymized)
+
+## Your Choices
+
+You can:
+- Block cookies in your browser settings
+- Delete existing cookies
+- Use incognito/private browsing
+
+Note: Blocking essential cookies will prevent the Platform from working.
+
+## Contact
+
+Questions about cookies: **${LEGAL_INFO.email}**`;
+  }
+  return `# Πολιτική Cookies
+
+Τελευταία ενημέρωση: ${LEGAL_INFO.lastUpdate}
+
+## Τι είναι τα Cookies;
+
+Τα cookies είναι μικρά αρχεία κειμένου που αποθηκεύονται στη συσκευή σας όταν επισκέπτεστε έναν ιστότοπο. Βοηθούν τους ιστότοπους να θυμούνται πληροφορίες σχετικά με την επίσκεψή σας.
+
+## Cookies που Χρησιμοποιούμε
+
+### Απαραίτητα Cookies
+- **Authentication**: Για να παραμείνετε συνδεδεμένοι
+- **Διαχείριση Session**: Για τη διατήρηση της συνεδρίας σας
+
+Αυτά τα cookies είναι απαραίτητα για τη λειτουργία της Πλατφόρμας και δεν μπορούν να απενεργοποιηθούν.
+
+### Λειτουργικά Cookies (Προαιρετικά)
+- **Προτίμηση γλώσσας**: Θυμάται την επιλογή γλώσσας σας (el/en)
+- **Dark mode**: Θυμάται την προτίμηση θέματος
+
+### Local Storage (Τοπική αποθήκευση)
+Χρησιμοποιούμε τοπική αποθήκευση του browser για:
+- Προτίμηση Dark Mode
+- Απόκρυψη PWA install prompt
+- Πρόσφατα επιλεγμένα φίλτρα αγώνων
+
+## Υπηρεσίες Τρίτων
+
+Χρησιμοποιούμε:
+- **Supabase Auth** (για cookies authentication)
+- **Vercel** (για στατιστικά hosting, ανώνυμα)
+
+## Οι Επιλογές σας
+
+Μπορείτε να:
+- Μπλοκάρετε τα cookies από τις ρυθμίσεις του browser
+- Διαγράψετε υπάρχοντα cookies
+- Χρησιμοποιήσετε incognito/ιδιωτική περιήγηση
+
+Σημείωση: Το μπλοκάρισμα των απαραίτητων cookies θα εμποδίσει τη λειτουργία της Πλατφόρμας.
+
+## Επικοινωνία
+
+Ερωτήσεις σχετικά με cookies: **${LEGAL_INFO.email}**`;
+}
+
+function renderMarkdown(text){
+  // Simple markdown renderer for legal text
+  const lines=text.split("\n");
+  const elements=[];
+  let listItems=[];
+  function flushList(){
+    if(listItems.length>0){
+      elements.push(<ul key={"ul"+elements.length} style={{paddingLeft:"22px",margin:"8px 0 14px",color:T.textMid,fontSize:"14px",lineHeight:1.7}}>{listItems.map((item,i)=><li key={i} dangerouslySetInnerHTML={{__html:item.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")}}/>)}</ul>);
+      listItems=[];
+    }
+  }
+  lines.forEach((line,idx)=>{
+    if(line.startsWith("# ")){flushList();elements.push(<h1 key={idx} style={{color:T.text,fontSize:"24px",fontWeight:900,margin:"0 0 18px",borderBottom:`2px solid ${T.primary}`,paddingBottom:"10px"}}>{line.substring(2)}</h1>);}
+    else if(line.startsWith("## ")){flushList();elements.push(<h2 key={idx} style={{color:T.text,fontSize:"18px",fontWeight:800,margin:"24px 0 10px"}}>{line.substring(3)}</h2>);}
+    else if(line.startsWith("### ")){flushList();elements.push(<h3 key={idx} style={{color:T.text,fontSize:"15px",fontWeight:700,margin:"16px 0 6px"}}>{line.substring(4)}</h3>);}
+    else if(line.startsWith("- ")){listItems.push(line.substring(2));}
+    else if(line.trim()===""){flushList();}
+    else {flushList();const html=line.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");elements.push(<p key={idx} style={{color:T.textMid,fontSize:"14px",lineHeight:1.7,margin:"0 0 12px"}} dangerouslySetInnerHTML={{__html:html}}/>);}
+  });
+  flushList();
+  return elements;
+}
+
+function LegalModal({page,onClose}){
+  const {lang}=useLang();
+  const text=page==="privacy"?getPrivacyText(lang):page==="terms"?getTermsText(lang):getCookiesText(lang);
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:T.bgAlt,borderRadius:"20px",maxWidth:"760px",width:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 30px 80px rgba(0,0,0,0.3)"}}>
+      <div style={{padding:"20px 28px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <div style={{display:"flex",gap:"6px"}}>
+          <button onClick={()=>onClose("privacy")} style={{background:page==="privacy"?T.primary:T.bg,color:page==="privacy"?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>🛡 {lang==="el"?"Απόρρητο":"Privacy"}</button>
+          <button onClick={()=>onClose("terms")} style={{background:page==="terms"?T.primary:T.bg,color:page==="terms"?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>📋 {lang==="el"?"Όροι":"Terms"}</button>
+          <button onClick={()=>onClose("cookies")} style={{background:page==="cookies"?T.primary:T.bg,color:page==="cookies"?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>🍪 Cookies</button>
+        </div>
+        <button onClick={()=>onClose(null)} style={{background:"none",border:"none",color:T.textLight,fontSize:"26px",cursor:"pointer",width:"32px",height:"32px"}}>×</button>
+      </div>
+      <div style={{padding:"28px",overflowY:"auto",flex:1}}>
+        {renderMarkdown(text)}
+      </div>
+    </div>
+  </div>;
+}
+
+function Footer(){
+  const {lang}=useLang();
+  const [legalPage,setLegalPage]=useState(null);
+  return <>
+    <footer style={{borderTop:`1px solid ${T.border}`,background:T.bgAlt,padding:"24px 20px",marginTop:"40px",textAlign:"center"}}>
+      <div style={{maxWidth:"960px",margin:"0 auto"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"14px 24px",justifyContent:"center",marginBottom:"14px"}}>
+          <button onClick={()=>setLegalPage("privacy")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🛡 {lang==="el"?"Απόρρητο":"Privacy"}</button>
+          <button onClick={()=>setLegalPage("terms")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📋 {lang==="el"?"Όροι Χρήσης":"Terms"}</button>
+          <button onClick={()=>setLegalPage("cookies")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🍪 Cookies</button>
+          <a href={`mailto:${LEGAL_INFO.email}`} style={{color:T.textMid,fontSize:"13px",textDecoration:"none",fontWeight:600}}>✉️ {lang==="el"?"Επικοινωνία":"Contact"}</a>
+        </div>
+        <div style={{color:T.textLight,fontSize:"11px",lineHeight:1.6}}>
+          © {new Date().getFullYear()} {LEGAL_INFO.responsible} · ΑΦΜ {LEGAL_INFO.afm} · {LEGAL_INFO.address}<br/>
+          racemanagement.gr · {lang==="el"?"Πλατφόρμα Διαχείρισης Αγώνων":"Race Management Platform"}
+        </div>
+      </div>
+    </footer>
+    {legalPage&&<LegalModal page={legalPage} onClose={p=>setLegalPage(p)}/>}
+  </>;
+}
+
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -3378,6 +3958,7 @@ function AppContent(){
         {tab==="admin"&&isAdmin&&<AdminPanel/>}
       </div>
     </>)}
+    <Footer/>
   </div>;
 }
 
