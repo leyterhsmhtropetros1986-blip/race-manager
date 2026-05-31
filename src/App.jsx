@@ -2568,6 +2568,10 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   async function save(){
     if(!form.name||!form.date){toast(t.fillNameDate,"warning");return;}
+    // Validate race date is not in the past
+    const raceDate=new Date(form.date);
+    const today=new Date();today.setHours(0,0,0,0);
+    if(raceDate<today){toast(lang==="el"?"⚠️ Η ημερομηνία του αγώνα δεν μπορεί να είναι στο παρελθόν":"⚠️ Race date cannot be in the past","warning");return;}
     if(form.distances.length===0){toast(t.addDistance,"warning");return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
@@ -2739,7 +2743,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
         </label>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-        <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+        <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} min={new Date().toISOString().split("T")[0]}/>
         <In label={t.location} value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/>
       </div>
       <DistancesPicker distances={form.distances} onChange={d=>setForm({...form,distances:d})}/>
