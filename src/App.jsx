@@ -41,6 +41,10 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
     html {
       transition: filter 0.3s ease, background 0.3s ease;
     }
+    @keyframes tickerScroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
     /* Smoother button hovers */
     button {
       transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
@@ -542,6 +546,90 @@ function AddToCalendarMenu({race,onClose}){
           <span>{lang==="el"?"Apple Calendar / .ics":"Apple Calendar / .ics"}</span>
         </button>
       </div>
+    </div>
+  </div>;
+}
+
+function RecentRegistrationsTicker(){
+  const {lang}=useLang();
+  const [items,setItems]=useState([]);
+  useEffect(()=>{
+    (async()=>{
+      // Get recent registrations across all races
+      const {data}=await supabase
+        .from("registrations")
+        .select("id,bib_number,distance,created_at,race_id,runner_id")
+        .order("created_at",{ascending:false})
+        .limit(8);
+      if(!data||data.length===0)return;
+      const runnerIds=[...new Set(data.map(r=>r.runner_id))];
+      const raceIds=[...new Set(data.map(r=>r.race_id))];
+      const [{data:runners},{data:races}]=await Promise.all([
+        supabase.from("runners").select("id,first_name,last_name").in("id",runnerIds),
+        supabase.from("races").select("id,name").in("id",raceIds)
+      ]);
+      const enriched=data.map(reg=>{
+        const r=(runners||[]).find(x=>x.id===reg.runner_id);
+        const race=(races||[]).find(x=>x.id===reg.race_id);
+        if(!r||!race)return null;
+        return{...reg,name:`${r.first_name||""} ${(r.last_name||"").charAt(0)}.`.trim(),raceName:race.name};
+      }).filter(Boolean);
+      setItems(enriched);
+    })();
+  },[]);
+  if(items.length===0)return null;
+  return <div style={{background:`linear-gradient(90deg, ${T.primary}10, ${T.accent}10)`,border:`1px solid ${T.primary}22`,borderRadius:"12px",padding:"10px 16px",marginBottom:"20px",overflow:"hidden",position:"relative"}}>
+    <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+      <div style={{flexShrink:0,background:T.primary,color:"#fff",fontSize:"11px",fontWeight:800,padding:"3px 10px",borderRadius:"999px",letterSpacing:"0.04em"}}>🔔 LIVE</div>
+      <div style={{flex:1,overflow:"hidden",whiteSpace:"nowrap",position:"relative",maskImage:"linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)",WebkitMaskImage:"linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)"}}>
+        <div style={{display:"inline-block",animation:"tickerScroll 40s linear infinite",paddingLeft:"100%"}}>
+          {[...items,...items].map((reg,i)=>(
+            <span key={i} style={{display:"inline-block",marginRight:"40px",color:T.text,fontSize:"13px",fontWeight:600}}>
+              <span style={{color:T.accent}}>✅</span> {lang==="el"?"Ο/Η":""} <strong>{reg.name}</strong> {lang==="el"?"μόλις εγγράφηκε στον":"just registered for"} <strong style={{color:T.primary}}>{reg.raceName}</strong>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+function PWAInstallPrompt(){
+  const {lang}=useLang();
+  const [deferredPrompt,setDeferredPrompt]=useState(null);
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>{
+    function handler(e){
+      e.preventDefault();
+      setDeferredPrompt(e);
+      // Show banner if not dismissed before
+      if(localStorage.getItem("rm-pwa-dismissed")!=="1")setVisible(true);
+    }
+    window.addEventListener("beforeinstallprompt",handler);
+    return()=>window.removeEventListener("beforeinstallprompt",handler);
+  },[]);
+  async function install(){
+    if(!deferredPrompt)return;
+    deferredPrompt.prompt();
+    const{outcome}=await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setVisible(false);
+    if(outcome==="accepted")toast(lang==="el"?"✅ Η εφαρμογή εγκαταστάθηκε!":"✅ App installed!","success");
+  }
+  function dismiss(){
+    setVisible(false);
+    localStorage.setItem("rm-pwa-dismissed","1");
+  }
+  if(!visible||!deferredPrompt)return null;
+  return <div style={{position:"fixed",bottom:"20px",left:"20px",right:"20px",maxWidth:"380px",margin:"0 auto",background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"16px 18px",boxShadow:"0 10px 30px rgba(0,0,0,0.15)",zIndex:9998,display:"flex",alignItems:"center",gap:"14px"}}>
+    <div style={{fontSize:"32px",flexShrink:0}}>📲</div>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"2px"}}>{lang==="el"?"Εγκατάσταση Εφαρμογής":"Install App"}</div>
+      <div style={{color:T.textMid,fontSize:"12px",lineHeight:1.4}}>{lang==="el"?"Πιο γρήγορη πρόσβαση από το κινητό σου":"Faster access from your phone"}</div>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+      <button onClick={install} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="el"?"Εγκατάσταση":"Install"}</button>
+      <button onClick={dismiss} style={{background:"none",color:T.textLight,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"11px"}}>{lang==="el"?"Όχι τώρα":"Not now"}</button>
     </div>
   </div>;
 }
@@ -1319,6 +1407,8 @@ function PublicHomePage(){
   const [publicRaces,setPublicRaces]=useState([]);
   const [loading,setLoading]=useState(true);
   const [searchQuery,setSearchQuery]=useState("");
+  const [filterMonth,setFilterMonth]=useState("all");
+  const [sortBy,setSortBy]=useState("date_asc");
   const [viewRunners,setViewRunners]=useState(null);
 
   useEffect(()=>{
@@ -1376,14 +1466,36 @@ function PublicHomePage(){
         <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.publicRacesSub}</p>
       </div>
       <div style={{marginBottom:"20px"}}>
+<RecentRegistrationsTicker/>
         <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={t.searchPlaceholder} style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"}}>
+          <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} style={{padding:"8px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+            <option value="all">📅 {lang==="el"?"Όλοι οι μήνες":"All months"}</option>
+            <option value="1">Ιανουάριος</option><option value="2">Φεβρουάριος</option><option value="3">Μάρτιος</option>
+            <option value="4">Απρίλιος</option><option value="5">Μάιος</option><option value="6">Ιούνιος</option>
+            <option value="7">Ιούλιος</option><option value="8">Αύγουστος</option><option value="9">Σεπτέμβριος</option>
+            <option value="10">Οκτώβριος</option><option value="11">Νοέμβριος</option><option value="12">Δεκέμβριος</option>
+          </select>
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"8px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+            <option value="date_asc">📅 {lang==="el"?"Πιο κοντινός":"Soonest first"}</option>
+            <option value="date_desc">📅 {lang==="el"?"Πιο μακρινός":"Latest first"}</option>
+            <option value="name">🔤 {lang==="el"?"Όνομα Α-Ω":"Name A-Z"}</option>
+          </select>
+        </div>
       </div>
 
       {loading?(
         <SkeletonGrid count={4}/>
       ):(()=>{
         const q=searchQuery.trim().toLowerCase();
-        const filtered=q?publicRaces.filter(r=>(r.name||"").toLowerCase().includes(q)||(r.location||"").toLowerCase().includes(q)):publicRaces;
+        let filtered=q?publicRaces.filter(r=>(r.name||"").toLowerCase().includes(q)||(r.location||"").toLowerCase().includes(q)):publicRaces;
+        if(filterMonth!=="all")filtered=filtered.filter(r=>r.date&&new Date(r.date).getMonth()+1===parseInt(filterMonth));
+        filtered=[...filtered].sort((a,b)=>{
+          if(sortBy==="date_asc")return new Date(a.date||0)-new Date(b.date||0);
+          if(sortBy==="date_desc")return new Date(b.date||0)-new Date(a.date||0);
+          if(sortBy==="name")return(a.name||"").localeCompare(b.name||"","el");
+          return 0;
+        });
         if(publicRaces.length===0)return <EmptyState icon="🏃" title={lang==="el"?"Δεν υπάρχουν διαθέσιμοι αγώνες":"No available races"} message={lang==="el"?"Επίσκεψέ μας ξανά σύντομα για νέους αγώνες!":"Check back soon for new races!"}/>;
         if(filtered.length===0)return <EmptyState icon="🔍" title={lang==="el"?"Δεν βρέθηκαν αγώνες":"No races found"} message={lang==="el"?"Δοκίμασε διαφορετική αναζήτηση":"Try a different search"}/>;
         return (
@@ -3104,5 +3216,6 @@ export default function App(){
   return <LangContext.Provider value={{lang,t:STR[lang],setLang}}>
     <AppContent/>
     <ToastContainer/>
+    <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
