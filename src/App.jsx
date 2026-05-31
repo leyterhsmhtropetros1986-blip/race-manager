@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 
 // Global keyframe injection for skeleton animation
 if (typeof document !== "undefined" && !document.getElementById("rm-global-styles")) {
@@ -54,7 +54,7 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
 }
 import { createClient } from "@supabase/supabase-js";
-import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -634,6 +634,106 @@ function PWAInstallPrompt(){
   </div>;
 }
 
+function LocationAutocomplete({value,onChange,label,placeholder}){
+  const {lang}=useLang();
+  const [suggestions,setSuggestions]=useState([]);
+  const [showDrop,setShowDrop]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const debounceRef=useRef(null);
+  const wrapperRef=useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(()=>{
+    function handleClick(e){
+      if(wrapperRef.current&&!wrapperRef.current.contains(e.target))setShowDrop(false);
+    }
+    document.addEventListener("mousedown",handleClick);
+    return()=>document.removeEventListener("mousedown",handleClick);
+  },[]);
+
+  function handleChange(e){
+    const v=e.target.value;
+    onChange(v);
+    if(debounceRef.current)clearTimeout(debounceRef.current);
+    if(v.length<2){setSuggestions([]);setShowDrop(false);return;}
+    debounceRef.current=setTimeout(async()=>{
+      setLoading(true);
+      try{
+        // Photon API (OpenStreetMap, free)
+        const url=`https://photon.komoot.io/api/?q=${encodeURIComponent(v)}&lang=${lang==="el"?"default":"en"}&limit=6`;
+        const res=await fetch(url);
+        const data=await res.json();
+        const results=(data.features||[]).map(f=>{
+          const p=f.properties||{};
+          const name=p.name||"";
+          const parts=[p.city,p.county,p.state,p.country].filter(Boolean);
+          const subtitle=parts.join(", ");
+          return{
+            id:`${f.geometry.coordinates[1]},${f.geometry.coordinates[0]}`,
+            name,
+            subtitle,
+            display:[name,subtitle].filter(Boolean).join(", "),
+            lat:f.geometry.coordinates[1],
+            lng:f.geometry.coordinates[0],
+            country:p.country,
+            type:p.osm_value||p.type
+          };
+        });
+        setSuggestions(results);
+        setShowDrop(true);
+      }catch(e){console.warn("Geocoding failed",e);}
+      setLoading(false);
+    },300);
+  }
+
+  function selectSuggestion(s){
+    onChange(s.display);
+    setShowDrop(false);
+    setSuggestions([]);
+  }
+
+  function typeIcon(t){
+    if(!t)return"📍";
+    if(t.includes("city")||t.includes("town"))return"🏙";
+    if(t.includes("village"))return"🏡";
+    if(t.includes("airport"))return"✈️";
+    if(t.includes("hotel"))return"🏨";
+    if(t.includes("stadium")||t.includes("sports"))return"🏟";
+    if(t.includes("park"))return"🌳";
+    if(t.includes("beach"))return"🏖";
+    if(t.includes("mountain"))return"⛰";
+    return"📍";
+  }
+
+  return <div ref={wrapperRef} style={{position:"relative",marginBottom:"14px"}}>
+    {label&&<label style={css.label}>{label}</label>}
+    <input
+      type="text"
+      value={value||""}
+      onChange={handleChange}
+      onFocus={()=>{if(suggestions.length>0)setShowDrop(true);}}
+      placeholder={placeholder||(lang==="el"?"Π.χ. Αθήνα, Θεσσαλονίκη...":"e.g. Athens, Thessaloniki...")}
+      autoComplete="off"
+      style={css.input}
+    />
+    {loading&&<div style={{position:"absolute",right:"12px",top:label?"38px":"12px",color:T.textLight,fontSize:"12px",pointerEvents:"none"}}>⏳</div>}
+    {showDrop&&suggestions.length>0&&(
+      <div style={{position:"absolute",top:"100%",left:0,right:0,background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",marginTop:"4px",boxShadow:"0 8px 24px rgba(0,0,0,0.12)",maxHeight:"260px",overflowY:"auto",zIndex:100}}>
+        {suggestions.map(s=>(
+          <div key={s.id} onClick={()=>selectSuggestion(s)} style={{padding:"10px 14px",cursor:"pointer",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:"10px",transition:"background 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div style={{fontSize:"20px",flexShrink:0}}>{typeIcon(s.type)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.text,fontSize:"13px",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name||s.subtitle}</div>
+              {s.subtitle&&s.name&&<div style={{color:T.textLight,fontSize:"11px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.subtitle}</div>}
+            </div>
+            {s.country&&<div style={{flexShrink:0,fontSize:"10px",color:T.textLight,padding:"2px 6px",background:T.bg,borderRadius:"4px"}}>{s.country}</div>}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>;
+}
+
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -1136,6 +1236,7 @@ function RoutesPicker({distances,routes,onChange}){
 function WeatherWidget({location,raceDate}){
   const {lang}=useLang();
   const [weather,setWeather]=useState(null);
+  const [coords,setCoords]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState(null);
 
@@ -1149,6 +1250,7 @@ function WeatherWidget({location,raceDate}){
         const geoData=await geoRes.json();
         if(!geoData.results||geoData.results.length===0){if(!cancelled){setError("nogeo");setLoading(false);}return;}
         const {latitude,longitude}=geoData.results[0];
+        if(!cancelled)setCoords({lat:latitude,lng:longitude});
         const today=new Date();
         const race=raceDate?new Date(raceDate):today;
         race.setHours(12,0,0,0);
@@ -1232,6 +1334,17 @@ function WeatherWidget({location,raceDate}){
         <div style={{color:T.textLight,fontSize:"9px",letterSpacing:"0.06em",textTransform:"uppercase"}}>{lang==="el"?"Βροχή":"Rain"}</div>
       </div>
     </div>
+    {coords&&(
+      <div style={{marginTop:"14px",borderRadius:"12px",overflow:"hidden",border:`1px solid ${T.border}`}}>
+        <MapContainer center={[coords.lat,coords.lng]} zoom={11} style={{height:"160px",width:"100%"}} scrollWheelZoom={false} dragging={true} doubleClickZoom={false} zoomControl={false} attributionControl={false}>
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
+          <Marker position={[coords.lat,coords.lng]}>
+            <Popup>{location}</Popup>
+          </Marker>
+        </MapContainer>
+        <a href={`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`} target="_blank" rel="noopener noreferrer" style={{display:"block",textAlign:"center",padding:"8px",background:T.bg,color:T.primary,fontSize:"12px",fontWeight:700,textDecoration:"none",borderTop:`1px solid ${T.border}`}}>🗺 {lang==="el"?"Άνοιγμα στο Google Maps":"Open in Google Maps"} ↗</a>
+      </div>
+    )}
   </div>;
 }
 
@@ -2956,7 +3069,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.date} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} min={new Date().toISOString().split("T")[0]}/>
-        <In label={t.location} value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/>
+        <LocationAutocomplete label={t.location} value={form.location} onChange={v=>setForm({...form,location:v})} placeholder={lang==="el"?"Π.χ. Μαραθώνας, Αττική":"e.g. Marathon, Greece"}/>
       </div>
       <DistancesPicker distances={form.distances} onChange={d=>setForm({...form,distances:d})}/>
       <PricingPicker distances={form.distances} pricing={form.pricing} onChange={p=>setForm({...form,pricing:p})}/>
@@ -3276,4 +3389,3 @@ export default function App(){
     <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
-
