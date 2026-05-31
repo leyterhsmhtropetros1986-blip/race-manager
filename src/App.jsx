@@ -1897,17 +1897,54 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
     const first=perk?.charAt(0);
     if(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(first||""))return first;
     const p=(perk||"").toLowerCase();
-    if(p.includes("shirt")||p.includes("μπλούζ"))return "👕";
-    if(p.includes("medal")||p.includes("μετάλλι"))return "🏅";
-    if(p.includes("food")||p.includes("φαγητ"))return "🍝";
+    // Apparel
+    if(p.includes("shirt")||p.includes("μπλούζ")||p.includes("μπλουζ")||p.includes("φανέλ")||p.includes("φανελ"))return "👕";
+    if(p.includes("καλτσ")||p.includes("sock"))return "🧦";
+    if(p.includes("καπέλ")||p.includes("καπελ")||p.includes("hat")||p.includes("cap"))return "🧢";
+    if(p.includes("παπούτσ")||p.includes("παπουτσ")||p.includes("shoe"))return "👟";
+    if(p.includes("τσάντ")||p.includes("τσαντ")||p.includes("σακίδ")||p.includes("σακιδ")||p.includes("backpack")||p.includes("bag")||p.includes("goody"))return "🎒";
+    if(p.includes("γαντι")||p.includes("γάντι")||p.includes("glove"))return "🧤";
+    // Awards/medals
+    if(p.includes("medal")||p.includes("μετάλλ")||p.includes("μεταλλ"))return "🏅";
+    if(p.includes("κύπελλ")||p.includes("κυπελλ")||p.includes("trophy")||p.includes("award")||p.includes("βραβ"))return "🏆";
+    if(p.includes("cert")||p.includes("πιστοπ")||p.includes("diploma")||p.includes("δίπλωμ")||p.includes("διπλωμ"))return "📜";
+    // Food & drinks
+    if(p.includes("food")||p.includes("φαγητ")||p.includes("γεύμ")||p.includes("γευμ")||p.includes("meal"))return "🍝";
+    if(p.includes("σνακ")||p.includes("snack")||p.includes("μπάρ")||p.includes("μπαρ")||p.includes("μπανάν")||p.includes("μπαναν")||p.includes("banana"))return "🍌";
+    if(p.includes("καφέ")||p.includes("καφε")||p.includes("coffee"))return "☕";
     if(p.includes("water")||p.includes("νερ"))return "💧";
-    if(p.includes("goody")||p.includes("bag"))return "🎒";
+    if(p.includes("isotonic")||p.includes("ισοτον")||p.includes("gatorade")||p.includes("powerade"))return "🥤";
+    if(p.includes("beer")||p.includes("μπίρ")||p.includes("μπιρ"))return "🍺";
+    if(p.includes("μπουφέ")||p.includes("μπουφε")||p.includes("buffet"))return "🍽";
+    if(p.includes("fruit")||p.includes("φρούτ")||p.includes("φρουτ"))return "🍎";
+    // Photos & media
     if(p.includes("photo")||p.includes("φωτογ"))return "📸";
-    if(p.includes("shower")||p.includes("ντουζ"))return "🚿";
-    if(p.includes("medical")||p.includes("ιατρ"))return "🏥";
-    if(p.includes("timing")||p.includes("χρονο"))return "🎟️";
-    if(p.includes("cert")||p.includes("πιστοπ"))return "📋";
-    return "✓";
+    if(p.includes("video")||p.includes("βίντε")||p.includes("βιντε"))return "🎥";
+    // Facilities
+    if(p.includes("shower")||p.includes("ντουζ")||p.includes("ντους")||p.includes("μπάνι")||p.includes("μπανι"))return "🚿";
+    if(p.includes("parking")||p.includes("πάρκιν")||p.includes("παρκιν"))return "🅿️";
+    if(p.includes("bus")||p.includes("λεωφορ")||p.includes("μετακίν")||p.includes("μετακιν")||p.includes("transport"))return "🚌";
+    if(p.includes("locker")||p.includes("ντουλάπ")||p.includes("ντουλαπ")||p.includes("φύλαξ")||p.includes("φυλαξ"))return "🔒";
+    if(p.includes("massage")||p.includes("μασάζ")||p.includes("μασαζ"))return "💆";
+    // Medical & timing
+    if(p.includes("medical")||p.includes("ιατρ")||p.includes("doctor")||p.includes("γιατρ"))return "🏥";
+    if(p.includes("first aid")||p.includes("πρώτες βοήθ")||p.includes("πρωτες βοηθ"))return "⛑";
+    if(p.includes("timing")||p.includes("χρονομέτρ")||p.includes("χρονομετρ")||p.includes("chip"))return "⏱";
+    if(p.includes("bib")||p.includes("νούμερ")||p.includes("νουμερ"))return "🎫";
+    // Routes & nature
+    if(p.includes("gpx")||p.includes("map")||p.includes("χάρτ")||p.includes("χαρτ"))return "🗺";
+    if(p.includes("aid")||p.includes("σταθμ"))return "🚰";
+    // Tech
+    if(p.includes("app")||p.includes("εφαρμογ"))return "📱";
+    if(p.includes("wifi"))return "📶";
+    // Generic gifts
+    if(p.includes("δώρ")||p.includes("δωρ")||p.includes("gift")||p.includes("present"))return "🎁";
+    if(p.includes("σήμ")||p.includes("σημ")||p.includes("badge")||p.includes("pin"))return "📌";
+    if(p.includes("αυτοκόλλ")||p.includes("αυτοκολλ")||p.includes("sticker"))return "🏷";
+    // Activities
+    if(p.includes("party")||p.includes("πάρτ")||p.includes("παρτ")||p.includes("γιορτ"))return "🎉";
+    if(p.includes("music")||p.includes("μουσικ"))return "🎵";
+    return "🎁"; // Default: gift icon (instead of generic ✓)
   }
   function getPerkLabel(perk){return (perk||"").replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/u,"").trim()||perk;}
 
