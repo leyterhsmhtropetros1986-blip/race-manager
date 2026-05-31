@@ -2542,7 +2542,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   .paid{color:#10b981;font-weight:600;font-size:9pt}
   .pending{color:#d97706;font-weight:600;font-size:9pt}
   .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
-  .print-note{position:fixed;top:10px;right:10px;background:#4a5dc7;color:#fff;padding:10px 18px;border-radius:8px;font-size:12pt;box-shadow:0 4px 12px rgba(0,0,0,0.15);cursor:pointer;border:none;font-family:inherit;font-weight:700}
+  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#3a4dab;transform:translateY(-2px)}
   @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
 </style></head><body>
 <button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
@@ -2564,13 +2565,12 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   <div>Race Management · racemanagement.gr</div>
   <div>Εκτύπωση: ${new Date().toLocaleString("el-GR")}</div>
 </div>
-<script>setTimeout(()=>window.print(),500);</script>
 </body></html>`;
     const w=window.open("","_blank");
     if(!w){toast("⚠️ Επέτρεψε τα popups για το PDF","warning");return;}
     w.document.write(html);
     w.document.close();
-    toast("✅ Άνοιξε νέο tab - πάτα 'Save as PDF' στο dialog","success");
+    toast("✅ Άνοιξε νέο tab - πάτα '🖨️ Εκτύπωση' πάνω δεξιά","success");
   }
 
   async function exportExcel(race){
