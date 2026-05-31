@@ -2156,9 +2156,306 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
   </div>;
 }
 
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const sc=document.createElement("script");
+    sc.src=src;sc.onload=res;sc.onerror=rej;
+    document.head.appendChild(sc);
+  });
+}
+
+async function ensureJsPDF(){
+  if(window.jspdf&&window.jspdf.jsPDF)return;
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js");
+}
+
+// Greek text normalization for fuzzy matching
+function normalizeText(s){
+  if(!s)return"";
+  return String(s).toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // strip accents
+    .replace(/ς/g,"σ") // final sigma to regular
+    .replace(/\s+/g," "); // collapse whitespace
+}
+
+// Parse CSV (simple, handles quoted values)
+function parseCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return[];
+  function splitLine(line){
+    const out=[];let cur="";let inQuotes=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){if(inQuotes&&line[i+1]==='"'){cur+='"';i++;}else inQuotes=!inQuotes;}
+      else if(c===","&&!inQuotes){out.push(cur);cur="";}
+      else cur+=c;
+    }
+    out.push(cur);
+    return out.map(x=>x.trim());
+  }
+  const headers=splitLine(lines[0]).map(h=>normalizeText(h));
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const values=splitLine(lines[i]);
+    const row={};
+    headers.forEach((h,j)=>{row[h]=values[j]||"";});
+    rows.push(row);
+  }
+  return{headers,rows};
+}
+
+// Map flexible column names to standard fields
+function mapCSVRow(row){
+  // Find value by trying multiple column name variants
+  function find(...names){
+    for(const n of names){if(row[n]!==undefined&&row[n]!=="")return row[n];}
+    return"";
+  }
+  return{
+    bib:find("bib_number","bib","αριθμοσ","αριθμός","νουμερο","number","no","#"),
+    email:find("email","e-mail","mail","ηλεκτρονικη"),
+    first_name:find("first_name","firstname","name","ονομα","όνομα","fname"),
+    last_name:find("last_name","lastname","surname","επωνυμο","επώνυμο","lname"),
+    club:find("club","team","ομαδα","ομάδα","συλλογοσ","σύλλογος"),
+    finish_time:find("finish_time","time","χρονοσ","χρόνος","τερματισμοσ")
+  };
+}
+
+// Parse time string to seconds (flexible format)
+function parseTimeFlex(s){
+  if(!s)return null;
+  const v=String(s).trim().toUpperCase();
+  if(v==="DNF"||v==="DNS"||v==="DSQ")return v;
+  // Format: HH:MM:SS or MM:SS or with .ms
+  const m=v.match(/^(\d+):(\d+):(\d+)(?:\.\d+)?$/);
+  if(m)return`${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}:${m[3].padStart(2,"0")}`;
+  const m2=v.match(/^(\d+):(\d+)(?:\.\d+)?$/);
+  if(m2){const min=parseInt(m2[1]),sec=parseInt(m2[2]);
+    const h=Math.floor(min/60);const remainMin=min%60;
+    return`${String(h).padStart(2,"0")}:${String(remainMin).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  }
+  return null;
+}
+
+// Multi-criteria matching: BIB → email → name → name+club
+function matchRunner(csvRow,registrations,runners){
+  const mapped=mapCSVRow(csvRow);
+  // 1. BIB number (most reliable)
+  if(mapped.bib){
+    const bib=String(parseInt(mapped.bib,10));
+    if(bib&&bib!=="NaN"){
+      const match=registrations.find(r=>String(r.bib_number)===bib);
+      if(match)return{registration:match,method:"BIB"};
+    }
+  }
+  // 2. Email
+  if(mapped.email){
+    const email=mapped.email.toLowerCase().trim();
+    const runner=runners.find(r=>(r.email||"").toLowerCase().trim()===email);
+    if(runner){
+      const match=registrations.find(r=>r.runner_id===runner.id);
+      if(match)return{registration:match,method:"email"};
+    }
+  }
+  // 3. Full name (normalized)
+  if(mapped.first_name&&mapped.last_name){
+    const fn=normalizeText(mapped.first_name);
+    const ln=normalizeText(mapped.last_name);
+    const matches=runners.filter(r=>{
+      const rfn=normalizeText(r.first_name);
+      const rln=normalizeText(r.last_name);
+      return(rfn===fn&&rln===ln)||(rfn===ln&&rln===fn); // also try swapped
+    });
+    if(matches.length===1){
+      const match=registrations.find(r=>r.runner_id===matches[0].id);
+      if(match)return{registration:match,method:"name"};
+    }
+    // 4. Multiple name matches - try with club
+    if(matches.length>1&&mapped.club){
+      const club=normalizeText(mapped.club);
+      const refined=matches.find(r=>normalizeText(r.club).includes(club)||club.includes(normalizeText(r.club)));
+      if(refined){
+        const match=registrations.find(r=>r.runner_id===refined.id);
+        if(match)return{registration:match,method:"name+club"};
+      }
+      return{ambiguous:true,count:matches.length};
+    }
+    if(matches.length>1)return{ambiguous:true,count:matches.length};
+  }
+  return null;
+}
+
+function ImportResultsModal({race,registrations,runners,onClose,onSuccess}){
+  const {lang}=useLang();
+  const [step,setStep]=useState("upload"); // upload | preview | done
+  const [csvText,setCsvText]=useState("");
+  const [preview,setPreview]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const raceRegs=registrations.filter(r=>r.race_id===race.id);
+
+  function handleFile(e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const text=ev.target.result;
+      setCsvText(text);
+      analyzeCSV(text);
+    };
+    reader.readAsText(file,"UTF-8");
+  }
+
+  function analyzeCSV(text){
+    const parsed=parseCSV(text);
+    if(!parsed||!parsed.rows||parsed.rows.length===0){
+      toast(lang==="el"?"⚠️ Το CSV είναι κενό":"⚠️ CSV is empty","error");
+      return;
+    }
+    const matched=[];
+    const notFound=[];
+    const ambiguous=[];
+    const noTime=[];
+    parsed.rows.forEach((row,idx)=>{
+      const mapped=mapCSVRow(row);
+      const time=parseTimeFlex(mapped.finish_time);
+      const match=matchRunner(row,raceRegs,runners);
+      if(!time){noTime.push({row:idx+2,data:mapped});return;}
+      if(!match){notFound.push({row:idx+2,data:mapped});return;}
+      if(match.ambiguous){ambiguous.push({row:idx+2,data:mapped,count:match.count});return;}
+      matched.push({row:idx+2,registration:match.registration,method:match.method,time,raw:mapped});
+    });
+    setPreview({matched,notFound,ambiguous,noTime,totalRows:parsed.rows.length});
+    setStep("preview");
+  }
+
+  async function confirmImport(){
+    if(!preview||preview.matched.length===0)return;
+    setLoading(true);
+    // 1. Update finish_time για κάθε match
+    for(const m of preview.matched){
+      const time=(m.time==="DNF"||m.time==="DNS"||m.time==="DSQ")?null:m.time;
+      await supabase.from("registrations").update({finish_time:time}).eq("id",m.registration.id);
+    }
+    // 2. Re-fetch and rank: sort by time, set overall_rank
+    const {data:updated}=await supabase.from("registrations").select("*").eq("race_id",race.id);
+    const finished=(updated||[]).filter(r=>r.finish_time).sort((a,b)=>{
+      const ta=a.finish_time,tb=b.finish_time;
+      // Convert HH:MM:SS to seconds
+      const toSec=t=>{const p=String(t).split(":");return parseInt(p[0]||0)*3600+parseInt(p[1]||0)*60+parseInt(p[2]||0);};
+      return toSec(ta)-toSec(tb);
+    });
+    // Group by distance for distance-rank as well
+    const byDistance={};
+    for(let i=0;i<finished.length;i++){
+      const reg=finished[i];
+      await supabase.from("registrations").update({overall_rank:i+1}).eq("id",reg.id);
+      // Distance rank
+      if(!byDistance[reg.distance])byDistance[reg.distance]=0;
+      byDistance[reg.distance]++;
+      await supabase.from("registrations").update({category_rank:byDistance[reg.distance]}).eq("id",reg.id);
+    }
+    setLoading(false);
+    setStep("done");
+    toast(`✅ ${preview.matched.length} αποτελέσματα ενημερώθηκαν`,"success");
+    if(onSuccess)onSuccess();
+  }
+
+  return <Modal onClose={onClose}>
+    <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"20px",fontWeight:800}}>📥 {lang==="el"?"Import Αποτελεσμάτων":"Import Results"} — {race.name}</h2>
+
+    {step==="upload"&&(
+      <div>
+        <div style={{background:`${T.primary}10`,border:`1px solid ${T.primary}33`,borderRadius:"10px",padding:"14px 16px",marginBottom:"16px",color:T.text,fontSize:"13px",lineHeight:1.6}}>
+          <div style={{fontWeight:700,marginBottom:"6px"}}>📋 {lang==="el"?"Υποστηριζόμενες Στήλες":"Supported Columns"}:</div>
+          <code style={{fontSize:"11px",color:T.textMid}}>bib_number, email, first_name, last_name, club, finish_time</code>
+          <div style={{marginTop:"10px",fontSize:"12px",color:T.textMid}}>
+            {lang==="el"?"💡 Το app θα ταυτοποιήσει με αυτή τη σειρά: BIB → Email → Ονοματεπώνυμο → +Σύλλογος":"Matching order: BIB → Email → Name → +Club"}
+          </div>
+        </div>
+        <div style={{background:T.bgAlt,border:`2px dashed ${T.border}`,borderRadius:"10px",padding:"30px",textAlign:"center"}}>
+          <div style={{fontSize:"40px",marginBottom:"10px"}}>📁</div>
+          <label style={{cursor:"pointer",background:T.primary,color:"#fff",padding:"10px 22px",borderRadius:"10px",fontWeight:700,fontSize:"13px",display:"inline-block"}}>
+            {lang==="el"?"⬆️ Επιλογή CSV":"⬆️ Choose CSV"}
+            <input type="file" accept=".csv,text/csv" onChange={handleFile} style={{display:"none"}}/>
+          </label>
+          <div style={{marginTop:"10px",fontSize:"11px",color:T.textLight}}>
+            {lang==="el"?"Time format: HH:MM:SS ή MM:SS · DNF/DNS αποδεκτά":"Time format: HH:MM:SS or MM:SS · DNF/DNS supported"}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {step==="preview"&&preview&&(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:"10px",marginBottom:"16px"}}>
+          <div style={{background:"#dcfce7",borderRadius:"10px",padding:"12px",textAlign:"center"}}>
+            <div style={{fontSize:"22px",fontWeight:900,color:"#15803d"}}>{preview.matched.length}</div>
+            <div style={{fontSize:"10px",color:"#15803d",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{lang==="el"?"Βρέθηκαν":"Matched"}</div>
+          </div>
+          <div style={{background:"#fee2e2",borderRadius:"10px",padding:"12px",textAlign:"center"}}>
+            <div style={{fontSize:"22px",fontWeight:900,color:"#b91c1c"}}>{preview.notFound.length}</div>
+            <div style={{fontSize:"10px",color:"#b91c1c",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{lang==="el"?"Δεν Βρέθηκαν":"Not Found"}</div>
+          </div>
+          <div style={{background:"#fef3c7",borderRadius:"10px",padding:"12px",textAlign:"center"}}>
+            <div style={{fontSize:"22px",fontWeight:900,color:"#92400e"}}>{preview.ambiguous.length}</div>
+            <div style={{fontSize:"10px",color:"#92400e",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{lang==="el"?"Ασαφή":"Ambiguous"}</div>
+          </div>
+          <div style={{background:T.bg,borderRadius:"10px",padding:"12px",textAlign:"center"}}>
+            <div style={{fontSize:"22px",fontWeight:900,color:T.textLight}}>{preview.noTime.length}</div>
+            <div style={{fontSize:"10px",color:T.textLight,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{lang==="el"?"Χωρίς Time":"No Time"}</div>
+          </div>
+        </div>
+
+        {preview.matched.length>0&&(
+          <div style={{marginBottom:"16px"}}>
+            <div style={{color:T.text,fontWeight:700,fontSize:"13px",marginBottom:"8px"}}>✅ {lang==="el"?`Προς ενημέρωση (${preview.matched.length})`:`To update (${preview.matched.length})`}:</div>
+            <div style={{maxHeight:"180px",overflowY:"auto",background:T.bg,borderRadius:"8px",padding:"8px"}}>
+              {preview.matched.slice(0,20).map((m,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 8px",fontSize:"12px",borderBottom:`1px solid ${T.border}`}}>
+                  <span>BIB #{m.registration.bib_number} <span style={{color:T.textLight}}>({m.method})</span></span>
+                  <span style={{fontFamily:"monospace",fontWeight:700}}>{m.time}</span>
+                </div>
+              ))}
+              {preview.matched.length>20&&<div style={{padding:"4px 8px",fontSize:"11px",color:T.textLight,textAlign:"center"}}>... +{preview.matched.length-20} ακόμα</div>}
+            </div>
+          </div>
+        )}
+
+        {preview.notFound.length>0&&(
+          <div style={{marginBottom:"16px"}}>
+            <div style={{color:T.danger,fontWeight:700,fontSize:"13px",marginBottom:"8px"}}>⚠️ {lang==="el"?"Δεν βρέθηκαν":"Not found"}:</div>
+            <div style={{maxHeight:"120px",overflowY:"auto",background:"#fee2e2",borderRadius:"8px",padding:"8px"}}>
+              {preview.notFound.slice(0,10).map((m,i)=>(
+                <div key={i} style={{padding:"4px 8px",fontSize:"11px"}}>Γρ.{m.row}: {m.data.bib||m.data.email||`${m.data.first_name} ${m.data.last_name}`}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{display:"flex",gap:"10px",justifyContent:"flex-end"}}>
+          <Btn v="sec" onClick={()=>setStep("upload")}>← {lang==="el"?"Πίσω":"Back"}</Btn>
+          <Btn onClick={confirmImport} disabled={loading||preview.matched.length===0}>{loading?(lang==="el"?"Επεξεργασία...":"Processing..."):(lang==="el"?`✅ Ενημέρωση ${preview.matched.length} αποτελεσμάτων`:`✅ Update ${preview.matched.length} results`)}</Btn>
+        </div>
+      </div>
+    )}
+
+    {step==="done"&&(
+      <div style={{textAlign:"center",padding:"30px 20px"}}>
+        <div style={{fontSize:"60px",marginBottom:"16px"}}>🎉</div>
+        <h3 style={{margin:"0 0 8px",color:T.text}}>{lang==="el"?"Επιτυχία!":"Success!"}</h3>
+        <p style={{color:T.textMid,fontSize:"14px",marginBottom:"24px"}}>{lang==="el"?`Ενημερώθηκαν ${preview.matched.length} αποτελέσματα και υπολογίστηκε αυτόματα η κατάταξη.`:`${preview.matched.length} results updated and ranks calculated.`}</p>
+        <Btn onClick={onClose}>{lang==="el"?"Κλείσιμο":"Close"}</Btn>
+      </div>
+    )}
+  </Modal>;
+}
+
 function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
+  const [importRace,setImportRace]=useState(null);
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
@@ -2203,6 +2500,38 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
   async function toggleStatus(race){const s=["upcoming","active","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
 
+  async function exportPDF(race){
+    const regs=registrations.filter(r=>r.race_id===race.id);
+    if(!regs.length){toast(t.noRegsCsv,"warning");return;}
+    try{
+      await ensureJsPDF();
+      const {jsPDF}=window.jspdf;
+      const doc=new jsPDF();
+      // Header
+      doc.setFontSize(18);doc.setFont(undefined,"bold");
+      doc.text(race.name,14,20);
+      doc.setFontSize(10);doc.setFont(undefined,"normal");
+      doc.text(`${race.date||""} · ${race.location||""}`,14,28);
+      doc.text(`Εγγεγραμμένοι: ${regs.length}${race.max_runners?" / "+race.max_runners:""}`,14,34);
+      // Table
+      const head=[["#","BIB","Όνομα","Επώνυμο","Διαδρομή","Σύλλογος","Πληρωμή"]];
+      const body=regs.map((reg,i)=>{
+        const r=runners.find(x=>x.id===reg.runner_id)||{};
+        return[i+1,reg.bib_number||"",r.first_name||"",r.last_name||"",reg.distance||"",r.club||"",reg.payment_status==="paid"?"✓ Paid":"⏳ Pending"];
+      });
+      doc.autoTable({startY:42,head,body,styles:{fontSize:9,cellPadding:3},headStyles:{fillColor:[74,93,199],textColor:[255,255,255],fontStyle:"bold"},alternateRowStyles:{fillColor:[248,247,242]}});
+      // Footer
+      const finalY=doc.lastAutoTable.finalY||40;
+      doc.setFontSize(8);doc.setTextColor(120,120,120);
+      const paidCount=regs.filter(r=>r.payment_status==="paid").length;
+      const totalRev=regs.filter(r=>r.payment_status==="paid").reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
+      doc.text(`Πληρωμένοι: ${paidCount} · Εκκρεμείς: ${regs.length-paidCount} · Συνολικά: €${totalRev.toFixed(2)}`,14,finalY+10);
+      doc.text(`Δημιουργήθηκε: ${new Date().toLocaleString("el-GR")} · Race Management`,14,finalY+15);
+      doc.save(`${race.name.replace(/\s+/g,"-")}-εγγραφές.pdf`);
+      toast("✅ PDF δημιουργήθηκε","success");
+    }catch(e){toast("Σφάλμα PDF: "+e.message,"error");}
+  }
+
   async function exportExcel(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
@@ -2246,11 +2575,14 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
             <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
             <Btn sm v="sec" onClick={()=>openEdit(race)}>{t.editBtn}</Btn>
             <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
+            <Btn sm v="grn" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
+            <Btn sm v="sec" onClick={()=>setImportRace(race)}>{t.importResultsBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
           </div>
         </div>;
       })}
     </div>
+    {importRace&&<ImportResultsModal race={importRace} registrations={registrations} runners={runners} onClose={()=>setImportRace(null)} onSuccess={()=>{if(onRefresh)onRefresh();}}/>}
     {showForm&&<Modal title={editId?t.editRaceTitle:t.newRaceTitle} onClose={()=>{setShowForm(false);resetForm();}} wide>
       <In label={t.raceName} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
       <div style={{marginBottom:"14px"}}>
