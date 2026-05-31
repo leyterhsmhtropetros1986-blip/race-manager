@@ -2503,33 +2503,74 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   async function exportPDF(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
-    try{
-      await ensureJsPDF();
-      const {jsPDF}=window.jspdf;
-      const doc=new jsPDF();
-      // Header
-      doc.setFontSize(18);doc.setFont(undefined,"bold");
-      doc.text(race.name,14,20);
-      doc.setFontSize(10);doc.setFont(undefined,"normal");
-      doc.text(`${race.date||""} · ${race.location||""}`,14,28);
-      doc.text(`Εγγεγραμμένοι: ${regs.length}${race.max_runners?" / "+race.max_runners:""}`,14,34);
-      // Table
-      const head=[["#","BIB","Όνομα","Επώνυμο","Διαδρομή","Σύλλογος","Πληρωμή"]];
-      const body=regs.map((reg,i)=>{
-        const r=runners.find(x=>x.id===reg.runner_id)||{};
-        return[i+1,reg.bib_number||"",r.first_name||"",r.last_name||"",reg.distance||"",r.club||"",reg.payment_status==="paid"?"✓ Paid":"⏳ Pending"];
-      });
-      doc.autoTable({startY:42,head,body,styles:{fontSize:9,cellPadding:3},headStyles:{fillColor:[74,93,199],textColor:[255,255,255],fontStyle:"bold"},alternateRowStyles:{fillColor:[248,247,242]}});
-      // Footer
-      const finalY=doc.lastAutoTable.finalY||40;
-      doc.setFontSize(8);doc.setTextColor(120,120,120);
-      const paidCount=regs.filter(r=>r.payment_status==="paid").length;
-      const totalRev=regs.filter(r=>r.payment_status==="paid").reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
-      doc.text(`Πληρωμένοι: ${paidCount} · Εκκρεμείς: ${regs.length-paidCount} · Συνολικά: €${totalRev.toFixed(2)}`,14,finalY+10);
-      doc.text(`Δημιουργήθηκε: ${new Date().toLocaleString("el-GR")} · Race Management`,14,finalY+15);
-      doc.save(`${race.name.replace(/\s+/g,"-")}-εγγραφές.pdf`);
-      toast("✅ PDF δημιουργήθηκε","success");
-    }catch(e){toast("Σφάλμα PDF: "+e.message,"error");}
+    const paidCount=regs.filter(r=>r.payment_status==="paid").length;
+    const totalRev=regs.filter(r=>r.payment_status==="paid").reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
+    // Build pretty HTML for print
+    const rows=regs.map((reg,i)=>{
+      const r=runners.find(x=>x.id===reg.runner_id)||{};
+      const paid=reg.payment_status==="paid";
+      return `<tr>
+        <td class="num">${i+1}</td>
+        <td class="bib">#${reg.bib_number||"-"}</td>
+        <td>${(r.first_name||"")} ${(r.last_name||"")}</td>
+        <td>${reg.distance||"-"}</td>
+        <td>${r.club||"-"}</td>
+        <td>${r.city||"-"}</td>
+        <td class="${paid?"paid":"pending"}">${paid?"✓ Πληρωμένο":"⏳ Εκκρεμές"}</td>
+        <td class="num">${reg.price_paid?Number(reg.price_paid).toFixed(2)+"€":"-"}</td>
+      </tr>`;
+    }).join("");
+    const html=`<!DOCTYPE html>
+<html lang="el"><head><meta charset="UTF-8"><title>${race.name} - Εγγραφές</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:11pt}
+  .header{border-bottom:3px solid #4a5dc7;padding-bottom:14px;margin-bottom:20px}
+  h1{font-size:22pt;color:#1a1a1a;margin-bottom:6px}
+  .meta{color:#666;font-size:10pt}
+  .stats{display:flex;gap:14px;margin:18px 0;padding:14px;background:#f5f3ef;border-radius:8px;font-size:10pt}
+  .stat{flex:1}
+  .stat-label{color:#666;font-size:9pt;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
+  .stat-value{font-size:15pt;font-weight:800;color:#1a1a1a}
+  table{width:100%;border-collapse:collapse;font-size:10pt}
+  thead{background:#4a5dc7;color:#fff}
+  th{padding:10px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
+  td{padding:8px;border-bottom:1px solid #e8e6df}
+  tbody tr:nth-child(even){background:#fafaf7}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .bib{font-weight:700;color:#4a5dc7;font-family:monospace}
+  .paid{color:#10b981;font-weight:600;font-size:9pt}
+  .pending{color:#d97706;font-weight:600;font-size:9pt}
+  .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
+  .print-note{position:fixed;top:10px;right:10px;background:#4a5dc7;color:#fff;padding:10px 18px;border-radius:8px;font-size:12pt;box-shadow:0 4px 12px rgba(0,0,0,0.15);cursor:pointer;border:none;font-family:inherit;font-weight:700}
+  @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
+</style></head><body>
+<button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
+<div class="header">
+  <h1>${race.name}</h1>
+  <div class="meta">📅 ${race.date||"-"} &nbsp;·&nbsp; 📍 ${race.location||"-"}</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Σύνολο</div><div class="stat-value">${regs.length}${race.max_runners?"/"+race.max_runners:""}</div></div>
+  <div class="stat"><div class="stat-label">Πληρωμένοι</div><div class="stat-value" style="color:#10b981">${paidCount}</div></div>
+  <div class="stat"><div class="stat-label">Εκκρεμείς</div><div class="stat-value" style="color:#d97706">${regs.length-paidCount}</div></div>
+  <div class="stat"><div class="stat-label">Έσοδα</div><div class="stat-value">€${totalRev.toFixed(2)}</div></div>
+</div>
+<table>
+<thead><tr><th>#</th><th>BIB</th><th>Ονοματεπώνυμο</th><th>Διαδρομή</th><th>Σύλλογος</th><th>Πόλη</th><th>Πληρωμή</th><th>Τιμή</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+<div class="footer">
+  <div>Race Management · racemanagement.gr</div>
+  <div>Εκτύπωση: ${new Date().toLocaleString("el-GR")}</div>
+</div>
+<script>setTimeout(()=>window.print(),500);</script>
+</body></html>`;
+    const w=window.open("","_blank");
+    if(!w){toast("⚠️ Επέτρεψε τα popups για το PDF","warning");return;}
+    w.document.write(html);
+    w.document.close();
+    toast("✅ Άνοιξε νέο tab - πάτα 'Save as PDF' στο dialog","success");
   }
 
   async function exportExcel(race){
@@ -2880,3 +2921,4 @@ export default function App(){
     <ToastContainer/>
   </LangContext.Provider>;
 }
+
