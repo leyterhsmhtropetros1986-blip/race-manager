@@ -13,6 +13,38 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes pageEnter {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pageEnterFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .page-transition {
+      animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .fade-in {
+      animation: pageEnterFade 0.4s ease-out;
+    }
+    /* Dark mode via CSS filter trick */
+    html.dark-mode {
+      filter: invert(1) hue-rotate(180deg);
+      background: #1a1a1a;
+    }
+    html.dark-mode img,
+    html.dark-mode video,
+    html.dark-mode [data-no-invert] {
+      filter: invert(1) hue-rotate(180deg);
+    }
+    /* Smooth transition when toggling */
+    html {
+      transition: filter 0.3s ease, background 0.3s ease;
+    }
+    /* Smoother button hovers */
+    button {
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
   `;
   if (document.head) document.head.appendChild(s);
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
@@ -418,6 +450,24 @@ function ToastContainer(){
   return <div style={{position:"fixed",bottom:"20px",right:"20px",zIndex:9999,display:"flex",flexDirection:"column",gap:"10px",maxWidth:"calc(100vw - 40px)",pointerEvents:"none"}}>
     {toasts.map(t=><ToastItem key={t.id} message={t.message} type={t.type} onClose={()=>setToasts(prev=>prev.filter(x=>x.id!==t.id))}/>)}
   </div>;
+}
+
+function DarkModeToggle(){
+  const [dark,setDark]=useState(()=>{
+    if(typeof window==="undefined")return false;
+    return localStorage.getItem("rm-dark-mode")==="1";
+  });
+  useEffect(()=>{
+    if(typeof document==="undefined")return;
+    if(dark){
+      document.documentElement.classList.add("dark-mode");
+      localStorage.setItem("rm-dark-mode","1");
+    } else {
+      document.documentElement.classList.remove("dark-mode");
+      localStorage.setItem("rm-dark-mode","0");
+    }
+  },[dark]);
+  return <button onClick={()=>setDark(d=>!d)} title={dark?"Light mode":"Dark mode"} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"8px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:"16px",lineHeight:1,minWidth:"40px",height:"36px",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>;
 }
 
 function LangToggle(){
@@ -1231,7 +1281,7 @@ function PublicHomePage(){
           </div>
         </div>
         <div style={{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
-          <LangToggle/>
+          <DarkModeToggle/><LangToggle/>
           <Btn onClick={()=>openLogin()}>🔑 {t.login} / {t.signup}</Btn>
         </div>
       </div>
@@ -1345,7 +1395,7 @@ function PublicResultsPage({raceId,onBack}){
     <div style={{maxWidth:"960px",margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px",flexWrap:"wrap",gap:"12px"}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.backToHome}</button>
-        <LangToggle/>
+        <DarkModeToggle/><LangToggle/>
       </div>
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",overflow:"hidden",marginBottom:"20px",boxShadow:T.shadow}}>
         {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
@@ -1417,7 +1467,7 @@ function PublicRunnersPage({raceId,onBack}){
     <div style={{maxWidth:"960px",margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px",flexWrap:"wrap",gap:"12px"}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",fontFamily:"inherit"}}>{t.backToHome}</button>
-        <LangToggle/>
+        <DarkModeToggle/><LangToggle/>
       </div>
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",overflow:"hidden",marginBottom:"20px",boxShadow:T.shadow}}>
         {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
@@ -1509,7 +1559,7 @@ function LoginPage({onBack}){
   const roleIcon=role==="organizer"?"🏟":"🏃";
   const roleLabel=role==="organizer"?t.organizer:t.athlete;
   return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:"20px",position:"relative"}}>
-    <div style={{position:"absolute",top:"20px",right:"20px"}}><LangToggle/></div>
+    <div style={{position:"absolute",top:"20px",right:"20px"}}><DarkModeToggle/><LangToggle/></div>
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"20px",padding:"40px",width:"100%",maxWidth:"460px",boxShadow:T.shadow}}>
       <div style={{textAlign:"center",marginBottom:"32px"}}>
         <img src="/11085.png" alt="Race Management" style={{width:"80px",height:"80px",borderRadius:"50%",margin:"0 auto 16px",display:"block",objectFit:"cover"}}/>
@@ -2897,14 +2947,14 @@ function AppContent(){
   const isRejectedOrganizer=profile?.role==="organizer"&&profile?.status==="rejected";
   const isAdmin=profile?.role==="admin";
 
-  return <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"Inter,sans-serif"}}>
+  return <div className="fade-in" style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"Inter,sans-serif"}}>
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"16px 24px",background:T.bgAlt,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
       <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
         <img src="/11085.png" alt="Race Management" style={{width:"40px",height:"40px",borderRadius:"50%",objectFit:"cover"}}/>
         <div><div style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{t.appName}</div><div style={{color:T.textLight,fontSize:"10px",letterSpacing:"0.15em",textTransform:"uppercase"}}>{isAthlete?t.athletePanel:t.adminPanel}</div></div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-        <LangToggle/>
+        <DarkModeToggle/><LangToggle/>
         <span style={{color:T.textMid,fontSize:"13px"}}>{profile?.full_name||session.user.email}</span>
         {profile?.role==="admin"&&<span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>{t.badgeAdmin}</span>}
         {profile?.role==="athlete"&&<span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>{t.badgeAthlete}</span>}
