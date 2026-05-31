@@ -470,6 +470,82 @@ function DarkModeToggle(){
   return <button onClick={()=>setDark(d=>!d)} title={dark?"Light mode":"Dark mode"} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"8px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:"16px",lineHeight:1,minWidth:"40px",height:"36px",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>;
 }
 
+function validateGreekPhone(phone){
+  if(!phone)return{valid:true,clean:""}; // Optional in most cases
+  const clean=String(phone).replace(/[\s\-\(\)]/g,"");
+  // Greek mobile: starts with 69, 10 digits total. Or +30 69...
+  // Greek landline: 10 digits starting with 2
+  // International with +30
+  if(/^\+30\d{10}$/.test(clean))return{valid:true,clean};
+  if(/^00306\d{9}$/.test(clean))return{valid:true,clean};
+  if(/^6\d{9}$/.test(clean))return{valid:true,clean}; // Mobile 6XXXXXXXXX (10 digits)
+  if(/^2\d{9}$/.test(clean))return{valid:true,clean}; // Landline 2XXXXXXXXX (10 digits)
+  return{valid:false,clean,error:"Μη έγκυρος αριθμός. Σωστό format: 69ΧΧΧΧΧΧΧΧ ή 21ΧΧΧΧΧΧΧΧ"};
+}
+
+function validateAMKA(amka){
+  if(!amka)return{valid:true,clean:""}; // Optional
+  const clean=String(amka).replace(/\D/g,"");
+  if(clean.length!==11)return{valid:false,clean,error:"Το ΑΜΚΑ πρέπει να είναι 11 ψηφία"};
+  // First 6 digits = birth date DDMMYY
+  const day=parseInt(clean.substring(0,2));
+  const month=parseInt(clean.substring(2,4));
+  if(day<1||day>31||month<1||month>12)return{valid:false,clean,error:"Μη έγκυρο ΑΜΚΑ - λάθος ημερομηνία γέννησης"};
+  return{valid:true,clean};
+}
+
+function generateCalendarLinks(race){
+  if(!race||!race.date)return null;
+  const startDate=new Date(race.date+"T08:00:00");
+  const endDate=new Date(race.date+"T14:00:00");
+  function fmt(d){return d.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z";}
+  const title=encodeURIComponent(race.name);
+  const details=encodeURIComponent(`${race.description||""}\n\nracemanagement.gr`);
+  const location=encodeURIComponent(race.location||"");
+  return{
+    google:`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(startDate)}/${fmt(endDate)}&details=${details}&location=${location}`,
+    outlook:`https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${startDate.toISOString()}&enddt=${endDate.toISOString()}&body=${details}&location=${location}`,
+    ics:`BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Race Management//EL\nBEGIN:VEVENT\nUID:${race.id}@racemanagement.gr\nDTSTAMP:${fmt(new Date())}\nDTSTART:${fmt(startDate)}\nDTEND:${fmt(endDate)}\nSUMMARY:${race.name}\nDESCRIPTION:${race.description||""}\nLOCATION:${race.location||""}\nEND:VEVENT\nEND:VCALENDAR`
+  };
+}
+
+function AddToCalendarMenu({race,onClose}){
+  const {lang}=useLang();
+  const links=generateCalendarLinks(race);
+  if(!links)return null;
+  function downloadICS(){
+    const blob=new Blob([links.ics],{type:"text/calendar"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=`${race.name.replace(/\s+/g,"-")}.ics`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    onClose();
+  }
+  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:T.bgAlt,borderRadius:"20px",padding:"24px",width:"100%",maxWidth:"380px",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800}}>📅 {lang==="el"?"Προσθήκη στο Ημερολόγιο":"Add to Calendar"}</h3>
+        <button onClick={onClose} style={{background:"none",border:"none",color:T.textLight,cursor:"pointer",fontSize:"24px"}}>×</button>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+        <a href={links.google} target="_blank" rel="noopener noreferrer" onClick={onClose} style={{display:"flex",alignItems:"center",gap:"12px",background:T.bg,padding:"14px 16px",borderRadius:"12px",textDecoration:"none",color:T.text,fontWeight:700,fontSize:"14px"}}>
+          <div style={{width:"36px",height:"36px",borderRadius:"50%",background:"#4285f4",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",flexShrink:0}}>G</div>
+          <span>Google Calendar</span>
+        </a>
+        <a href={links.outlook} target="_blank" rel="noopener noreferrer" onClick={onClose} style={{display:"flex",alignItems:"center",gap:"12px",background:T.bg,padding:"14px 16px",borderRadius:"12px",textDecoration:"none",color:T.text,fontWeight:700,fontSize:"14px"}}>
+          <div style={{width:"36px",height:"36px",borderRadius:"50%",background:"#0078d4",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",flexShrink:0}}>O</div>
+          <span>Outlook Calendar</span>
+        </a>
+        <button onClick={downloadICS} style={{display:"flex",alignItems:"center",gap:"12px",background:T.bg,padding:"14px 16px",borderRadius:"12px",border:"none",cursor:"pointer",fontFamily:"inherit",color:T.text,fontWeight:700,fontSize:"14px",width:"100%",textAlign:"left"}}>
+          <div style={{width:"36px",height:"36px",borderRadius:"50%",background:T.text,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",flexShrink:0}}>📅</div>
+          <span>{lang==="el"?"Apple Calendar / .ics":"Apple Calendar / .ics"}</span>
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -1677,6 +1753,21 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   async function submit(){
     if(!form.first_name.trim()||!form.last_name.trim()){toast("Συμπληρώστε Όνομα και Επώνυμο!","warning");return;}
     if(!form.distance){toast(t.selectDistance,"warning");return;}
+    // Phone validation
+    if(form.phone){
+      const phoneCheck=validateGreekPhone(form.phone);
+      if(!phoneCheck.valid){toast("📞 "+phoneCheck.error,"warning");return;}
+    }
+    // AMKA validation
+    if(form.amka){
+      const amkaCheck=validateAMKA(form.amka);
+      if(!amkaCheck.valid){toast("🆔 "+amkaCheck.error,"warning");return;}
+    }
+    // Emergency phone validation
+    if(form.emergency_phone){
+      const epCheck=validateGreekPhone(form.emergency_phone);
+      if(!epCheck.valid){toast("📞 Τηλέφωνο επικοινωνίας: "+epCheck.error,"warning");return;}
+    }
     for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){toast(`${t.pleaseComplete} ${f.label}`,"warning");return;}}
     setLoading(true);
     // Step 1. Find or create runner profile
@@ -1999,6 +2090,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
   function getPerkLabel(perk){return (perk||"").replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/u,"").trim()||perk;}
 
   const [showShareMenu,setShowShareMenu]=useState(false);
+  const [showCalendarMenu,setShowCalendarMenu]=useState(false);
   async function share(){
     if(navigator.share){
       try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch(e){}
@@ -2022,6 +2114,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
         <button onClick={onBack} aria-label="Back" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"20px",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>←</button>
         <div style={{display:"flex",gap:"8px"}}>
           <button aria-label="Favorite" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"18px",fontFamily:"inherit"}}>♡</button>
+          <button onClick={()=>setShowCalendarMenu(true)} aria-label="Add to Calendar" title={lang==="el"?"Προσθήκη στο Ημερολόγιο":"Add to Calendar"} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"16px",fontFamily:"inherit"}}>📅</button>
           <button onClick={share} aria-label="Share" style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(10px)",border:"none",color:"#fff",borderRadius:"50%",width:"42px",height:"42px",cursor:"pointer",fontSize:"16px",fontFamily:"inherit"}}>↗</button>
         </div>
       </div>
@@ -2191,6 +2284,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
     </div>
 
     {showShareMenu&&<ShareMenu raceName={race.name} raceDate={race.date} onClose={()=>setShowShareMenu(false)}/>}
+    {showCalendarMenu&&<AddToCalendarMenu race={race} onClose={()=>setShowCalendarMenu(false)}/>}
 
     {canRegister&&distances.length>0&&activeTab!=="routes"&&(
       <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"14px 20px",background:`linear-gradient(180deg, rgba(245,243,239,0) 0%, ${T.bg} 60%)`,zIndex:20}}>
@@ -3012,4 +3106,3 @@ export default function App(){
     <ToastContainer/>
   </LangContext.Provider>;
 }
-
