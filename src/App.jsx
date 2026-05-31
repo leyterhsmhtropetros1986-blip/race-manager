@@ -2547,9 +2547,11 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     last_name:profileName.slice(1).join(" ")||"",
     distance:distances[0]||"",category:"Γενική",tshirt:"M",phone:"",
     dob:"",gender:t.male,club:"",amka:"",city:"",
-    emergency_name:"",emergency_phone:"",medical_cert:false
+    emergency_name:"",emergency_phone:"",medical_cert:false,
+    gdpr_consent:false,terms_consent:false
   });
   const [customAnswers,setCustomAnswers]=useState({});
+  const [showLegalPage,setShowLegalPage]=useState(null);
   const [loading,setLoading]=useState(false);
   const priceInfo=calculatePrice(race,form.distance);
   function updateCustom(id,value){setCustomAnswers({...customAnswers,[id]:value});}
@@ -2574,6 +2576,9 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       if(!epCheck.valid){toast("📞 Τηλέφωνο επικοινωνίας: "+epCheck.error,"warning");return;}
     }
     for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){toast(`${t.pleaseComplete} ${f.label}`,"warning");return;}}
+    // GDPR consent validation
+    if(!form.terms_consent){toast("📋 Πρέπει να αποδεχτείτε τους Όρους Χρήσης","warning");return;}
+    if(!form.gdpr_consent){toast("🛡 Πρέπει να συναινέσετε στην επεξεργασία δεδομένων (GDPR)","warning");return;}
     setLoading(true);
     // Step 1. Find or create runner profile
     const {data:foundRunner}=await supabase.from("runners").select("*").eq("email",session.user.email).maybeSingle();
@@ -2583,7 +2588,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       email:session.user.email,phone:form.phone,dob:form.dob||null,
       gender:form.gender,club:form.club,amka:form.amka,city:form.city,
       emergency_name:form.emergency_name,emergency_phone:form.emergency_phone
-    };
+    ,gdpr_consent_at:new Date().toISOString()};
     if(!runner){
       const {data,error}=await supabase.from("runners").insert([runnerData]).select().maybeSingle();
       if(error){toast("Σφάλμα δημιουργίας προφίλ: "+error.message,"error");setLoading(false);return;}
@@ -2599,7 +2604,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
     const bibNum=(maxBib+1).toString();
-    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final}]);
+    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final,gdpr_consent_at:new Date().toISOString()}]);
     if(regError){toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;}
     setLoading(false);
     toast(`✅ Εγγραφή Επιτυχής! BIB #${bibNum} · ${form.distance} · ${priceInfo.final.toFixed(2)}€`,"success");
@@ -2658,11 +2663,22 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         ))}
       </div>
     )}
-    <label style={{display:"flex",alignItems:"center",gap:"8px",color:T.textMid,fontSize:"13px",cursor:"pointer",marginBottom:"16px"}}><input type="checkbox" checked={form.medical_cert} onChange={e=>set("medical_cert",e.target.checked)}/>{t.medicalCert}</label>
+    <label style={{display:"flex",alignItems:"center",gap:"8px",color:T.textMid,fontSize:"13px",cursor:"pointer",marginBottom:"10px"}}><input type="checkbox" checked={form.medical_cert} onChange={e=>set("medical_cert",e.target.checked)}/>{t.medicalCert}</label>
+    <div style={{background:`${T.primary}08`,border:`1px solid ${T.primary}22`,borderRadius:"10px",padding:"12px 14px",marginBottom:"16px"}}>
+      <label style={{display:"flex",alignItems:"flex-start",gap:"10px",color:T.text,fontSize:"13px",cursor:"pointer",marginBottom:"10px",lineHeight:1.5}}>
+        <input type="checkbox" checked={form.terms_consent} onChange={e=>set("terms_consent",e.target.checked)} style={{marginTop:"2px",flexShrink:0}}/>
+        <span>📋 Αποδέχομαι τους <button type="button" onClick={()=>setShowLegalPage("terms")} style={{background:"none",border:"none",color:T.primary,fontWeight:700,cursor:"pointer",textDecoration:"underline",padding:0,font:"inherit"}}>Όρους Χρήσης</button> *</span>
+      </label>
+      <label style={{display:"flex",alignItems:"flex-start",gap:"10px",color:T.text,fontSize:"13px",cursor:"pointer",lineHeight:1.5}}>
+        <input type="checkbox" checked={form.gdpr_consent} onChange={e=>set("gdpr_consent",e.target.checked)} style={{marginTop:"2px",flexShrink:0}}/>
+        <span>🛡 Συναινώ στην επεξεργασία των προσωπικών μου δεδομένων σύμφωνα με την <button type="button" onClick={()=>setShowLegalPage("privacy")} style={{background:"none",border:"none",color:T.primary,fontWeight:700,cursor:"pointer",textDecoration:"underline",padding:0,font:"inherit"}}>Πολιτική Απορρήτου</button> (GDPR) *</span>
+      </label>
+    </div>
     <div style={{display:"flex",gap:"10px"}}>
       <Btn onClick={submit} style={{flex:1}} disabled={loading}>{loading?"...":`${t.confirmReg}${priceInfo.final>0?` (${priceInfo.final.toFixed(2)}€)`:""}`}</Btn>
       <Btn v="sec" onClick={onClose} style={{flex:1}}>{t.cancel}</Btn>
     </div>
+    {showLegalPage&&<LegalModal page={showLegalPage} onClose={p=>setShowLegalPage(p)}/>}
   </Modal>;
 }
 
@@ -3482,7 +3498,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       if(data)setRaces(races.map(r=>r.id===editId?data[0]:r));
     } else {
       const initialStatus=profile?.role==="admin"?"upcoming":"pending_approval";
-      const {data,error}=await supabase.from("races").insert([{...payload,status:initialStatus,user_id:session.user.id}]).select();
+      const {data,error}=await supabase.from("races").insert([{...payload,status:initialStatus,user_id:session.user.id,organizer_gdpr_consent_at:new Date().toISOString()}]).select();
       if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
       if(data)setRaces([data[0],...races]);
       if(initialStatus==="pending_approval"){
