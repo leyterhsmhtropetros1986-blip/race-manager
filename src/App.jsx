@@ -366,6 +366,60 @@ function EmptyState({icon,title,message,action,actionLabel,onAction}){
   </div>;
 }
 
+function toast(message,type){
+  if(typeof window==="undefined")return;
+  const detail={message:String(message||""),type:type||autoToastType(message)};
+  window.dispatchEvent(new CustomEvent("app-toast",{detail}));
+}
+
+function autoToastType(msg){
+  if(!msg)return"info";
+  const s=String(msg).toLowerCase();
+  if(s.includes("✅")||s.includes("επιτυχ")||s.includes("success")||s.includes("ολοκληρ"))return"success";
+  if(s.includes("σφάλμα")||s.includes("error")||s.includes("❌"))return"error";
+  if(s.includes("⚠")||s.includes("συμπληρ")||s.includes("warn")||s.includes("μη έγκυρ")||s.includes("invalid"))return"warning";
+  return"info";
+}
+
+function ToastItem({message,type,onClose}){
+  const colors={
+    success:{bg:"#dcfce7",border:"#10b981",color:"#15803d",icon:"✅"},
+    error:{bg:"#fee2e2",border:"#ef4444",color:"#b91c1c",icon:"❌"},
+    warning:{bg:"#fef3c7",border:"#d97706",color:"#92400e",icon:"⚠️"},
+    info:{bg:"#dbeafe",border:"#3b82f6",color:"#1e40af",icon:"ℹ️"}
+  };
+  const c=colors[type]||colors.info;
+  // Strip leading icon from message if it matches the type icon
+  let cleanMsg=String(message||"");
+  if(cleanMsg.startsWith(c.icon))cleanMsg=cleanMsg.slice(c.icon.length).trim();
+  return <div onClick={onClose} style={{background:c.bg,borderLeft:`4px solid ${c.border}`,color:c.color,padding:"14px 18px",borderRadius:"10px",cursor:"pointer",boxShadow:"0 10px 30px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.05)",fontSize:"14px",fontWeight:600,maxWidth:"420px",minWidth:"260px",display:"flex",alignItems:"flex-start",gap:"10px",animation:"fadeInUp 0.25s ease-out",whiteSpace:"pre-line",lineHeight:1.5,pointerEvents:"auto"}}>
+    <span style={{fontSize:"20px",flexShrink:0,lineHeight:1}}>{c.icon}</span>
+    <span style={{flex:1,minWidth:0,wordBreak:"break-word"}}>{cleanMsg}</span>
+    <span style={{opacity:0.5,fontSize:"16px",lineHeight:1,marginLeft:"4px"}}>×</span>
+  </div>;
+}
+
+function ToastContainer(){
+  const [toasts,setToasts]=useState([]);
+  useEffect(()=>{
+    function handler(e){
+      const id=Date.now()+Math.random();
+      const t={...e.detail,id};
+      setToasts(prev=>[...prev,t]);
+      const ttl=t.type==="error"?7000:t.type==="success"?5000:4500;
+      setTimeout(()=>{
+        setToasts(prev=>prev.filter(x=>x.id!==id));
+      },ttl);
+    }
+    window.addEventListener("app-toast",handler);
+    return()=>window.removeEventListener("app-toast",handler);
+  },[]);
+  if(toasts.length===0)return null;
+  return <div style={{position:"fixed",bottom:"20px",right:"20px",zIndex:9999,display:"flex",flexDirection:"column",gap:"10px",maxWidth:"calc(100vw - 40px)",pointerEvents:"none"}}>
+    {toasts.map(t=><ToastItem key={t.id} message={t.message} type={t.type} onClose={()=>setToasts(prev=>prev.filter(x=>x.id!==t.id))}/>)}
+  </div>;
+}
+
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -535,13 +589,13 @@ function SponsorsPicker({sponsors,onChange}){
     const ext=file.name.split(".").pop();
     const path=`sponsor-${Date.now()}.${ext}`;
     const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
-    if(upErr){alert("⚠️ "+upErr.message);setUploading(false);return;}
+    if(upErr){toast("⚠️ "+upErr.message,"error");setUploading(false);return;}
     const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
     setNewSp(s=>({...s,logo_url:publicUrl}));
     setUploading(false);
   }
   function addSponsor(){
-    if(!newSp.name.trim()){alert(lang==="el"?"Συμπληρώστε όνομα χορηγού!":"Please enter sponsor name!");return;}
+    if(!newSp.name.trim()){toast(lang==="el"?"Συμπληρώστε όνομα χορηγού!":"Please enter sponsor name!","warning");return;}
     onChange([...(sponsors||[]),{...newSp,id:Date.now().toString()}]);
     setNewSp({name:"",logo_url:"",website:""});
   }
@@ -577,7 +631,7 @@ function FAQPicker({faq,onChange}){
   const {lang}=useLang();
   const [newQ,setNewQ]=useState({question:"",answer:""});
   function addFaq(){
-    if(!newQ.question.trim()||!newQ.answer.trim()){alert(lang==="el"?"Συμπληρώστε ερώτηση και απάντηση!":"Please fill question and answer!");return;}
+    if(!newQ.question.trim()||!newQ.answer.trim()){toast(lang==="el"?"Συμπληρώστε ερώτηση και απάντηση!":"Please fill question and answer!","warning");return;}
     onChange([...(faq||[]),{...newQ,id:Date.now().toString()}]);
     setNewQ({question:"",answer:""});
   }
@@ -683,7 +737,7 @@ function downloadGPX(route,raceName){
     a.click();
     document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
-  }catch(e){alert("Σφάλμα: "+e.message);}
+  }catch(e){toast("Σφάλμα: "+e.message,"error");}
 }
 
 function buildElevationData(points){
@@ -810,7 +864,7 @@ function RoutesPicker({distances,routes,onChange}){
       const text=await file.text();
       const points=parseGPX(text);
       if(!points||points.length<2){
-        alert(lang==="el"?"Μη έγκυρο αρχείο GPX":"Invalid GPX file");
+        toast(lang==="el"?"Μη έγκυρο αρχείο GPX":"Invalid GPX file","warning");
         setUploading(u=>({...u,[distance]:false}));
         return;
       }
@@ -819,7 +873,7 @@ function RoutesPicker({distances,routes,onChange}){
       const filtered=(routes||[]).filter(r=>r.distance!==distance);
       onChange([...filtered,newRoute]);
     }catch(err){
-      alert("Error: "+err.message);
+      toast("Error: "+err.message,"error");
     }
     setUploading(u=>({...u,[distance]:false}));
   }
@@ -1024,8 +1078,8 @@ function ShareMenu({raceName,raceDate,onClose}){
   async function copyLink(){
     try{
       await navigator.clipboard.writeText(url);
-      alert(lang==="el"?"✅ Σύνδεσμος αντιγράφηκε!":"✅ Link copied!");
-    }catch(e){alert(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy");}
+      toast(lang==="el"?"Σύνδεσμος αντιγράφηκε!":"Link copied!","success");
+    }catch(e){toast(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy","error");}
     onClose();
   }
   const opts=[
@@ -1069,7 +1123,7 @@ function GalleryPicker({gallery,onChange}){
       const ext=file.name.split(".").pop();
       const path=`gallery-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
       const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
-      if(upErr){alert("⚠️ "+upErr.message);continue;}
+      if(upErr){toast("⚠️ "+upErr.message,"error");continue;}
       const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
       uploaded.push({id:Date.now().toString()+Math.random().toString(36).slice(2,6),url:publicUrl,caption:""});
     }
@@ -1571,9 +1625,9 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   function set(k,v){setForm({...form,[k]:v});}
 
   async function submit(){
-    if(!form.first_name.trim()||!form.last_name.trim()){alert("Συμπληρώστε Όνομα και Επώνυμο!");return;}
-    if(!form.distance){alert(t.selectDistance);return;}
-    for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){alert(`${t.pleaseComplete} ${f.label}`);return;}}
+    if(!form.first_name.trim()||!form.last_name.trim()){toast("Συμπληρώστε Όνομα και Επώνυμο!","warning");return;}
+    if(!form.distance){toast(t.selectDistance,"warning");return;}
+    for(const f of customFields){if(f.required&&!customAnswers[f.id]&&customAnswers[f.id]!==false){toast(`${t.pleaseComplete} ${f.label}`,"warning");return;}}
     setLoading(true);
     // Step 1. Find or create runner profile
     const {data:foundRunner}=await supabase.from("runners").select("*").eq("email",session.user.email).maybeSingle();
@@ -1586,24 +1640,23 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     };
     if(!runner){
       const {data,error}=await supabase.from("runners").insert([runnerData]).select().maybeSingle();
-      if(error){alert("Σφάλμα δημιουργίας προφίλ: "+error.message);setLoading(false);return;}
+      if(error){toast("Σφάλμα δημιουργίας προφίλ: "+error.message,"error");setLoading(false);return;}
       runner=data;
     } else {
       await supabase.from("runners").update(runnerData).eq("id",runner.id);
     }
-    if(!runner){alert("Σφάλμα: δεν βρέθηκε προφίλ.");setLoading(false);return;}
+    if(!runner){toast("Σφάλμα: δεν βρέθηκε προφίλ.","error");setLoading(false);return;}
     // Step 2. Check ONLY this specific race - allow same email in other races
     const {data:existing}=await supabase.from("registrations").select("id,bib_number").eq("runner_id",runner.id).eq("race_id",race.id).maybeSingle();
-    if(existing){alert(t.alreadyRegAlert+(existing.bib_number?` BIB #${existing.bib_number}`:""));setLoading(false);return;}
+    if(existing){toast(t.alreadyRegAlert+(existing.bib_number?` BIB #${existing.bib_number}`:""),"warning");setLoading(false);return;}
     // Step 3. Assign BIB and create the registration
     const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
     const bibNum=(maxBib+1).toString();
     const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final}]);
-    if(regError){alert("Σφάλμα εγγραφής: "+regError.message+"\n\nΠιθανώς υπάρχει UNIQUE constraint πάνω στο runner_id. Τρέξε το διαγνωστικό SQL.");setLoading(false);return;}
+    if(regError){toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;}
     setLoading(false);
-    const msg=`✅ Η εγγραφή σου ολοκληρώθηκε επιτυχώς!\n\n🎫 Αριθμός BIB: #${bibNum}\n🏃 Διαδρομή: ${form.distance}\n💰 Κόστος: ${priceInfo.final.toFixed(2)}€\n\n📋 Παρακαλώ σημείωσε τον αριθμό BIB σου - θα τον χρειαστείς στον αγώνα.\n\nΜπορείς να δεις τις εγγραφές σου στο πάνελ "Οι Εγγραφές μου".`;
-    alert(msg);
+    toast(`✅ Εγγραφή Επιτυχής! BIB #${bibNum} · ${form.distance} · ${priceInfo.final.toFixed(2)}€`,"success");
     onSuccess();
   }
 
@@ -1686,7 +1739,7 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
     if(!myRunner)return;
     setSaving(true);
     const {error}=await supabase.from("runners").update(form).eq("id",myRunner.id);
-    if(error)alert("Σφάλμα: "+error.message);
+    if(error)toast("Σφάλμα: "+error.message,"error");
     else{setSaved(true);onRefresh();setTimeout(()=>setSaved(false),3000);}
     setSaving(false);
   }
@@ -1697,7 +1750,7 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
     const ext=file.name.split(".").pop();
     const path=`${myRunner.id}-${Date.now()}.${ext}`;
     const {error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true});
-    if(upErr){alert("Σφάλμα: "+upErr.message);setUploading(false);return;}
+    if(upErr){toast("Σφάλμα: "+upErr.message,"error");setUploading(false);return;}
     const {data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
     await supabase.from("runners").update({avatar_url:publicUrl}).eq("id",myRunner.id);
     onRefresh();setUploading(false);
@@ -2118,7 +2171,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     const ext=file.name.split(".").pop();
     const path=`race-${Date.now()}.${ext}`;
     const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
-    if(upErr){alert("⚠️ "+upErr.message);setUploadingBanner(false);return;}
+    if(upErr){toast("⚠️ "+upErr.message,"error");setUploadingBanner(false);return;}
     const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
     setForm(f=>({...f,banner_url:publicUrl}));
     setUploadingBanner(false);
@@ -2130,19 +2183,19 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[]});setShowForm(true);}
 
   async function save(){
-    if(!form.name||!form.date){alert(t.fillNameDate);return;}
-    if(form.distances.length===0){alert(t.addDistance);return;}
+    if(!form.name||!form.date){toast(t.fillNameDate,"warning");return;}
+    if(form.distances.length===0){toast(t.addDistance,"warning");return;}
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
     const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
     const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[]};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
-      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
+      if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
       if(data)setRaces(races.map(r=>r.id===editId?data[0]:r));
     } else {
       const {data,error}=await supabase.from("races").insert([{...payload,status:"upcoming",user_id:session.user.id}]).select();
-      if(error){alert("Σφάλμα: "+error.message);setLoading(false);return;}
+      if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
       if(data)setRaces([data[0],...races]);
     }
     setLoading(false);setShowForm(false);resetForm();
@@ -2152,7 +2205,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   async function exportExcel(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
-    if(!regs.length){alert(t.noRegsCsv);return;}
+    if(!regs.length){toast(t.noRegsCsv,"warning");return;}
     const data=regs.map((reg,i)=>{
       const r=runners.find(x=>x.id===reg.runner_id)||{};
       return {"Α/Α":i+1,"BIB":reg.bib_number,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Διαδρομή":reg.distance||"","Κατηγορία":reg.category||"","T-Shirt":reg.tshirt||"","Τιμή":reg.price_paid||0};
@@ -2254,7 +2307,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
   async function togglePayment(reg){
     const newStatus=reg.payment_status==="paid"?"pending":"paid";
     const {error}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
-    if(error){alert("Σφάλμα: "+error.message);return;}
+    if(error){toast("Σφάλμα: "+error.message,"error");return;}
     window.location.reload();
   }
   const isAdmin=profile?.role==="admin";
@@ -2425,7 +2478,8 @@ function AppContent(){
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
 
   if(!session)return <PublicHomePage/>;
-  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
+  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>
+      {t.loading}</div>;
 
   const isAthlete=profile?.role==="athlete";
   const isOrganizer=(profile?.role==="organizer"||profile?.role==="admin")&&profile?.status==="approved";
@@ -2491,5 +2545,6 @@ export default function App(){
   const [lang,setLang]=useState("el");
   return <LangContext.Provider value={{lang,t:STR[lang],setLang}}>
     <AppContent/>
+    <ToastContainer/>
   </LangContext.Provider>;
 }
