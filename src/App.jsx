@@ -2788,9 +2788,15 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
       if(data)setRaces(races.map(r=>r.id===editId?data[0]:r));
     } else {
-      const {data,error}=await supabase.from("races").insert([{...payload,status:"upcoming",user_id:session.user.id}]).select();
+      const initialStatus=profile?.role==="admin"?"upcoming":"pending_approval";
+      const {data,error}=await supabase.from("races").insert([{...payload,status:initialStatus,user_id:session.user.id}]).select();
       if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
       if(data)setRaces([data[0],...races]);
+      if(initialStatus==="pending_approval"){
+        toast(lang==="el"?"⏳ Ο αγώνας στάλθηκε για έγκριση από admin":"⏳ Race sent for admin approval","info");
+      } else {
+        toast(lang==="el"?"✅ Ο αγώνας δημιουργήθηκε":"✅ Race created","success");
+      }
     }
     setLoading(false);setShowForm(false);resetForm();
   }
@@ -3079,13 +3085,36 @@ function OrganizerStats({races,registrations,session,profile}){
 }
 
 function AdminPanel(){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [pendingOrgs,setPendingOrgs]=useState([]);
   const [allOrgs,setAllOrgs]=useState([]);
+  const [pendingRaces,setPendingRaces]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [tab,setTab]=useState("pending");
-  async function fetchOrgs(){setLoading(true);const {data}=await supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false});if(data){setPendingOrgs(data.filter(o=>o.status==="pending"));setAllOrgs(data);}setLoading(false);}
+  const [tab,setTab]=useState("pendingRaces");
+  async function fetchOrgs(){
+    setLoading(true);
+    const [orgsRes,racesRes]=await Promise.all([
+      supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false}),
+      supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true})
+    ]);
+    if(orgsRes.data){setPendingOrgs(orgsRes.data.filter(o=>o.status==="pending"));setAllOrgs(orgsRes.data);}
+    if(racesRes.data)setPendingRaces(racesRes.data);
+    setLoading(false);
+  }
   useEffect(()=>{fetchOrgs();},[]);
+  async function approveRace(id){
+    const {error}=await supabase.from("races").update({status:"upcoming"}).eq("id",id);
+    if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    toast(lang==="el"?"✅ Ο αγώνας εγκρίθηκε!":"✅ Race approved!","success");
+    fetchOrgs();
+  }
+  async function rejectRace(id){
+    if(!confirm(lang==="el"?"Σίγουρα θέλεις να απορρίψεις τον αγώνα;":"Reject this race?"))return;
+    const {error}=await supabase.from("races").update({status:"rejected"}).eq("id",id);
+    if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    toast(lang==="el"?"❌ Ο αγώνας απορρίφθηκε":"❌ Race rejected","info");
+    fetchOrgs();
+  }
   async function approve(id){await supabase.from("profiles").update({status:"approved"}).eq("id",id);fetchOrgs();}
   async function reject(id){if(!confirm(t.rejectConfirm))return;await supabase.from("profiles").update({status:"rejected"}).eq("id",id);fetchOrgs();}
   async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
@@ -3095,9 +3124,36 @@ function AdminPanel(){
   if(loading)return <div style={{textAlign:"center",color:T.textMid,padding:"40px"}}>{t.loading}</div>;
   return <div>
     <div style={{display:"flex",gap:"6px",marginBottom:"24px",flexWrap:"wrap"}}>
+      <button onClick={()=>setTab("pendingRaces")} style={{background:tab==="pendingRaces"?T.warning:T.bgAlt,color:tab==="pendingRaces"?"#fff":T.textMid,border:`1px solid ${tab==="pendingRaces"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pendingRaces"?700:500,fontFamily:"inherit"}}>🏁 {lang==="el"?"Αγώνες προς Έγκριση":"Pending Races"} ({pendingRaces.length})</button>
       <button onClick={()=>setTab("pending")} style={{background:tab==="pending"?T.warning:T.bgAlt,color:tab==="pending"?"#fff":T.textMid,border:`1px solid ${tab==="pending"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pending"?700:500,fontFamily:"inherit"}}>{t.pendingTab} ({pendingOrgs.length})</button>
       <button onClick={()=>setTab("all")} style={{background:tab==="all"?T.primary:T.bgAlt,color:tab==="all"?"#fff":T.textMid,border:`1px solid ${tab==="all"?T.primary:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="all"?700:500,fontFamily:"inherit"}}>{t.allOrgsTab} ({allOrgs.length})</button>
     </div>
+
+    {tab==="pendingRaces"?(
+      pendingRaces.length===0?(
+        <EmptyState icon="✅" title={lang==="el"?"Δεν υπάρχουν αγώνες προς έγκριση":"No pending races"} message={lang==="el"?"Όλοι οι αγώνες έχουν εγκριθεί":"All races approved"}/>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {pendingRaces.map(race=>(
+            <div key={race.id} style={{background:T.bgAlt,borderRadius:"14px",padding:"18px 20px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",border:`2px solid ${T.warning}55`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"14px",flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:"200px"}}>
+                  <span style={{background:T.warning,color:"#fff",padding:"3px 10px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",display:"inline-block",marginBottom:"8px"}}>⏳ {lang==="el"?"Σε αναμονή":"Pending"}</span>
+                  <h3 style={{margin:"0 0 6px",color:T.text,fontSize:"17px",fontWeight:800}}>{race.name}</h3>
+                  <div style={{color:T.textMid,fontSize:"13px",marginBottom:"4px"}}>📅 {race.date} · 📍 {race.location||"-"}</div>
+                  <div style={{color:T.textLight,fontSize:"12px"}}>🏃 {race.distance||"-"} · 👥 max {race.max_runners||"-"}</div>
+                  {race.description&&<div style={{color:T.textMid,fontSize:"12px",marginTop:"8px",padding:"8px 10px",background:T.bg,borderRadius:"8px",maxHeight:"80px",overflow:"hidden"}}>{race.description.substring(0,200)}{race.description.length>200?"...":""}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:"8px",flexShrink:0}}>
+                  <button onClick={()=>approveRace(race.id)} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>✅ {lang==="el"?"Έγκριση":"Approve"}</button>
+                  <button onClick={()=>rejectRace(race.id)} style={{background:T.danger,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>❌ {lang==="el"?"Απόρριψη":"Reject"}</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    ):(<div>
     <h2 style={{margin:"0 0 16px",color:T.text,fontSize:"18px"}}>{tab==="pending"?t.pendingOrgsTitle:t.allOrgsTitle}</h2>
     {list.length===0&&<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>{tab==="pending"?t.noPending:"—"}</div>}
     <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
@@ -3116,6 +3172,7 @@ function AdminPanel(){
         </div>
       ))}
     </div>
+  </div>)}
   </div>;
 }
 
@@ -3219,3 +3276,4 @@ export default function App(){
     <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
+
