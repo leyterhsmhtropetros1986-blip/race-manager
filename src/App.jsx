@@ -2278,10 +2278,6 @@ function PublicHomePage(){
           })}
         </div>);
       })()}
-
-      <div style={{textAlign:"center",marginTop:"40px",color:T.textLight,fontSize:"12px"}}>
-        © {new Date().getFullYear()} {t.appName}
-      </div>
     </div>
   </div>;
 }
