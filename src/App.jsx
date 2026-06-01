@@ -3054,6 +3054,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           </div>
         </div>
         {race.location&&<div style={{marginTop:"20px"}}><WeatherWidget location={race.location} raceDate={race.date}/></div>}
+        {race.documents&&race.documents.length>0&&<div style={{marginTop:"20px"}}><DocumentsDisplay documents={race.documents}/></div>}
         {race.sponsors&&race.sponsors.length>0&&<div style={{marginTop:"20px"}}><SponsorsDisplay sponsors={race.sponsors}/></div>}
         {race.gallery&&race.gallery.length>0&&<div style={{marginTop:"20px"}}><GalleryDisplay gallery={race.gallery}/></div>}
         {race.faq&&race.faq.length>0&&<div style={{marginTop:"20px"}}><FAQDisplay faq={race.faq}/></div>}
@@ -3520,6 +3521,125 @@ function ImportResultsModal({race,registrations,runners,onClose,onSuccess}){
   </Modal>;
 }
 
+function DocumentsPicker({documents,onChange}){
+  const {lang}=useLang();
+  const [uploading,setUploading]=useState(false);
+  const [newTitle,setNewTitle]=useState("");
+
+  async function uploadFile(e){
+    const file=e.target.files?.[0];
+    if(!file)return;
+    if(file.size>10*1024*1024){toast(lang==="el"?"⚠️ Μέγιστο μέγεθος 10MB":"⚠️ Max size 10MB","warning");return;}
+    if(!newTitle.trim()){toast(lang==="el"?"⚠️ Δώσε πρώτα τίτλο":"⚠️ Set title first","warning");return;}
+    setUploading(true);
+    try{
+      const ext=file.name.split(".").pop()||"pdf";
+      const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const {error}=await supabase.storage.from("race-documents").upload(path,file,{cacheControl:"3600",upsert:false});
+      if(error){toast("Σφάλμα: "+error.message,"error");setUploading(false);return;}
+      const {data:{publicUrl}}=supabase.storage.from("race-documents").getPublicUrl(path);
+      const newDoc={id:Date.now()+"-"+Math.random().toString(36).slice(2,8),title:newTitle.trim(),url:publicUrl,filename:file.name,size:file.size,type:file.type||"application/pdf",uploaded_at:new Date().toISOString()};
+      onChange([...(documents||[]),newDoc]);
+      setNewTitle("");
+      toast("✅ "+(lang==="el"?"Έγγραφο ανέβηκε":"Document uploaded"),"success");
+    }catch(err){toast("Σφάλμα: "+err.message,"error");}
+    setUploading(false);
+    e.target.value="";
+  }
+
+  function removeDoc(id){
+    if(!confirm(lang==="el"?"Διαγραφή εγγράφου;":"Delete document?"))return;
+    onChange((documents||[]).filter(d=>d.id!==id));
+  }
+
+  function fileIcon(type,filename){
+    const ext=(filename||"").toLowerCase().split(".").pop();
+    if(type?.includes("pdf")||ext==="pdf")return "📄";
+    if(type?.includes("image")||["jpg","jpeg","png","gif","webp"].includes(ext))return "🖼";
+    if(type?.includes("word")||["doc","docx"].includes(ext))return "📝";
+    if(type?.includes("sheet")||["xls","xlsx","csv"].includes(ext))return "📊";
+    if(["zip","rar","7z"].includes(ext))return "🗜";
+    return "📎";
+  }
+
+  function fmtSize(bytes){
+    if(!bytes)return"";
+    if(bytes<1024)return bytes+"B";
+    if(bytes<1024*1024)return Math.round(bytes/1024)+"KB";
+    return (bytes/1024/1024).toFixed(1)+"MB";
+  }
+
+  return <div style={{marginBottom:"18px"}}>
+    <label style={css.label}>📄 {lang==="el"?"Έγγραφα Αγώνα (Προκήρυξη, Κανονισμός, κλπ)":"Race Documents (Announcement, Rules, etc)"}</label>
+    <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{lang==="el"?"Ανέβασε PDF, εικόνες ή έγγραφα. Οι αθλητές μπορούν να τα κατεβάσουν.":"Upload PDFs, images or documents. Athletes can download them."}</div>
+
+    <div style={{background:T.bg,borderRadius:"10px",padding:"14px",marginBottom:"10px",border:`1px dashed ${T.border}`}}>
+      <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+        <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder={lang==="el"?"Τίτλος (π.χ. Προκήρυξη 2026)":"Title (e.g. Race Brief 2026)"} style={{flex:1,minWidth:"200px",padding:"8px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        <label style={{cursor:uploading?"wait":"pointer",background:T.primary,color:"#fff",padding:"8px 16px",borderRadius:"8px",fontSize:"13px",fontWeight:700,fontFamily:"inherit",opacity:uploading?0.6:1,whiteSpace:"nowrap"}}>
+          {uploading?"⏳ "+(lang==="el"?"Ανέβασμα...":"Uploading..."):(lang==="el"?"📎 Επιλογή Αρχείου":"📎 Choose File")}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.zip,application/pdf,image/*" onChange={uploadFile} style={{display:"none"}} disabled={uploading}/>
+        </label>
+      </div>
+      <div style={{marginTop:"8px",fontSize:"11px",color:T.textLight}}>{lang==="el"?"Μέγιστο 10MB · Δέχεται PDF, εικόνες, Word, Excel, ZIP":"Max 10MB · Accepts PDF, images, Word, Excel, ZIP"}</div>
+    </div>
+
+    {(documents||[]).length>0&&(
+      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+        {documents.map(doc=>(
+          <div key={doc.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"12px"}}>
+            <div style={{fontSize:"24px",flexShrink:0}}>{fileIcon(doc.type,doc.filename)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.text,fontWeight:700,fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.title}</div>
+              <div style={{color:T.textLight,fontSize:"11px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.filename} · {fmtSize(doc.size)}</div>
+            </div>
+            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,color:T.primary,fontSize:"12px",fontWeight:700,textDecoration:"none",padding:"4px 8px"}}>👁</a>
+            <button type="button" onClick={()=>removeDoc(doc.id)} style={{flexShrink:0,background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"18px",padding:"4px"}}>×</button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>;
+}
+
+function DocumentsDisplay({documents}){
+  const {lang}=useLang();
+  if(!documents||documents.length===0)return null;
+
+  function fileIcon(type,filename){
+    const ext=(filename||"").toLowerCase().split(".").pop();
+    if(type?.includes("pdf")||ext==="pdf")return "📄";
+    if(type?.includes("image")||["jpg","jpeg","png","gif","webp"].includes(ext))return "🖼";
+    if(type?.includes("word")||["doc","docx"].includes(ext))return "📝";
+    if(type?.includes("sheet")||["xls","xlsx","csv"].includes(ext))return "📊";
+    if(["zip","rar","7z"].includes(ext))return "🗜";
+    return "📎";
+  }
+
+  function fmtSize(bytes){
+    if(!bytes)return"";
+    if(bytes<1024)return bytes+"B";
+    if(bytes<1024*1024)return Math.round(bytes/1024)+"KB";
+    return (bytes/1024/1024).toFixed(1)+"MB";
+  }
+
+  return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px"}}>
+    <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px",fontWeight:800}}>📄 {lang==="el"?"Έγγραφα Αγώνα":"Race Documents"}</h3>
+    <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+      {documents.map(doc=>(
+        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:"14px",background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 16px",textDecoration:"none",color:T.text,transition:"all 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor=T.primary;}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=T.border;}}>
+          <div style={{fontSize:"32px",flexShrink:0}}>{fileIcon(doc.type,doc.filename)}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.title}</div>
+            <div style={{color:T.textLight,fontSize:"11px"}}>{doc.filename} · {fmtSize(doc.size)}</div>
+          </div>
+          <div style={{flexShrink:0,color:T.primary,fontSize:"20px",fontWeight:700}}>⬇</div>
+        </a>
+      ))}
+    </div>
+  </div>;
+}
+
 function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
@@ -3527,7 +3647,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[]});
+  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});
 
   async function uploadBanner(e){
     const file=e.target.files?.[0];
@@ -3544,8 +3664,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
 
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[]});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[]});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[],documents:race.documents||[]});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){toast(t.fillNameDate,"warning");return;}
@@ -3557,7 +3677,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
     const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[]};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[],documents:form.documents||[]};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
@@ -3737,6 +3857,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       <PricingPicker distances={form.distances} pricing={form.pricing} onChange={p=>setForm({...form,pricing:p})}/>
       <RoutesPicker distances={form.distances} routes={form.routes||[]} onChange={r=>setForm({...form,routes:r})}/>
       <SponsorsPicker sponsors={form.sponsors||[]} onChange={s=>setForm({...form,sponsors:s})}/>
+      <DocumentsPicker documents={form.documents||[]} onChange={d=>setForm({...form,documents:d})}/>
       <FAQPicker faq={form.faq||[]} onChange={f=>setForm({...form,faq:f})}/>
       <GalleryPicker gallery={form.gallery||[]} onChange={g=>setForm({...form,gallery:g})}/>
       <PerksPicker perks={form.perks} onChange={p=>setForm({...form,perks:p})}/>
