@@ -57,6 +57,20 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
     button {
       transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
     }
+    /* Enhanced button hover effects */
+    .btn-enhanced:not(:disabled):hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+    .btn-enhanced:not(:disabled):active {
+      transform: translateY(0);
+      filter: brightness(0.97);
+    }
+    .btn-enhanced:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
   `;
   if (document.head) document.head.appendChild(s);
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
@@ -332,13 +346,13 @@ function In({label,...p}){return <F label={label}><input {...p} style={{...css.i
 function Sel({label,children,...p}){return <F label={label}><select {...p} style={{...css.input,...p.style}}>{children}</select></F>;}
 function Btn({children,v="pri",sm,...p}){
   const vs={
-    pri:{background:T.primary,color:"#fff",fontWeight:700},
+    pri:{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,color:"#fff",fontWeight:700,boxShadow:`0 2px 8px ${T.primary}33`},
     sec:{background:T.bgAlt,color:T.text,border:`1px solid ${T.border}`},
-    red:{background:"#fce8e8",color:T.danger,border:`1px solid ${T.danger}33`},
-    grn:{background:"#e1f3ec",color:T.accent,border:`1px solid ${T.accent}44`},
+    red:{background:"#fce8e8",color:T.danger,border:`1px solid ${T.danger}33`,fontWeight:600},
+    grn:{background:"#e1f3ec",color:T.accent,border:`1px solid ${T.accent}44`,fontWeight:600},
     ghost:{background:"transparent",color:T.textMid,border:`1px solid ${T.border}`}
   };
-  return <button {...p} style={{borderRadius:"8px",border:"none",cursor:"pointer",padding:sm?"6px 12px":"10px 20px",fontSize:sm?"12px":"13px",fontFamily:"inherit",...vs[v],...p.style}}>{children}</button>;
+  return <button {...p} className={`btn-enhanced ${p.className||""}`} style={{borderRadius:"10px",border:"none",cursor:"pointer",padding:sm?"7px 14px":"11px 22px",fontSize:sm?"12px":"13px",fontFamily:"inherit",letterSpacing:"0.01em",transition:"all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",...vs[v],...p.style}}>{children}</button>;
 }
 function Modal({title,onClose,children,wide}){
   return <div style={{position:"fixed",inset:0,background:"rgba(40,40,50,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"20px"}}>
