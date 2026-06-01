@@ -424,6 +424,44 @@ function EmptyState({icon,title,message,action,actionLabel,onAction}){
   </div>;
 }
 
+async function sendEmail(to,subject,html){
+  try{
+    const {data:{session}}=await supabase.auth.getSession();
+    const url=`${SUPABASE_URL}/functions/v1/rapid-api`;
+    const res=await fetch(url,{
+      method:"POST",
+      headers:{
+        "Authorization":`Bearer ${session?.access_token||SUPABASE_KEY}`,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({to,subject,html})
+    });
+    if(!res.ok){console.error("Email send failed:",await res.text());return false;}
+    return true;
+  }catch(err){console.error("Email error:",err);return false;}
+}
+
+function emailTemplate(title,bodyHtml){
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+      <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+        <div style="background:linear-gradient(135deg,#4a5dc7 0%,#3a4ba8 100%);padding:32px;text-align:center;">
+          <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.02em;">🏃 Race Management</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:13px;">racemanagement.gr</p>
+        </div>
+        <div style="padding:32px 28px;">
+          <h2 style="margin:0 0 20px;color:#1a1a1a;font-size:22px;font-weight:700;line-height:1.3;">${title}</h2>
+          <div style="color:#444;font-size:15px;line-height:1.6;">${bodyHtml}</div>
+        </div>
+        <div style="background:#f9f9fb;padding:20px 28px;border-top:1px solid #eee;text-align:center;color:#888;font-size:12px;">
+          <p style="margin:0 0 6px;">© ${new Date().getFullYear()} ΜΗΤΡΟΠΕΤΡΟΣ ΕΛΕΥΘΕΡΙΟΣ · ΑΦΜ 105127494</p>
+          <p style="margin:0;">📞 693 6960328 · ✉️ <a href="mailto:leyterhs.mhtropetros1986@gmail.com" style="color:#4a5dc7;text-decoration:none;">leyterhs.mhtropetros1986@gmail.com</a></p>
+        </div>
+      </div>
+    </div>
+  </body></html>`;
+}
+
 function toast(message,type){
   if(typeof window==="undefined")return;
   const detail={message:String(message||""),type:type||autoToastType(message)};
@@ -2724,6 +2762,25 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
     const bibNum=(maxBib+1).toString();
     const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final,gdpr_consent_at:new Date().toISOString()}]);
+    // Send confirmation email to athlete
+    if(!regError){
+      const emailSubject=`✅ Επιβεβαίωση Εγγραφής - ${race.name}`;
+      const emailBody=`
+        <p>Γεια σας <strong>${form.first_name} ${form.last_name}</strong>,</p>
+        <p>Η εγγραφή σας στον αγώνα ολοκληρώθηκε επιτυχώς!</p>
+        <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+          <p style="margin:0 0 8px;"><strong>🏁 Αγώνας:</strong> ${race.name}</p>
+          <p style="margin:0 0 8px;"><strong>📅 Ημερομηνία:</strong> ${race.date}</p>
+          <p style="margin:0 0 8px;"><strong>📍 Τοποθεσία:</strong> ${race.location||"—"}</p>
+          <p style="margin:0 0 8px;"><strong>🏃 Απόσταση:</strong> ${form.distance}</p>
+          ${bibNum?`<p style="margin:0 0 8px;"><strong>🎫 Νούμερο BIB:</strong> #${bibNum}</p>`:""}
+          ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Κόστος:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
+        </div>
+        <p>Καλή επιτυχία στον αγώνα! 🏃‍♂️💨</p>
+        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τη σελίδα του αγώνα →</a></p>
+      `;
+      sendEmail(session.user.email,emailSubject,emailTemplate(`Επιβεβαίωση Εγγραφής`,emailBody));
+    }
     if(regError){toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;}
     setLoading(false);
     toast(`✅ Εγγραφή Επιτυχής! BIB #${bibNum} · ${form.distance} · ${priceInfo.final.toFixed(2)}€`,"success");
@@ -4064,9 +4121,27 @@ function AdminPanel(){
   }
   useEffect(()=>{fetchOrgs();},[]);
   async function approveRace(id){
+    const race=pendingRaces.find(r=>r.id===id);
     const {error}=await supabase.from("races").update({status:"upcoming"}).eq("id",id);
     if(error){toast("Σφάλμα: "+error.message,"error");return;}
     toast(lang==="el"?"✅ Ο αγώνας εγκρίθηκε!":"✅ Race approved!","success");
+    if(race){
+      const owner=allOrgs.find(o=>o.id===race.user_id);
+      if(owner?.email){
+        const body=`
+          <p>Γεια σας <strong>${owner.full_name||""}</strong>,</p>
+          <p>Ο αγώνας σας <strong>"${race.name}"</strong> <strong style="color:#10b981;">εγκρίθηκε</strong> και είναι πλέον δημόσιος!</p>
+          <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+            <p style="margin:0 0 8px;"><strong>🏁 Αγώνας:</strong> ${race.name}</p>
+            <p style="margin:0 0 8px;"><strong>📅 Ημερομηνία:</strong> ${race.date}</p>
+            <p style="margin:0;"><strong>📍 Τοποθεσία:</strong> ${race.location||"—"}</p>
+          </div>
+          <p>Οι αθλητές μπορούν τώρα να εγγραφούν!</p>
+          <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τον αγώνα →</a></p>
+        `;
+        sendEmail(owner.email,`✅ Ο αγώνας "${race.name}" εγκρίθηκε`,emailTemplate("Ο αγώνας σας εγκρίθηκε!",body));
+      }
+    }
     fetchOrgs();
   }
   async function rejectRace(id){
@@ -4076,7 +4151,28 @@ function AdminPanel(){
     toast(lang==="el"?"❌ Ο αγώνας απορρίφθηκε":"❌ Race rejected","info");
     fetchOrgs();
   }
-  async function approve(id){await supabase.from("profiles").update({status:"approved"}).eq("id",id);fetchOrgs();}
+  async function approve(id){
+    const org=allOrgs.find(o=>o.id===id);
+    const {error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id);
+    if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    toast(lang==="el"?"✅ Εγκρίθηκε!":"✅ Approved!","success");
+    if(org?.email){
+      const body=`
+        <p>Γεια σας <strong>${org.full_name||""}</strong>,</p>
+        <p>Ο λογαριασμός σας ως διοργανωτής στο racemanagement.gr <strong style="color:#10b981;">εγκρίθηκε</strong>!</p>
+        <p>Μπορείτε πλέον να:</p>
+        <ul>
+          <li>Δημιουργήσετε αγώνες</li>
+          <li>Διαχειριστείτε εγγραφές αθλητών</li>
+          <li>Ανεβάσετε προκηρύξεις και έγγραφα</li>
+          <li>Δείτε αποτελέσματα</li>
+        </ul>
+        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Συνδεθείτε τώρα →</a></p>
+      `;
+      sendEmail(org.email,"✅ Ο λογαριασμός σας εγκρίθηκε",emailTemplate("Καλωσήρθατε!",body));
+    }
+    fetchOrgs();
+  }
   async function reject(id){if(!confirm(t.rejectConfirm))return;await supabase.from("profiles").update({status:"rejected"}).eq("id",id);fetchOrgs();}
   async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
   const list=tab==="pending"?pendingOrgs:allOrgs;
