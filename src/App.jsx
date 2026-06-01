@@ -1383,21 +1383,26 @@ function DistancesPicker({distances,onChange}){
 }
 
 function PricingPicker({distances,pricing,onChange}){
-  const {t}=useLang();
-  function updatePrice(distance,price){
+  const {t,lang}=useLang();
+  function updateField(distance,field,value){
     const existing=pricing.find(p=>p.distance===distance);
-    if(existing){onChange(pricing.map(p=>p.distance===distance?{...p,price:parseFloat(price)||0}:p));}
-    else{onChange([...pricing,{distance,price:parseFloat(price)||0}]);}
+    if(existing){onChange(pricing.map(p=>p.distance===distance?{...p,[field]:field==="price"||field==="elevation"?(parseFloat(value)||0):value}:p));}
+    else{onChange([...pricing,{distance,[field]:field==="price"||field==="elevation"?(parseFloat(value)||0):value}]);}
   }
-  function getPrice(distance){return pricing.find(p=>p.distance===distance)?.price||"";}
+  function getField(distance,field){return pricing.find(p=>p.distance===distance)?.[field]||"";}
   if(distances.length===0)return <div style={{background:`${T.warning}15`,border:`1px solid ${T.warning}44`,borderRadius:"8px",padding:"12px",color:T.warning,fontSize:"12px",marginBottom:"14px"}}>{t.addDistancesFirst}</div>;
   return <F label={t.pricingLabel}>
-    <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+    <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
       {distances.map(d=>(
-        <div key={d} style={{display:"flex",gap:"8px",alignItems:"center",background:T.bg,padding:"8px 12px",borderRadius:"8px",border:`1px solid ${T.border}`}}>
-          <span style={{flex:1,fontSize:"13px",color:T.text,fontWeight:600}}>🏃 {d}</span>
-          <input type="number" min="0" step="0.5" value={getPrice(d)} onChange={e=>updatePrice(d,e.target.value)} placeholder="0" style={{...css.input,width:"100px"}}/>
-          <span style={{color:T.textMid,fontSize:"13px"}}>€</span>
+        <div key={d} style={{background:T.bg,padding:"12px 14px",borderRadius:"10px",border:`1px solid ${T.border}`}}>
+          <div style={{display:"flex",gap:"8px",alignItems:"center",marginBottom:"8px"}}>
+            <span style={{flex:1,fontSize:"14px",color:T.text,fontWeight:700}}>🏃 {d}</span>
+            <input type="number" min="0" step="0.5" value={getField(d,"price")} onChange={e=>updateField(d,"price",e.target.value)} placeholder="0" style={{...css.input,width:"90px"}}/>
+            <span style={{color:T.textMid,fontSize:"13px"}}>€</span>
+            <input type="number" min="0" value={getField(d,"elevation")} onChange={e=>updateField(d,"elevation",e.target.value)} placeholder={lang==="el"?"Υψομ.":"Elev."} style={{...css.input,width:"90px"}}/>
+            <span style={{color:T.textMid,fontSize:"13px"}}>m</span>
+          </div>
+          <textarea value={getField(d,"description")} onChange={e=>updateField(d,"description",e.target.value)} placeholder={lang==="el"?`Σύντομη περιγραφή της διαδρομής ${d} (προαιρετικό)...`:`Short description for ${d} (optional)...`} rows={2} style={{...css.input,width:"100%",resize:"vertical",fontFamily:"inherit",fontSize:"12px",lineHeight:1.4,boxSizing:"border-box"}}/>
         </div>
       ))}
     </div>
@@ -3074,11 +3079,12 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
                 <div style={{width:"56px",height:"56px",borderRadius:"16px",background:isMyDistance?T.accent:`${T.primary}15`,color:isMyDistance?"#fff":T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",flexShrink:0}}>🏃</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{color:T.text,fontWeight:800,fontSize:"18px",marginBottom:"6px"}}>{d}</div>
-                  <div style={{display:"flex",gap:"14px",flexWrap:"wrap",color:T.textMid,fontSize:"12px",fontWeight:600,alignItems:"center"}}>
+                  <div style={{display:"flex",gap:"14px",flexWrap:"wrap",color:T.textMid,fontSize:"12px",fontWeight:600,alignItems:"center",marginBottom:pricingEntry?.description?"8px":0}}>
                     {km>0&&<span>📏 {km}km</span>}
                     {elevation&&<span>⛰ +{elevation}m</span>}
                     {pr.base>0&&<span style={{color:isMyDistance?T.accent:T.primary,fontSize:"15px",fontWeight:800}}>{pr.isEarlyBird?pr.final.toFixed(2):pr.base}€{pr.isEarlyBird&&<span style={{textDecoration:"line-through",color:T.textLight,marginLeft:"6px",fontSize:"12px",fontWeight:500}}>{pr.base.toFixed(2)}€</span>}</span>}
                   </div>
+                  {pricingEntry?.description&&<div style={{color:T.textMid,fontSize:"13px",lineHeight:1.5,marginTop:"4px",whiteSpace:"pre-wrap"}}>{pricingEntry.description}</div>}
                 </div>
               </div>
               <button onClick={()=>{if(canRegister)onRegister(race);}} disabled={!canRegister} style={{background:isMyDistance?T.accent:(canRegister?T.primary:T.borderDark),color:"#fff",border:"none",borderRadius:"14px",padding:"14px 28px",fontSize:"14px",fontWeight:800,letterSpacing:"0.02em",cursor:canRegister?"pointer":"default",fontFamily:"inherit",boxShadow:canRegister?"0 4px 14px rgba(74,93,199,0.3)":"none",opacity:canRegister||isMyDistance?1:0.6,minWidth:"140px"}}>{isMyDistance?`✓ ${t.myDistance}`:(canRegister?(lang==="el"?"Εγγραφή →":"Register →"):(race.status==="finished"?t.statusFinished:"—"))}</button>
