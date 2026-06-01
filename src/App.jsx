@@ -2258,19 +2258,24 @@ function PublicHomePage(){
             const distances=race.distance?race.distance.split(" | "):[];
             const hasEarlyBird=race.early_bird&&race.early_bird.deadline&&new Date()<=new Date(race.early_bird.deadline);
             const statusConfig={
-              upcoming:{label:t.statusUpcoming,bg:"rgba(16,185,129,0.92)"},
-              active:{label:t.statusActive,bg:"rgba(59,130,246,0.92)"},
-              finished:{label:t.statusFinished,bg:"rgba(107,114,128,0.92)"}
+              upcoming:{label:t.statusUpcoming,bg:"rgba(16,185,129,0.95)",icon:"🟢"},
+              active:{label:t.statusActive,bg:"rgba(59,130,246,0.95)",icon:"🔵"},
+              finished:{label:t.statusFinished,bg:"rgba(107,114,128,0.95)",icon:"⚫"}
             };
             const status=statusConfig[race.status]||statusConfig.upcoming;
-            return <div key={race.id} onClick={()=>openLogin()} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openLogin();}}} style={{background:T.bgAlt,borderRadius:"20px",overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",transition:"transform 0.2s ease, box-shadow 0.2s ease"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 12px 28px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)";}}>
+            const isSoldOut=race.max_runners&&race.registrations_count>=race.max_runners;
+            const daysOld=race.created_at?Math.floor((Date.now()-new Date(race.created_at).getTime())/86400000):999;
+            const isNew=daysOld<=7;
+            return <div key={race.id} onClick={()=>openLogin()} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openLogin();}}} style={{background:T.bgAlt,borderRadius:"20px",overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)",transition:"transform 0.2s ease, box-shadow 0.2s ease"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-6px) scale(1.005)";e.currentTarget.style.boxShadow="0 20px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0) scale(1)";e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)";}}>
               <div style={{position:"relative",width:"100%",aspectRatio:"16/10",background:`linear-gradient(135deg,${T.primary},${T.accent})`,overflow:"hidden"}}>
                 {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>}
                 <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.78) 100%)"}}/>
                 <div style={{position:"absolute",top:"14px",right:"14px",display:"flex",gap:"8px",alignItems:"center"}}>
                   {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"5px 11px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.04em"}}>🏷 -{race.early_bird.discount_percent}%</span>}
                   <RaceCountdown date={race.date} compact lang={lang}/>
-                  <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase"}}>{status.label}</span>
+                  <span style={{background:status.bg,backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",display:"inline-flex",alignItems:"center",gap:"4px",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>{status.icon} {status.label}</span>
+                  {isSoldOut&&<span style={{background:"rgba(220,38,38,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",boxShadow:"0 2px 8px rgba(220,38,38,0.3)"}}>🔴 {lang==="el"?"ΕΞΑΝΤΛΗΘΗΚΕ":"SOLD OUT"}</span>}
+                  {isNew&&!isSoldOut&&<span style={{background:"rgba(168,85,247,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"6px 13px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",boxShadow:"0 2px 8px rgba(168,85,247,0.3)"}}>✨ {lang==="el"?"ΝΕΟ":"NEW"}</span>}
                 </div>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"24px 22px 18px"}}>
                   <h3 style={{margin:"0 0 8px",color:"#fff",fontSize:"clamp(20px,4vw,24px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.15,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>{race.name}</h3>
@@ -2996,6 +3001,8 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
     {id:"map",label:lang==="el"?"Χάρτης":"Map",icon:"🗺"},
     ...(race.documents&&race.documents.length>0?[{id:"documents",label:lang==="el"?"Έγγραφα":"Documents",icon:"📄"}]:[]),
     {id:"perks",label:lang==="el"?"Παροχές":"Benefits",icon:"🎁"},
+    ...(race.gallery&&race.gallery.length>0?[{id:"gallery",label:lang==="el"?"Φωτογραφίες":"Photos",icon:"📸"}]:[]),
+    ...(race.sponsors&&race.sponsors.length>0?[{id:"sponsors",label:lang==="el"?"Χορηγοί":"Sponsors",icon:"🤝"}]:[]),
     {id:"results",label:lang==="el"?"Αποτελέσματα":"Results",icon:"🏆"}
   ];
 
@@ -3060,8 +3067,6 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           </div>
         </div>
         {race.location&&<div style={{marginTop:"20px"}}><WeatherWidget location={race.location} raceDate={race.date}/></div>}
-        {race.sponsors&&race.sponsors.length>0&&<div style={{marginTop:"20px"}}><SponsorsDisplay sponsors={race.sponsors}/></div>}
-        {race.gallery&&race.gallery.length>0&&<div style={{marginTop:"20px"}}><GalleryDisplay gallery={race.gallery}/></div>}
         {race.faq&&race.faq.length>0&&<div style={{marginTop:"20px"}}><FAQDisplay faq={race.faq}/></div>}
       </div>)}
 
@@ -3137,6 +3142,12 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
         )}
       </div>)}
 
+      {activeTab==="gallery"&&(<div>
+        <GalleryDisplay gallery={race.gallery}/>
+      </div>)}
+      {activeTab==="sponsors"&&(<div>
+        <SponsorsDisplay sponsors={race.sponsors}/>
+      </div>)}
       {activeTab==="documents"&&(<div>
         <DocumentsDisplay documents={race.documents}/>
       </div>)}
