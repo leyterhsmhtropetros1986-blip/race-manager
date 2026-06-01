@@ -2685,7 +2685,8 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
       <In label={t.club} value={form.club} onChange={e=>set("club",e.target.value)} placeholder={t.optional}/>
-      <In label="Πόλη" value={form.city} onChange={e=>set("city",e.target.value)} placeholder={t.optional}/>
+      <In label="Πόλη / Τόπος Διαμονής *" value={form.city} onChange={e=>set("city",e.target.value)} placeholder="Π.χ. Αθήνα"/>
+      <In label="Εθνικότητα *" value={form.nationality} onChange={e=>set("nationality",e.target.value)} placeholder="Π.χ. Ελληνική"/>
     </div>
     <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"16px",marginBottom:"14px"}}>
       <div style={{color:T.text,fontSize:"13px",fontWeight:700,marginBottom:"12px"}}>🆘 Επαφή Έκτακτης Ανάγκης</div>
