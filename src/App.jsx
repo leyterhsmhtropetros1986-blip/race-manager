@@ -2608,6 +2608,51 @@ function AthleteRaceCard({race,registrations,runners,session,onSelect}){
   </div>;
 }
 
+function DOBInput({value,onChange,label}){
+  const {lang}=useLang();
+  // Parse YYYY-MM-DD format
+  const parts=value?value.split("-"):["","",""];
+  const [y,m,d]=[parts[0]||"",parts[1]||"",parts[2]||""];
+
+  function update(field,val){
+    val=val.replace(/[^0-9]/g,"");
+    let ny=y,nm=m,nd=d;
+    if(field==="d"){nd=val.slice(0,2);}
+    if(field==="m"){nm=val.slice(0,2);}
+    if(field==="y"){ny=val.slice(0,4);}
+    if(ny.length===4&&nm.length>0&&nd.length>0){
+      const mm=nm.padStart(2,"0");
+      const dd=nd.padStart(2,"0");
+      onChange(`${ny}-${mm}-${dd}`);
+    }else if(!ny&&!nm&&!nd){
+      onChange("");
+    }else{
+      onChange(`${ny}-${nm.padStart(2,"0")}-${nd.padStart(2,"0")}`);
+    }
+  }
+
+  const inputStyle={width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",textAlign:"center",boxSizing:"border-box"};
+  return <div style={{marginBottom:"14px"}}>
+    {label&&<label style={{...css.label,marginBottom:"6px"}}>{label}</label>}
+    <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+      <div style={{flex:"0 0 70px"}}>
+        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΗΗ":"DD"} value={d} onChange={e=>update("d",e.target.value)} maxLength={2} style={inputStyle}/>
+        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Ημέρα":"Day"}</div>
+      </div>
+      <span style={{color:T.textLight,fontWeight:700,fontSize:"18px",marginTop:"-14px"}}>/</span>
+      <div style={{flex:"0 0 70px"}}>
+        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΜΜ":"MM"} value={m} onChange={e=>update("m",e.target.value)} maxLength={2} style={inputStyle}/>
+        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Μήνας":"Month"}</div>
+      </div>
+      <span style={{color:T.textLight,fontWeight:700,fontSize:"18px",marginTop:"-14px"}}>/</span>
+      <div style={{flex:"0 0 100px"}}>
+        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΕΕΕΕ":"YYYY"} value={y} onChange={e=>update("y",e.target.value)} maxLength={4} style={inputStyle}/>
+        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Έτος":"Year"}</div>
+      </div>
+    </div>
+  </div>;
+}
+
 function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   const {t}=useLang();
   const distances=race.distance?race.distance.split(" | "):[];
@@ -2709,7 +2754,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       <In label="ΑΜΚΑ" value={form.amka} onChange={e=>set("amka",e.target.value)} placeholder="Προαιρετικό"/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-      <In label={t.dob} type="date" value={form.dob} onChange={e=>set("dob",e.target.value)}/>
+      <DOBInput label={t.dob} value={form.dob} onChange={v=>set("dob",v)}/>
       <Sel label={t.gender} value={form.gender} onChange={e=>set("gender",e.target.value)}><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></Sel>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
@@ -2873,7 +2918,7 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
         <In label="ΑΜΚΑ" value={form.amka} onChange={e=>set("amka",e.target.value)}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-        <In label={t.dob} type="date" value={form.dob||""} onChange={e=>set("dob",e.target.value)}/>
+        <DOBInput label={t.dob} value={form.dob||""} onChange={v=>set("dob",v)}/>
         <Sel label={t.gender} value={form.gender||t.male} onChange={e=>set("gender",e.target.value)}><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></Sel>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
@@ -4106,6 +4151,33 @@ function AppContent(){
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
     supabase.auth.onAuthStateChange((_,session)=>setSession(session));
   },[]);
+
+  // Auto-logout after 30 minutes of inactivity
+  useEffect(()=>{
+    if(!session)return;
+    const INACTIVITY_TIMEOUT=30*60*1000; // 30 minutes
+    const WARNING_BEFORE=5*60*1000; // 5 min warning
+    let logoutTimer,warningTimer;
+    function resetTimers(){
+      clearTimeout(logoutTimer);
+      clearTimeout(warningTimer);
+      warningTimer=setTimeout(()=>{
+        toast("⏰ Θα αποσυνδεθείτε σε 5 λεπτά λόγω αδράνειας","warning");
+      },INACTIVITY_TIMEOUT-WARNING_BEFORE);
+      logoutTimer=setTimeout(()=>{
+        toast("👋 Αποσυνδεθήκατε λόγω αδράνειας","info");
+        supabase.auth.signOut();
+      },INACTIVITY_TIMEOUT);
+    }
+    const events=["mousedown","keydown","scroll","touchstart","click"];
+    events.forEach(e=>window.addEventListener(e,resetTimers,{passive:true}));
+    resetTimers();
+    return ()=>{
+      clearTimeout(logoutTimer);
+      clearTimeout(warningTimer);
+      events.forEach(e=>window.removeEventListener(e,resetTimers));
+    };
+  },[session]);
 
   async function fetchAll(){
     if(!session)return;
