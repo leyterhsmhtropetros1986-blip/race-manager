@@ -3529,7 +3529,7 @@ function DocumentsPicker({documents,onChange}){
   async function uploadFile(e){
     const file=e.target.files?.[0];
     if(!file)return;
-    if(file.size>10*1024*1024){toast(lang==="el"?"⚠️ Μέγιστο μέγεθος 10MB":"⚠️ Max size 10MB","warning");return;}
+    if(file.size>50*1024*1024){toast(lang==="el"?"⚠️ Μέγιστο μέγεθος 50MB":"⚠️ Max size 50MB","warning");return;}
     if(!newTitle.trim()){toast(lang==="el"?"⚠️ Δώσε πρώτα τίτλο":"⚠️ Set title first","warning");return;}
     setUploading(true);
     try{
@@ -3581,7 +3581,7 @@ function DocumentsPicker({documents,onChange}){
           <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.zip,application/pdf,image/*" onChange={uploadFile} style={{display:"none"}} disabled={uploading}/>
         </label>
       </div>
-      <div style={{marginTop:"8px",fontSize:"11px",color:T.textLight}}>{lang==="el"?"Μέγιστο 10MB · Δέχεται PDF, εικόνες, Word, Excel, ZIP":"Max 10MB · Accepts PDF, images, Word, Excel, ZIP"}</div>
+      <div style={{marginTop:"8px",fontSize:"11px",color:T.textLight}}>{lang==="el"?"Μέγιστο 50MB · Δέχεται PDF, εικόνες, Word, Excel, ZIP":"Max 50MB · Accepts PDF, images, Word, Excel, ZIP"}</div>
     </div>
 
     {(documents||[]).length>0&&(
