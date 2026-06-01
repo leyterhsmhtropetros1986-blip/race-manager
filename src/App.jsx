@@ -2961,24 +2961,53 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
       </div>
     )}
     <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.profileTitle}</h2>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"20px"}}>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.primary}}>{totalRaces}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statTotalRaces}</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
+      <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{fontSize:"28px",marginBottom:"4px"}}>🏃</div>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.primary,lineHeight:1}}>{totalRaces}</div>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statTotalRaces}</div>
       </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.accent}}>{finishedCount}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statFinished}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
+        <div style={{fontSize:"28px",marginBottom:"4px"}}>✅</div>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.accent,lineHeight:1}}>{finishedCount}</div>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statFinished}</div>
       </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.warning}}>{upcomingCount}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statUpcoming}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
+        <div style={{fontSize:"28px",marginBottom:"4px"}}>⏳</div>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.warning,lineHeight:1}}>{upcomingCount}</div>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statUpcoming}</div>
       </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.text}}>{totalKm.toFixed(1)}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statTotalKm}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.text}15 0%, ${T.text}05 100%)`,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
+        <div style={{fontSize:"28px",marginBottom:"4px"}}>📏</div>
+        <div style={{fontSize:"28px",fontWeight:900,color:T.text,lineHeight:1}}>{totalKm.toFixed(0)}<span style={{fontSize:"14px",fontWeight:600,opacity:0.6}}>km</span></div>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statTotalKm}</div>
       </div>
     </div>
+    {/* Achievements/Badges */}
+    {(()=>{
+      const badges=[];
+      if(totalRaces>=1)badges.push({icon:"🥇",title:lang==="el"?"Πρώτος Αγώνας":"First Race",desc:lang==="el"?"Καλωσήρθες!":"Welcome!"});
+      if(totalRaces>=5)badges.push({icon:"⭐",title:lang==="el"?"5 Αγώνες":"5 Races",desc:lang==="el"?"Σταθερός":"Consistent"});
+      if(totalRaces>=10)badges.push({icon:"🏆",title:lang==="el"?"10 Αγώνες":"10 Races",desc:lang==="el"?"Veteran":"Veteran"});
+      if(totalKm>=42)badges.push({icon:"🏃‍♂️",title:lang==="el"?"Marathon Distance":"Marathon Distance",desc:`${totalKm.toFixed(0)}km`});
+      if(totalKm>=100)badges.push({icon:"💯",title:"100km Club",desc:`${totalKm.toFixed(0)}km`});
+      if(totalKm>=500)badges.push({icon:"🚀",title:"500km Club",desc:`${totalKm.toFixed(0)}km`});
+      if(finishedCount>=3)badges.push({icon:"✅",title:lang==="el"?"3 Ολοκληρωμένοι":"3 Finishers",desc:lang==="el"?"Finisher":"Finisher"});
+      if(prList.length>=3)badges.push({icon:"⏱",title:lang==="el"?"3 PRs":"3 PRs",desc:lang==="el"?"Personal Bests":"Personal Bests"});
+      if(badges.length===0)return null;
+      return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
+        <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px",display:"flex",alignItems:"center",gap:"8px"}}>🏅 {lang==="el"?"Επιτεύγματα":"Achievements"}</h3>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px"}}>
+          {badges.map((b,i)=>(
+            <div key={i} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center",transition:"all 0.2s",cursor:"default"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{fontSize:"32px",marginBottom:"6px"}}>{b.icon}</div>
+              <div style={{color:T.text,fontWeight:700,fontSize:"12px",marginBottom:"2px"}}>{b.title}</div>
+              <div style={{color:T.textLight,fontSize:"10px"}}>{b.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>;
+    })()}
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px"}}>{t.prsTitle}</h3>
       {prList.length===0?(
@@ -2997,6 +3026,44 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
         </div>
       )}
     </div>
+    {/* My Races - Auto-synced από registrations */}
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px"}}>🗓 Οι Αγώνες μου</h3>
+        <div style={{background:T.primary+"15",color:T.primary,padding:"4px 12px",borderRadius:"999px",fontSize:"12px",fontWeight:700}}>{history.length} {history.length===1?"αγώνας":"αγώνες"}</div>
+      </div>
+      {history.length===0?(
+        <div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"30px",background:T.bg,borderRadius:"10px"}}>{lang==="el"?"📭 Δεν έχεις εγγραφεί σε κανέναν αγώνα ακόμα":"📭 No race registrations yet"}</div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          {history.map((h,i)=>{
+            const isFinished=h.race.status==="finished"||h.finish_time;
+            const isUpcoming=h.race.status==="upcoming";
+            const isActive=h.race.status==="active";
+            const statusBadge=isFinished?{bg:"#10b98115",color:"#059669",label:"✅ "+(lang==="el"?"Ολοκληρώθηκε":"Finished")}:isActive?{bg:"#3b82f615",color:"#2563eb",label:"🔵 "+(lang==="el"?"Σε εξέλιξη":"Active")}:isUpcoming?{bg:"#f59e0b15",color:"#d97706",label:"⏳ "+(lang==="el"?"Επερχόμενος":"Upcoming")}:{bg:T.bg,color:T.textMid,label:h.race.status||"—"};
+            return <div key={i} style={{background:T.bg,borderRadius:"12px",padding:"16px 18px",border:`1px solid ${T.border}`,transition:"all 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px",flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.text,fontWeight:800,fontSize:"15px",marginBottom:"4px"}}>{h.race.name||"—"}</div>
+                  <div style={{color:T.textMid,fontSize:"12px",display:"flex",gap:"10px",flexWrap:"wrap",alignItems:"center"}}>
+                    <span>📅 {h.race.date||"—"}</span>
+                    {h.race.location&&<span>📍 {h.race.location}</span>}
+                    <span>🏃 {h.distance}</span>
+                    {h.bib_number&&<span style={{background:T.primary,color:"#fff",padding:"2px 8px",borderRadius:"6px",fontWeight:700,fontSize:"11px"}}>#{h.bib_number}</span>}
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"6px"}}>
+                  <span style={{background:statusBadge.bg,color:statusBadge.color,padding:"4px 10px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.05em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{statusBadge.label}</span>
+                  {h.finish_time&&<div style={{background:T.text,color:"#fff",padding:"4px 10px",borderRadius:"6px",fontFamily:"monospace",fontWeight:700,fontSize:"13px"}}>⏱ {formatTime(h.finish_time)}</div>}
+                  {h.position&&<div style={{color:T.warning,fontWeight:800,fontSize:"13px"}}>🏆 #{h.position}</div>}
+                </div>
+              </div>
+            </div>;
+          })}
+        </div>
+      )}
+    </div>
+
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px"}}>{t.profileInfo}</h3>
       <div style={{display:"flex",alignItems:"center",gap:"16px",marginBottom:"20px",padding:"14px",background:T.bg,borderRadius:"10px"}}>
