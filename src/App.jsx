@@ -2465,11 +2465,20 @@ function LoginPage({onBack}){
       if(error)setError(t.wrongCreds);
       setLoading(false);return;
     }
-    const {data,error}=await supabase.auth.signUp({email,password});
+    const {data,error}=await supabase.auth.signUp({
+      email,
+      password,
+      options:{
+        data:{
+          full_name:name,
+          role:role
+        }
+      }
+    });
     if(error){setError(error.message);setLoading(false);return;}
     if(data.user){
-      const initialStatus=role==="organizer"?"pending":"approved";
-      await supabase.from("profiles").insert([{id:data.user.id,email,full_name:name,role:role,status:initialStatus}]);
+      // Trigger automatically creates profile from metadata
+      // No need for manual insert anymore
       setError(role==="organizer"?t.signupOk:t.checkEmail);
     }
     setLoading(false);
