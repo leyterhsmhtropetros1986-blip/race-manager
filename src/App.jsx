@@ -3956,7 +3956,7 @@ function AppContent(){
   }
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
 
-  if(!session)return <PublicHomePage/>;
+  if(!session)return <><PublicHomePage/><Footer/></>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>
       {t.loading}</div>;
 
