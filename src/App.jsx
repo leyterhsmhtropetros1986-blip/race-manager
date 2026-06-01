@@ -2989,6 +2989,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
     {id:"info",label:lang==="el"?"Πληροφορίες":"Information",icon:"ℹ️"},
     {id:"routes",label:lang==="el"?"Διαδρομές":"Routes",icon:"🏃"},
     {id:"map",label:lang==="el"?"Χάρτης":"Map",icon:"🗺"},
+    ...(race.documents&&race.documents.length>0?[{id:"documents",label:lang==="el"?"Έγγραφα":"Documents",icon:"📄"}]:[]),
     {id:"perks",label:lang==="el"?"Παροχές":"Benefits",icon:"🎁"},
     {id:"results",label:lang==="el"?"Αποτελέσματα":"Results",icon:"🏆"}
   ];
@@ -3054,7 +3055,6 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           </div>
         </div>
         {race.location&&<div style={{marginTop:"20px"}}><WeatherWidget location={race.location} raceDate={race.date}/></div>}
-        {race.documents&&race.documents.length>0&&<div style={{marginTop:"20px"}}><DocumentsDisplay documents={race.documents}/></div>}
         {race.sponsors&&race.sponsors.length>0&&<div style={{marginTop:"20px"}}><SponsorsDisplay sponsors={race.sponsors}/></div>}
         {race.gallery&&race.gallery.length>0&&<div style={{marginTop:"20px"}}><GalleryDisplay gallery={race.gallery}/></div>}
         {race.faq&&race.faq.length>0&&<div style={{marginTop:"20px"}}><FAQDisplay faq={race.faq}/></div>}
@@ -3131,6 +3131,9 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
         )}
       </div>)}
 
+      {activeTab==="documents"&&(<div>
+        <DocumentsDisplay documents={race.documents}/>
+      </div>)}
       {activeTab==="perks"&&(<div>
         {(race.perks||[]).length===0?(<div style={{textAlign:"center",color:T.textLight,padding:"60px",fontSize:"14px"}}>—</div>):(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:"14px"}}>
