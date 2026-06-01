@@ -2889,7 +2889,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   </Modal>;
 }
 
-function AthleteProfile({runners,registrations,races,session,onRefresh}){
+function AthleteProfile({runners,registrations,races,session,profile,onRefresh}){
   const {t}=useLang();
   const myRunner=runners.find(r=>r.email===session.user.email);
   const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
@@ -2946,6 +2946,20 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
   if(!myRunner)return <div style={{textAlign:"center",color:T.textLight,padding:"60px"}}>—</div>;
 
   return <div>
+    {profile?.athlete_id&&(
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"16px",padding:"20px 24px",marginBottom:"20px",color:"#fff",boxShadow:`0 8px 24px ${T.primary}33`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
+          <div>
+            <div style={{fontSize:"11px",opacity:0.85,letterSpacing:"0.15em",textTransform:"uppercase",fontWeight:600,marginBottom:"4px"}}>Athlete ID</div>
+            <div style={{fontSize:"28px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:"16px",fontWeight:700}}>{myRunner?.first_name} {myRunner?.last_name}</div>
+            <div style={{fontSize:"12px",opacity:0.85,marginTop:"2px"}}>{session?.user?.email}</div>
+          </div>
+        </div>
+      </div>
+    )}
     <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.profileTitle}</h2>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"20px"}}>
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",textAlign:"center",boxShadow:T.shadow}}>
@@ -3372,7 +3386,7 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
         {myRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}
       </div>
     </div>)}
-    {tab==="profile"&&(<AthleteProfile runners={runners} registrations={registrations} races={races} session={session} onRefresh={onRefresh}/>)}
+    {tab==="profile"&&(<AthleteProfile runners={runners} registrations={registrations} races={races} session={session} profile={profile} onRefresh={onRefresh}/>)}
     {registerRace&&<AthleteRegistrationForm race={registerRace} profile={profile} session={session} onClose={()=>setRegisterRace(null)} onSuccess={()=>{setRegisterRace(null);onRefresh();}}/>}
   </div>;
 }
