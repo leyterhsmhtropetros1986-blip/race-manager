@@ -2648,46 +2648,54 @@ function AthleteRaceCard({race,registrations,runners,session,onSelect}){
 
 function DOBInput({value,onChange,label}){
   const {lang}=useLang();
-  // Parse YYYY-MM-DD format
-  const parts=value?value.split("-"):["","",""];
-  const [y,m,d]=[parts[0]||"",parts[1]||"",parts[2]||""];
-
-  function update(field,val){
-    val=val.replace(/[^0-9]/g,"");
-    let ny=y,nm=m,nd=d;
-    if(field==="d"){nd=val.slice(0,2);}
-    if(field==="m"){nm=val.slice(0,2);}
-    if(field==="y"){ny=val.slice(0,4);}
-    if(ny.length===4&&nm.length>0&&nd.length>0){
-      const mm=nm.padStart(2,"0");
-      const dd=nd.padStart(2,"0");
-      onChange(`${ny}-${mm}-${dd}`);
-    }else if(!ny&&!nm&&!nd){
+  // Convert YYYY-MM-DD → DD/MM/YYYY for display
+  function toDisplay(v){
+    if(!v)return"";
+    const p=v.split("-");
+    if(p.length!==3)return v;
+    const[y,m,d]=p;
+    return `${d||""}/${m||""}/${y||""}`.replace(/^\/+|\/+$/g,"");
+  }
+  // Convert DD/MM/YYYY → YYYY-MM-DD for save
+  function toISO(v){
+    if(!v)return"";
+    const digits=v.replace(/\D/g,"");
+    if(digits.length<8)return"";
+    const d=digits.slice(0,2),m=digits.slice(2,4),y=digits.slice(4,8);
+    return `${y}-${m}-${d}`;
+  }
+  function handleChange(raw){
+    // Allow only digits + auto-add slashes
+    let digits=raw.replace(/\D/g,"").slice(0,8);
+    let formatted=digits;
+    if(digits.length>=3)formatted=digits.slice(0,2)+"/"+digits.slice(2);
+    if(digits.length>=5)formatted=digits.slice(0,2)+"/"+digits.slice(2,4)+"/"+digits.slice(4);
+    // Save: if complete, save ISO; else save raw display so next render preserves it
+    if(digits.length===8){
+      const iso=toISO(formatted);
+      onChange(iso);
+    }else if(digits.length===0){
       onChange("");
     }else{
-      onChange(`${ny}-${nm.padStart(2,"0")}-${nd.padStart(2,"0")}`);
+      // Partial: save as raw display so we don't lose it
+      onChange(formatted);
     }
   }
-
-  const inputStyle={width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",textAlign:"center",boxSizing:"border-box"};
+  // What to show
+  const display=(value&&value.includes("-"))?toDisplay(value):(value||"");
   return <div style={{marginBottom:"14px"}}>
     {label&&<label style={{...css.label,marginBottom:"6px"}}>{label}</label>}
-    <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-      <div style={{flex:"0 0 70px"}}>
-        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΗΗ":"DD"} value={d} onChange={e=>update("d",e.target.value)} maxLength={2} style={inputStyle}/>
-        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Ημέρα":"Day"}</div>
-      </div>
-      <span style={{color:T.textLight,fontWeight:700,fontSize:"18px",marginTop:"-14px"}}>/</span>
-      <div style={{flex:"0 0 70px"}}>
-        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΜΜ":"MM"} value={m} onChange={e=>update("m",e.target.value)} maxLength={2} style={inputStyle}/>
-        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Μήνας":"Month"}</div>
-      </div>
-      <span style={{color:T.textLight,fontWeight:700,fontSize:"18px",marginTop:"-14px"}}>/</span>
-      <div style={{flex:"0 0 100px"}}>
-        <input type="text" inputMode="numeric" placeholder={lang==="el"?"ΕΕΕΕ":"YYYY"} value={y} onChange={e=>update("y",e.target.value)} maxLength={4} style={inputStyle}/>
-        <div style={{textAlign:"center",fontSize:"10px",color:T.textLight,marginTop:"2px"}}>{lang==="el"?"Έτος":"Year"}</div>
-      </div>
-    </div>
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9/]*"
+      placeholder={lang==="el"?"ΗΗ/ΜΜ/ΕΕΕΕ (π.χ. 09/05/1986)":"DD/MM/YYYY (e.g. 09/05/1986)"}
+      value={display}
+      onChange={e=>handleChange(e.target.value)}
+      maxLength={10}
+      style={{width:"100%",padding:"12px 14px",fontSize:"16px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",letterSpacing:"0.5px",boxSizing:"border-box"}}
+    />
+    <div style={{fontSize:"11px",color:T.textLight,marginTop:"4px"}}>{lang==="el"?"Παράδειγμα: 09/05/1986":"Example: 09/05/1986"}</div>
   </div>;
 }
 
