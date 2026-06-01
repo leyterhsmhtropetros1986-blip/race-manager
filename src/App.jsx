@@ -45,6 +45,14 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
+    /* Greek typography - uppercase without accents */
+    .uppercase-greek {
+      text-transform: uppercase;
+      font-variant-caps: all-petite-caps;
+    }
+    .uppercase-no-accent {
+      text-transform: uppercase;
+    }
     /* Smoother button hovers */
     button {
       transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
@@ -1306,12 +1314,18 @@ function Footer(){
         </div>
         <div style={{color:T.textLight,fontSize:"11px",lineHeight:1.6}}>
           © {new Date().getFullYear()} {LEGAL_INFO.responsible} · ΑΦΜ {LEGAL_INFO.afm} · {LEGAL_INFO.address}<br/>
+          📞 <a href="tel:+306936960328" style={{color:T.textMid,textDecoration:"none"}}>693 6960328</a> · ✉️ <a href={`mailto:${LEGAL_INFO.email}`} style={{color:T.textMid,textDecoration:"none"}}>{LEGAL_INFO.email}</a><br/>
           racemanagement.gr · {lang==="el"?"Πλατφόρμα Διαχείρισης Αγώνων":"Race Management Platform"}
         </div>
       </div>
     </footer>
     {legalPage&&<LegalModal page={legalPage} onClose={p=>setLegalPage(p)}/>}
   </>;
+}
+
+function upperNoAccent(s){
+  if(!s)return"";
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
 }
 
 function LangToggle(){
@@ -2093,6 +2107,33 @@ function GalleryDisplay({gallery}){
   </>;
 }
 
+function HomeServicesSection(){
+  const {lang}=useLang();
+  const services=[
+    {icon:"🎤",titleEl:"Ηχητική Κάλυψη",titleEn:"Sound Coverage",descEl:"Επαγγελματικός εξοπλισμός ήχου & MC",descEn:"Professional sound equipment & MC"},
+    {icon:"🎨",titleEl:"Γραφιστικά",titleEn:"Graphics",descEl:"Αφίσες, banner, social media",descEn:"Posters, banners, social media"},
+    {icon:"📹",titleEl:"Κάλυψη με Drone",titleEn:"Drone Coverage",descEl:"Αεροφωτογραφίες & βίντεο HD",descEn:"Aerial photos & HD video"},
+    {icon:"🎫",titleEl:"BIB Numbers",titleEn:"BIB Numbers",descEl:"Εκτύπωση & παράδοση",descEn:"Print & delivery"},
+    {icon:"⏱",titleEl:"Χρονομέτρηση",titleEn:"Timing",descEl:"Chip timing & live αποτελέσματα",descEn:"Chip timing & live results"},
+    {icon:"📋",titleEl:"Διαχείριση Εγγραφών",titleEn:"Registration Management",descEl:"Online platform & υποστήριξη",descEn:"Online platform & support"}
+  ];
+  return <div style={{margin:"24px 0 32px"}}>
+    <div style={{textAlign:"center",marginBottom:"20px"}}>
+      <h2 style={{margin:"0 0 6px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{lang==="el"?"Οι Υπηρεσίες μας":"Our Services"}</h2>
+      <p style={{margin:0,color:T.textMid,fontSize:"14px",maxWidth:"560px",marginLeft:"auto",marginRight:"auto",lineHeight:1.5}}>{lang==="el"?"Ολοκληρωμένη υποστήριξη για διοργανωτές αγώνων δρόμου & trail running":"Complete support for race organizers - running, trail & more"}</p>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"12px"}}>
+      {services.map((s,i)=>(
+        <div key={i} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"16px 18px",transition:"all 0.2s",cursor:"default"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+          <div style={{fontSize:"28px",marginBottom:"8px"}}>{s.icon}</div>
+          <div style={{color:T.text,fontSize:"14px",fontWeight:800,marginBottom:"4px"}}>{lang==="el"?s.titleEl:s.titleEn}</div>
+          <div style={{color:T.textMid,fontSize:"12px",lineHeight:1.4}}>{lang==="el"?s.descEl:s.descEn}</div>
+        </div>
+      ))}
+    </div>
+  </div>;
+}
+
 function PublicHomePage(){
   const {t,lang}=useLang();
   const [showLogin,setShowLogin]=useState(false);
@@ -2160,6 +2201,7 @@ function PublicHomePage(){
       </div>
       <div style={{marginBottom:"20px"}}>
 <RecentRegistrationsTicker/>
+        <HomeServicesSection/>
         <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={t.searchPlaceholder} style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
         <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"}}>
           <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} style={{padding:"8px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
@@ -2548,6 +2590,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     distance:distances[0]||"",category:"Γενική",tshirt:"M",phone:"",
     dob:"",gender:t.male,club:"",amka:"",city:"",
     emergency_name:"",emergency_phone:"",medical_cert:false,
+    nationality:"Ελληνική",
     gdpr_consent:false,terms_consent:false
   });
   const [customAnswers,setCustomAnswers]=useState({});
@@ -2560,6 +2603,8 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   async function submit(){
     if(!form.first_name.trim()||!form.last_name.trim()){toast("Συμπληρώστε Όνομα και Επώνυμο!","warning");return;}
     if(!form.distance){toast(t.selectDistance,"warning");return;}
+    if(!form.city||!form.city.trim()){toast("📍 Συμπληρώστε τόπο διαμονής","warning");return;}
+    if(!form.nationality||!form.nationality.trim()){toast("🌍 Συμπληρώστε εθνικότητα","warning");return;}
     // Phone validation
     if(form.phone){
       const phoneCheck=validateGreekPhone(form.phone);
@@ -2586,7 +2631,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     const runnerData={
       first_name:form.first_name.trim(),last_name:form.last_name.trim(),
       email:session.user.email,phone:form.phone,dob:form.dob||null,
-      gender:form.gender,club:form.club,amka:form.amka,city:form.city,
+      gender:form.gender,club:form.club,amka:form.amka,city:form.city,nationality:form.nationality||"Ελληνική",
       emergency_name:form.emergency_name,emergency_phone:form.emergency_phone
     ,gdpr_consent_at:new Date().toISOString()};
     if(!runner){
@@ -2803,7 +2848,8 @@ function AthleteProfile({runners,registrations,races,session,onRefresh}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
         <In label={t.club} value={form.club} onChange={e=>set("club",e.target.value)}/>
-        <In label="Πόλη" value={form.city} onChange={e=>set("city",e.target.value)}/>
+        <In label="Πόλη / Τόπος Διαμονής *" value={form.city} onChange={e=>set("city",e.target.value)} placeholder="Π.χ. Αθήνα"/>
+        <In label="Εθνικότητα *" value={form.nationality} onChange={e=>set("nationality",e.target.value)} placeholder="Π.χ. Ελληνική"/>
       </div>
       <div style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
         <div style={{color:T.text,fontSize:"13px",fontWeight:700,marginBottom:"10px"}}>🆘 Επαφή Έκτακτης Ανάγκης</div>
