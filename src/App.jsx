@@ -2788,6 +2788,28 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τη σελίδα του αγώνα →</a></p>
       `;
       sendEmail(session.user.email,emailSubject,emailTemplate(`Επιβεβαίωση Εγγραφής`,emailBody));
+      // Send notification to organizer
+      try{
+        const {data:orgData}=await supabase.from("profiles").select("email,full_name").eq("id",race.user_id).single();
+        if(orgData?.email){
+          const orgSubject=`🔔 Νέα Εγγραφή - ${race.name}`;
+          const orgBody=`
+            <p>Γεια σας <strong>${orgData.full_name||""}</strong>,</p>
+            <p>Νέα εγγραφή στον αγώνα σας <strong>"${race.name}"</strong>!</p>
+            <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+              <p style="margin:0 0 8px;"><strong>👤 Αθλητής:</strong> ${form.first_name} ${form.last_name}</p>
+              <p style="margin:0 0 8px;"><strong>✉️ Email:</strong> ${session.user.email}</p>
+              ${form.phone?`<p style="margin:0 0 8px;"><strong>📞 Τηλέφωνο:</strong> ${form.phone}</p>`:""}
+              <p style="margin:0 0 8px;"><strong>🏃 Απόσταση:</strong> ${form.distance}</p>
+              <p style="margin:0 0 8px;"><strong>🎫 Νούμερο BIB:</strong> #${bibNum}</p>
+              ${form.city?`<p style="margin:0 0 8px;"><strong>📍 Πόλη:</strong> ${form.city}</p>`:""}
+              ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Πληρωμή:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
+            </div>
+            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε όλες τις εγγραφές →</a></p>
+          `;
+          sendEmail(orgData.email,orgSubject,emailTemplate("Νέα Εγγραφή!",orgBody));
+        }
+      }catch(err){console.error("Failed to email organizer:",err);}
     }
     if(regError){toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;}
     setLoading(false);
