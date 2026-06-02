@@ -3020,6 +3020,61 @@ function AthleteProfile(props){
   return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
 }
 
+function GpxMapModal({activity,onClose}){
+  const {lang}=useLang();
+  const [points,setPoints]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState(null);
+  useEffect(()=>{
+    if(!activity?.gpx_url){setLoading(false);setError("No GPX URL");return;}
+    (async()=>{
+      try{
+        const res=await fetch(activity.gpx_url);
+        if(!res.ok)throw new Error("Cannot load GPX");
+        const text=await res.text();
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(text,"text/xml");
+        const trkpts=doc.querySelectorAll("trkpt");
+        if(trkpts.length<2)throw new Error("Not enough points");
+        const pts=[];
+        trkpts.forEach(pt=>{
+          const lat=parseFloat(pt.getAttribute("lat"));
+          const lon=parseFloat(pt.getAttribute("lon"));
+          if(!isNaN(lat)&&!isNaN(lon))pts.push([lat,lon]);
+        });
+        setPoints(pts);
+        setLoading(false);
+      }catch(err){
+        console.error("GPX load error:",err);
+        setError(err.message);
+        setLoading(false);
+      }
+    })();
+  },[activity?.gpx_url]);
+  return <div onClick={onClose} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:"20px",maxWidth:"900px",width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.4)"}}>
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,padding:"20px 24px",color:"#fff",position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"12px"}}>
+        <div style={{flex:1,minWidth:0}}>
+          <h3 style={{margin:"0 0 4px",fontSize:"18px",fontWeight:900,letterSpacing:"-0.01em"}}>🗺 {activity.name}</h3>
+          <div style={{fontSize:"12px",opacity:0.95,display:"flex",gap:"14px",flexWrap:"wrap"}}>
+            <span>📅 {activity.date}</span>
+            {activity.distance_km&&<span>📏 {Number(activity.distance_km).toFixed(2)}km</span>}
+            {activity.elevation_gain_m&&<span>⛰ {activity.elevation_gain_m}m</span>}
+          </div>
+        </div>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",width:"32px",height:"32px",borderRadius:"50%",cursor:"pointer",fontSize:"18px",fontFamily:"inherit",flexShrink:0}}>✕</button>
+      </div>
+      <div style={{padding:"20px"}}>
+        {loading&&<div style={{padding:"60px",textAlign:"center",color:T.textMid}}>🔄 {lang==="el"?"Φόρτωση χάρτη...":"Loading map..."}</div>}
+        {error&&!loading&&<div style={{padding:"40px",textAlign:"center",color:T.danger}}>❌ {error}</div>}
+        {points&&points.length>0&&!loading&&(
+          <RouteMap points={points} height="500px" defaultLayer="satellite"/>
+        )}
+      </div>
+    </div>
+  </div>;
+}
+
 function AthleteProfileInner({runners,registrations,races,session,profile,onRefresh}){
   const {t,lang}=useLang();
   // Cross-race aggregation: find ALL runners that belong to this athlete profile
@@ -3038,6 +3093,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   // Personal activities (manual entries)
   const [activities,setActivities]=useState([]);
   const [showActivityModal,setShowActivityModal]=useState(false);
+  const [mapModalActivity,setMapModalActivity]=useState(null);
   const [editingActivity,setEditingActivity]=useState(null);
   const [actForm,setActForm]=useState({activity_type:"training",name:"",date:"",distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
   async function fetchActivities(){
@@ -3083,7 +3139,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       elevation_gain_m:actForm.elevation_gain_m?parseInt(actForm.elevation_gain_m):null,
       location:actForm.location||null,
       notes:actForm.notes||null,
-      is_external_race:actForm.activity_type==="race"||actForm.is_external_race
+      is_external_race:actForm.activity_type==="race"||actForm.is_external_race,
+      gpx_url:actForm.gpx_url||null
     };
     let res;
     if(editingActivity){
@@ -3153,6 +3210,20 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       });
       const durationSec=(startTime&&endTime)?Math.round((endTime-startTime)/1000):0;
       const activityDate=startTime?startTime.toISOString().slice(0,10):new Date().toISOString().slice(0,10);
+      // Upload GPX file to storage
+      let gpxUrl=null;
+      if(myProfileId){
+        try{
+          const fileName=`${myProfileId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g,"_")}`;
+          const {error:upErr}=await supabase.storage.from("gpx-activities").upload(fileName,file,{contentType:"application/gpx+xml",upsert:false});
+          if(upErr)throw upErr;
+          const {data:urlData}=supabase.storage.from("gpx-activities").getPublicUrl(fileName);
+          gpxUrl=urlData?.publicUrl||null;
+        }catch(upErr){
+          console.error("GPX upload failed:",upErr);
+          toast(lang==="el"?"⚠ Stats αποθηκεύτηκαν αλλά αποτυχία upload αρχείου":"⚠ Stats saved but file upload failed","warning");
+        }
+      }
       // Pre-fill form with parsed data
       setActForm({
         activity_type:"training",
@@ -3165,7 +3236,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         elevation_gain_m:totalElevGain>0?String(Math.round(totalElevGain)):"",
         location:"",
         notes:`📤 Από GPX: ${file.name}`,
-        is_external_race:false
+        is_external_race:false,
+        gpx_url:gpxUrl
       });
       setEditingActivity(null);
       setShowActivityModal(true);
@@ -3463,6 +3535,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 <div style={{display:"flex",gap:"6px"}}>
+                  {act.gpx_url&&<button onClick={()=>setMapModalActivity(act)} style={{background:T.accent+"22",border:`1px solid ${T.accent}66`,color:T.accent,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:700}} title={lang==="el"?"Δες χάρτη":"View map"}>🗺</button>}
                   <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
                   <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
                 </div>
@@ -3473,7 +3546,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         </div>
       )}
     </div>
-    {/* Activity Modal */}
+    {mapModalActivity&&<GpxMapModal activity={mapModalActivity} onClose={()=>setMapModalActivity(null)}/>}
     {showActivityModal&&(
       <div onClick={()=>setShowActivityModal(false)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px"}}>
         <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:"16px",maxWidth:"500px",width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
