@@ -5240,4 +5240,3 @@ export default function App(){
     <ToastContainer/>
     <PWAInstallPrompt/>
   </LangContext.Provider>;
-}
