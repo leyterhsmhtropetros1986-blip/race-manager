@@ -3216,13 +3216,20 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         try{
           const fileName=`${myProfileId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g,"_")}`;
           const {error:upErr}=await supabase.storage.from("gpx-activities").upload(fileName,file,{contentType:"application/gpx+xml",upsert:false});
-          if(upErr)throw upErr;
+          if(upErr){
+            console.error("Upload error details:",upErr);
+            toast(`⚠ Storage error: ${upErr.message||upErr.error||"unknown"}`,"error");
+            throw upErr;
+          }
           const {data:urlData}=supabase.storage.from("gpx-activities").getPublicUrl(fileName);
           gpxUrl=urlData?.publicUrl||null;
+          if(!gpxUrl)toast("⚠ Δεν δημιουργήθηκε URL","warning");
         }catch(upErr){
           console.error("GPX upload failed:",upErr);
-          toast(lang==="el"?"⚠ Stats αποθηκεύτηκαν αλλά αποτυχία upload αρχείου":"⚠ Stats saved but file upload failed","warning");
+          toast(lang==="el"?`⚠ Upload απέτυχε: ${upErr.message||"unknown"}`:`⚠ Upload failed: ${upErr.message||"unknown"}`,"warning");
         }
+      }else{
+        toast("⚠ Δεν υπάρχει profile ID","error");
       }
       // Pre-fill form with parsed data
       setActForm({
