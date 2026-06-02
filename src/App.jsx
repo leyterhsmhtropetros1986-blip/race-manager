@@ -2914,7 +2914,7 @@ function AthleteProfile(props){
 }
 
 function AthleteProfileInner({runners,registrations,races,session,profile,onRefresh}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const myRunner=runners.find(r=>r.email===session.user.email);
   const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
   const [form,setForm]=useState({
