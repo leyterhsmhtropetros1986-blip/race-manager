@@ -2627,7 +2627,18 @@ function LoginPage({onBack}){
         }
       }
     });
-    if(error){setError(error.message);setLoading(false);return;}
+    if(error){
+      // Translate common errors to user-friendly messages
+      let msg=error.message||"Άγνωστο σφάλμα";
+      if(msg.includes("Database error")||msg.includes("saving new user")){
+        msg=lang==="el"?"⚠ Προσωρινό πρόβλημα στη βάση. Ο λογαριασμός σου μπορεί να δημιουργήθηκε. Δοκίμασε να συνδεθείς ή ξαναπροσπάθησε σε λίγο.":"⚠ Temporary database issue. Your account may have been created. Try logging in or retry shortly.";
+      }else if(msg.includes("already registered")||msg.includes("User already")){
+        msg=lang==="el"?"Αυτό το email είναι ήδη εγγεγραμμένο. Δοκίμασε σύνδεση.":"This email is already registered. Try logging in.";
+      }else if(msg.includes("password")){
+        msg=lang==="el"?"Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.":"Password must be at least 8 characters.";
+      }
+      setError(msg);setLoading(false);return;
+    }
     if(data.user){
       // Trigger automatically creates profile from metadata
       // No need for manual insert anymore
@@ -3146,12 +3157,17 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     if(editingActivity){
       res=await supabase.from("personal_activities").update(payload).eq("id",editingActivity.id);
     }else{
-      res=await supabase.from("personal_activities").insert([payload]);
+      res=await supabase.from("personal_activities").insert([payload]).select().maybeSingle();
     }
     if(res.error){toast("Σφάλμα: "+res.error.message,"error");return;}
     toast(lang==="el"?"✅ Αποθηκεύτηκε!":"✅ Saved!","success");
     setShowActivityModal(false);
     fetchActivities();
+    // Auto-open map if GPX was uploaded
+    if(payload.gpx_url){
+      const newAct=res.data||{...payload,id:editingActivity?.id};
+      setTimeout(()=>setMapModalActivity(newAct),300);
+    }
   }
   async function deleteActivity(id){
     if(!confirm(lang==="el"?"Διαγραφή δραστηριότητας;":"Delete activity?"))return;
@@ -4924,6 +4940,9 @@ function AdminPanel(){
     const org=allOrgs.find(o=>o.id===id);
     const {error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id);
     if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    // Optimistic update for instant UI refresh
+    setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
+    setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"approved"}:o));
     toast(lang==="el"?"✅ Εγκρίθηκε!":"✅ Approved!","success");
     if(org?.email){
       const body=`
@@ -4942,7 +4961,13 @@ function AdminPanel(){
     }
     fetchOrgs();
   }
-  async function reject(id){if(!confirm(t.rejectConfirm))return;await supabase.from("profiles").update({status:"rejected"}).eq("id",id);fetchOrgs();}
+  async function reject(id){
+    if(!confirm(t.rejectConfirm))return;
+    await supabase.from("profiles").update({status:"rejected"}).eq("id",id);
+    setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
+    setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"rejected"}:o));
+    fetchOrgs();
+  }
   async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
   const list=tab==="pending"?pendingOrgs:allOrgs;
   const statusColors={pending:T.warning,approved:T.accent,rejected:T.danger};
