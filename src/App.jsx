@@ -2647,8 +2647,9 @@ function AthleteRaceCard({race,registrations,runners,session,onSelect}){
           {distances.slice(0,4).map((d,i)=>(<span key={i} style={{background:T.bg,color:T.text,fontSize:"12px",fontWeight:700,padding:"5px 11px",borderRadius:"8px"}}>{d}</span>))}
           {distances.length>4&&<span style={{color:T.textMid,fontSize:"12px",fontWeight:600,padding:"5px 4px"}}>+{distances.length-4}</span>}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:"6px",color:T.textMid,fontSize:"12px",fontWeight:600}}><span style={{fontSize:"14px"}}>👤</span>{totalRegs}</div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",color:T.textMid,fontSize:"12px",fontWeight:600}}><span style={{fontSize:"14px"}}>👤</span>{totalRegs}{race.max_runners?`/${race.max_runners}`:""}</div>
       </div>
+      {race.max_runners&&totalRegs>0&&(()=>{const pct=Math.min(100,Math.round((totalRegs/race.max_runners)*100));const isFull=pct>=100;return <div style={{marginTop:"12px",height:"6px",background:T.bg,borderRadius:"3px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:isFull?T.danger:pct>=80?T.warning:T.accent,transition:"width 0.3s"}}/></div>;})()}
     </div>
   </div>;
 }
@@ -3364,7 +3365,10 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
             {hasEarlyBird&&<span style={{background:"rgba(212,160,23,0.95)",backdropFilter:"blur(8px)",color:"#fff",padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>🏷 EARLY BIRD -{race.early_bird.discount_percent}%</span>}
             {myReg&&<span style={{background:"rgba(255,255,255,0.95)",backdropFilter:"blur(8px)",color:T.accent,padding:"6px 12px",borderRadius:"999px",fontSize:"11px",fontWeight:800}}>✓ BIB #{myReg.bib_number}</span>}
           </div>
-          <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)"}}>{race.name}</h1>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
+            <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)",flex:1,minWidth:0}}>{race.name}</h1>
+            <button onClick={async(e)=>{e.stopPropagation();try{const url=window.location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);}else{const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}toast("📋 "+(lang==="el"?"Αντιγράφηκε το link!":"Link copied!"),"success");}catch(err){toast("Σφάλμα αντιγραφής","error");}}} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(8px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0,whiteSpace:"nowrap"}} title={lang==="el"?"Αντιγραφή link":"Copy link"}>📋 {lang==="el"?"Share":"Share"}</button>
+          </div>
           <div style={{display:"flex",alignItems:"center",gap:"18px",color:"rgba(255,255,255,0.95)",fontSize:"14px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
             <span>📅 {race.date}</span>
             <span title={race.location||""}>📍 {truncLoc(race.location,25)}</span>
