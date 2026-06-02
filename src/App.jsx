@@ -2943,7 +2943,27 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
   const prList=Object.values(prs).sort((a,b)=>parseDistanceKm(a.distance)-parseDistanceKm(b.distance));
   const history=myRegs.map(r=>{const race=races.find(rc=>rc.id===r.race_id)||{};return{...r,race};}).sort((a,b)=>(b.race.date||"").localeCompare(a.race.date||""));
 
-  if(!myRunner)return <div style={{textAlign:"center",color:T.textLight,padding:"60px"}}>—</div>;
+  if(!myRunner)return <div>
+    {profile?.athlete_id&&(
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"16px",padding:"20px 24px",marginBottom:"20px",color:"#fff",boxShadow:`0 8px 24px ${T.primary}33`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
+          <div>
+            <div style={{fontSize:"11px",opacity:0.85,letterSpacing:"0.15em",textTransform:"uppercase",fontWeight:600,marginBottom:"4px"}}>Athlete ID</div>
+            <div style={{fontSize:"28px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:"16px",fontWeight:700}}>{profile?.full_name||""}</div>
+            <div style={{fontSize:"12px",opacity:0.85,marginTop:"2px"}}>{session?.user?.email}</div>
+          </div>
+        </div>
+      </div>
+    )}
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{fontSize:"48px",marginBottom:"12px"}}>🏃</div>
+      <h3 style={{margin:"0 0 8px",color:T.text,fontSize:"18px"}}>Καλωσήρθες!</h3>
+      <p style={{margin:"0 0 20px",color:T.textMid,fontSize:"14px",lineHeight:1.5}}>Δεν έχεις εγγραφεί σε κανέναν αγώνα ακόμα.<br/>Διάλεξε έναν αγώνα από την αρχική!</p>
+    </div>
+  </div>;
 
   return <div>
     {profile?.athlete_id&&(
@@ -4546,4 +4566,3 @@ export default function App(){
     <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
-
