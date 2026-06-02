@@ -3022,8 +3022,18 @@ function AthleteProfile(props){
 
 function AthleteProfileInner({runners,registrations,races,session,profile,onRefresh}){
   const {t,lang}=useLang();
-  const myRunner=runners.find(r=>r.email===session.user.email);
-  const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
+  // Cross-race aggregation: find ALL runners that belong to this athlete profile
+  // (by athlete_profile_id link OR by email match)
+  const myProfileId=profile?.id;
+  const myEmail=(session?.user?.email||"").toLowerCase().trim();
+  const myAllRunners=runners.filter(r=>{
+    if(myProfileId&&r.athlete_profile_id===myProfileId)return true;
+    if(myEmail&&r.email&&r.email.toLowerCase().trim()===myEmail)return true;
+    return false;
+  });
+  const myRunner=myAllRunners[0]; // Primary runner for profile editing
+  const myRunnerIds=myAllRunners.map(r=>r.id);
+  const myRegs=registrations.filter(r=>myRunnerIds.includes(r.runner_id));
   const [form,setForm]=useState({
     first_name:myRunner?.first_name||"",last_name:myRunner?.last_name||"",
     phone:myRunner?.phone||"",dob:myRunner?.dob||"",gender:myRunner?.gender||"",
