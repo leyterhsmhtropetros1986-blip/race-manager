@@ -3112,6 +3112,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   const [activities,setActivities]=useState([]);
   const [showActivityModal,setShowActivityModal]=useState(false);
   const [mapModalActivity,setMapModalActivity]=useState(null);
+  const [showProfileForm,setShowProfileForm]=useState(false);
   const [editingActivity,setEditingActivity]=useState(null);
   const [actForm,setActForm]=useState({activity_type:"training",name:"",date:"",distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
   async function fetchActivities(){
@@ -3589,6 +3590,33 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
             <h3 style={{margin:0,fontSize:"18px",fontWeight:900}}>{editingActivity?(lang==="el"?"✏️ Επεξεργασία":"✏️ Edit"):(lang==="el"?"+ Νέα Δραστηριότητα":"+ New Activity")}</h3>
           </div>
           <div style={{padding:"20px 24px"}}>
+            {actForm.gpx_url&&(
+              <div style={{marginBottom:"18px",background:`linear-gradient(135deg, ${T.accent}11 0%, ${T.primary}11 100%)`,border:`1px solid ${T.accent}44`,borderRadius:"12px",padding:"14px",overflow:"hidden"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px",color:T.accent,fontWeight:800,fontSize:"13px"}}>
+                  📤 {lang==="el"?"GPX Ανέβηκε - Auto Stats":"GPX Uploaded - Auto Stats"}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:"8px",marginBottom:"12px"}}>
+                  <div style={{background:T.bg,borderRadius:"8px",padding:"8px",textAlign:"center"}}>
+                    <div style={{fontSize:"18px",fontWeight:900,color:T.primary}}>{actForm.distance_km||"—"}</div>
+                    <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"2px"}}>km</div>
+                  </div>
+                  <div style={{background:T.bg,borderRadius:"8px",padding:"8px",textAlign:"center"}}>
+                    <div style={{fontSize:"18px",fontWeight:900,color:T.primary}}>{(parseInt(actForm.duration_h)||0)>0?`${actForm.duration_h}:${String(actForm.duration_m).padStart(2,"0")}`:`${actForm.duration_m||0}:${String(actForm.duration_s||0).padStart(2,"0")}`}</div>
+                    <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"2px"}}>{lang==="el"?"χρόνος":"time"}</div>
+                  </div>
+                  <div style={{background:T.bg,borderRadius:"8px",padding:"8px",textAlign:"center"}}>
+                    <div style={{fontSize:"18px",fontWeight:900,color:T.primary}}>{actForm.elevation_gain_m||"—"}</div>
+                    <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"2px"}}>{lang==="el"?"υψόμ. (m)":"elev (m)"}</div>
+                  </div>
+                </div>
+                <div style={{borderRadius:"10px",overflow:"hidden",border:`1px solid ${T.border}`}}>
+                  <MapContainer center={[37.98,23.72]} zoom={12} style={{height:"180px",width:"100%",zIndex:1}} scrollWheelZoom={false} dragging={false} zoomControl={false} attributionControl={false}>
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"/>
+                  </MapContainer>
+                  <div style={{padding:"8px",textAlign:"center",fontSize:"11px",color:T.textMid,background:T.bg}}>💡 {lang==="el"?"Το route θα φαίνεται μετά την αποθήκευση":"Route shown after saving"}</div>
+                </div>
+              </div>
+            )}
             <div style={{marginBottom:"14px"}}>
               <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Τύπος":"Type"}</label>
               <select value={actForm.activity_type} onChange={e=>setActForm({...actForm,activity_type:e.target.value})} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit"}}>
@@ -3678,9 +3706,13 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       )}
     </div>
 
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
-      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px"}}>{t.profileInfo}</h3>
-      <div style={{display:"flex",alignItems:"center",gap:"16px",marginBottom:"20px",padding:"14px",background:T.bg,borderRadius:"10px"}}>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px 20px",boxShadow:T.shadow,marginBottom:"20px"}}>
+      <div onClick={()=>setShowProfileForm(!showProfileForm)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"15px",fontWeight:700}}>{t.profileInfo}</h3>
+        <span style={{color:T.textMid,fontSize:"13px",fontWeight:600}}>{showProfileForm?"▲ "+(lang==="el"?"Κρύψε":"Hide"):"▼ "+(lang==="el"?"Επεξεργασία":"Edit")}</span>
+      </div>
+      {showProfileForm&&<>
+      <div style={{display:"flex",alignItems:"center",gap:"16px",margin:"16px 0 20px",padding:"14px",background:T.bg,borderRadius:"10px"}}>
         {myRunner?.avatar_url?(<img src={myRunner.avatar_url} alt="" style={{width:"72px",height:"72px",borderRadius:"50%",objectFit:"cover",border:`3px solid ${T.primary}`}}/>):(<div style={{width:"72px",height:"72px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",fontWeight:700}}>{(form.first_name?.[0]||"?").toUpperCase()}</div>)}
         <div style={{flex:1}}>
           <div style={{color:T.text,fontWeight:700,marginBottom:"6px"}}>{t.avatarUpload}</div>
@@ -3720,6 +3752,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         <Btn onClick={save} disabled={saving}>{saving?"...":t.profileSave}</Btn>
         {saved&&<span style={{color:T.accent,fontSize:"13px",fontWeight:700}}>{t.profileSaved}</span>}
       </div>
+      </>}
     </div>
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow}}>
       <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px"}}>{t.profileHistory}</h3>
@@ -5208,4 +5241,3 @@ export default function App(){
     <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
-  
