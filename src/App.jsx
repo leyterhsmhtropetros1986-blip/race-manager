@@ -1539,6 +1539,13 @@ function CustomFieldsPicker({fields,onChange}){
 }
 
 function parseDistanceKm(d){if(!d)return 0;const m=String(d).match(/(\d+\.?\d*)\s*km/i);if(m)return parseFloat(m[1]);if(/μαραθ/i.test(d)||/marath/i.test(d))return 42.195;if(/ημιμαρ/i.test(d)||/half/i.test(d))return 21.0975;return 0;}
+function truncLoc(loc,max=30){
+  if(!loc)return"—";
+  const s=String(loc).trim();
+  if(s.length<=max)return s;
+  return s.slice(0,max-1).trimEnd()+"…";
+}
+
 function timeToSeconds(t){if(!t)return 0;const p=String(t).split(":").map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return 0;}
 function formatTime(t){if(!t)return "—";const p=String(t).split(":").map(x=>x.trim());if(p.length===3)return `${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}:${String(parseInt(p[2])||0).padStart(2,"0")}`;if(p.length===2)return `00:${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}`;return t;}
 function validateTime(t){if(!t||!t.trim())return null;const clean=t.trim();if(!/^\d+(:\d+)?(:\d+)?$/.test(clean))return null;const p=clean.split(":").map(x=>parseInt(x)||0);if(p.length===3){if(p[1]>=60||p[2]>=60)return null;return `${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}:${String(p[2]).padStart(2,"0")}`;}if(p.length===2){if(p[1]>=60)return null;return `00:${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}`;}if(p.length===1){return `00:00:${String(p[0]).padStart(2,"0")}`;}return null;}
@@ -2319,7 +2326,7 @@ function PublicHomePage(){
                   <h3 style={{margin:"0 0 8px",color:"#fff",fontSize:"clamp(20px,4vw,24px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.15,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>{race.name}</h3>
                   <div style={{display:"flex",alignItems:"center",gap:"14px",color:"rgba(255,255,255,0.95)",fontSize:"13px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
                     <span>📅 {race.date}</span>
-                    <span>📍 {race.location||"—"}</span>
+                    <span title={race.location||""}>📍 {truncLoc(race.location,25)}</span>
                   </div>
                 </div>
               </div>
@@ -2382,7 +2389,7 @@ function PublicResultsPage({raceId,onBack}){
         {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
         <div style={{padding:"24px"}}>
           <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>🏆 {race.name}</h1>
-          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 <span title={race.location||""}>{truncLoc(race.location,30)}</span> · 👤 {filtered.length} {t.registered}</div>
         </div>
       </div>
       {distances.length>1&&(
@@ -2454,7 +2461,7 @@ function PublicRunnersPage({raceId,onBack}){
         {race.banner_url&&<img src={race.banner_url} alt="" style={{width:"100%",height:"200px",objectFit:"cover",display:"block"}}/>}
         <div style={{padding:"24px"}}>
           <h1 style={{margin:"0 0 6px",color:T.text,fontSize:"24px",fontWeight:900}}>👥 {race.name}</h1>
-          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 {race.location||"—"} · 👤 {filtered.length} {t.registered}</div>
+          <div style={{color:T.textMid,fontSize:"14px"}}>📅 {race.date} · 📍 <span title={race.location||""}>{truncLoc(race.location,30)}</span> · 👤 {filtered.length} {t.registered}</div>
         </div>
       </div>
       <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Αναζήτηση αθλητή..." style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:"14px"}}/>
@@ -2630,7 +2637,7 @@ function AthleteRaceCard({race,registrations,runners,session,onSelect}){
         <h3 style={{margin:"0 0 8px",color:"#fff",fontSize:"clamp(20px,4vw,24px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.15,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>{race.name}</h3>
         <div style={{display:"flex",alignItems:"center",gap:"14px",color:"rgba(255,255,255,0.95)",fontSize:"13px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
           <span>📅 {race.date}</span>
-          <span>📍 {race.location||"—"}</span>
+          <span title={race.location||""}>📍 {truncLoc(race.location,25)}</span>
         </div>
       </div>
     </div>
@@ -3360,7 +3367,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)"}}>{race.name}</h1>
           <div style={{display:"flex",alignItems:"center",gap:"18px",color:"rgba(255,255,255,0.95)",fontSize:"14px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
             <span>📅 {race.date}</span>
-            <span>📍 {race.location||"—"}</span>
+            <span title={race.location||""}>📍 {truncLoc(race.location,25)}</span>
             <span>👤 {totalRegs}</span>
           </div>
         </div>
@@ -4158,7 +4165,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
             <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
             <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
           </div>
-          <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"10px"}}>📅 {race.date} &nbsp; 📍 {race.location||"—"} &nbsp; 👤 {regCount} {t.registered}{totalRevenue>0&&<> &nbsp; 💰 {totalRevenue.toFixed(2)}€</>}</div>
+          <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"10px"}}>📅 {race.date} &nbsp; 📍 <span title={race.location||""}>{truncLoc(race.location,40)}</span> &nbsp; 👤 {regCount} {t.registered}{totalRevenue>0&&<> &nbsp; 💰 {totalRevenue.toFixed(2)}€</>}</div>
           {distances.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"8px"}}>{distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}</div>)}
           {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
@@ -4426,7 +4433,7 @@ function AdminPanel(){
                 <div style={{flex:1,minWidth:"200px"}}>
                   <span style={{background:T.warning,color:"#fff",padding:"3px 10px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",display:"inline-block",marginBottom:"8px"}}>⏳ {lang==="el"?"Σε αναμονή":"Pending"}</span>
                   <h3 style={{margin:"0 0 6px",color:T.text,fontSize:"17px",fontWeight:800}}>{race.name}</h3>
-                  <div style={{color:T.textMid,fontSize:"13px",marginBottom:"4px"}}>📅 {race.date} · 📍 {race.location||"-"}</div>
+                  <div style={{color:T.textMid,fontSize:"13px",marginBottom:"4px"}}>📅 {race.date} · 📍 <span title={race.location||""}>{truncLoc(race.location,40)}</span></div>
                   <div style={{color:T.textLight,fontSize:"12px"}}>🏃 {race.distance||"-"} · 👥 max {race.max_runners||"-"}</div>
                   {race.description&&<div style={{color:T.textMid,fontSize:"12px",marginTop:"8px",padding:"8px 10px",background:T.bg,borderRadius:"8px",maxHeight:"80px",overflow:"hidden"}}>{race.description.substring(0,200)}{race.description.length>200?"...":""}</div>}
                 </div>
