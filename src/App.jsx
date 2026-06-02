@@ -2586,7 +2586,7 @@ function PublicRunnersPage({raceId,onBack}){
 }
 
 function LoginPage({onBack}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [step,setStep]=useState("role");
   const [role,setRole]=useState(null);
   const [mode,setMode]=useState("signup");
