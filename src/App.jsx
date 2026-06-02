@@ -2173,28 +2173,64 @@ function GalleryDisplay({gallery}){
 
 function HomeServicesSection(){
   const {lang}=useLang();
+  const [activeService,setActiveService]=useState(null);
+  const PHONE="6936960328";
+  const EMAIL="leyterhs.mhtropetros1986@gmail.com";
   const services=[
-    {icon:"🎤",titleEl:"Ηχητική Κάλυψη",titleEn:"Sound Coverage",descEl:"Επαγγελματικός εξοπλισμός ήχου & MC",descEn:"Professional sound equipment & MC"},
-    {icon:"🎨",titleEl:"Γραφιστικά",titleEn:"Graphics",descEl:"Αφίσες, banner, social media",descEn:"Posters, banners, social media"},
-    {icon:"📹",titleEl:"Κάλυψη με Drone",titleEn:"Drone Coverage",descEl:"Αεροφωτογραφίες & βίντεο HD",descEn:"Aerial photos & HD video"},
-    {icon:"🎫",titleEl:"BIB Numbers",titleEn:"BIB Numbers",descEl:"Εκτύπωση & παράδοση",descEn:"Print & delivery"},
-    {icon:"⏱",titleEl:"Χρονομέτρηση",titleEn:"Timing",descEl:"Chip timing & live αποτελέσματα",descEn:"Chip timing & live results"},
-    {icon:"📋",titleEl:"Διαχείριση Εγγραφών",titleEn:"Registration Management",descEl:"Online platform & υποστήριξη",descEn:"Online platform & support"}
+    {icon:"🎤",titleEl:"Ηχητική Κάλυψη",titleEn:"Sound Coverage",descEl:"Επαγγελματικός εξοπλισμός ήχου & MC",descEn:"Professional sound equipment & MC",detailsEl:["Ηχητικά συστήματα μεγάλης ισχύος για outdoor αγώνες","Επαγγελματικός MC με εμπειρία σε αθλητικά events","Ασύρματα μικρόφωνα & ραντίφωνα","Μουσική ατμόσφαιρα πριν & μετά τον αγώνα","Ηχογράφηση announcements"],detailsEn:["High-power outdoor sound systems","Professional MC with sports event experience","Wireless microphones & headsets","Music atmosphere before & after","Recorded announcements"]},
+    {icon:"🎨",titleEl:"Γραφιστικά",titleEn:"Graphics",descEl:"Αφίσες, banner, social media",descEn:"Posters, banners, social media",detailsEl:["Σχεδιασμός αφίσας του αγώνα","Banner εκτύπωσης (vinyl, μπροσούρες)","Posts για Facebook, Instagram, Stories","Σχεδιασμός μεταλλίων","Layout για αναμνηστικό t-shirt"],detailsEn:["Race poster design","Print banners (vinyl, brochures)","Facebook, Instagram, Stories posts","Medal design","Souvenir t-shirt layout"]},
+    {icon:"📹",titleEl:"Κάλυψη με Drone",titleEn:"Drone Coverage",descEl:"Αεροφωτογραφίες & βίντεο HD",descEn:"Aerial photos & HD video",detailsEl:["Αεροφωτογράφηση HD/4K","Cinematic βίντεο της διαδρομής","Live streaming (κατόπιν συνεννόησης)","Αδειοδοτημένοι χειριστές","Post-production & editing"],detailsEn:["HD/4K aerial photography","Cinematic route videos","Live streaming (on request)","Licensed operators","Post-production & editing"]},
+    {icon:"🎫",titleEl:"BIB Numbers",titleEn:"BIB Numbers",descEl:"Εκτύπωση & παράδοση",descEn:"Print & delivery",detailsEl:["Εκτύπωση Tyvek (αδιάβροχο, ανθεκτικό)","Custom design με λογότυπο διοργανωτή","Παράδοση στον τόπο του αγώνα","4 παραμάνες ανά bib","Διαφορετικά χρώματα ανά απόσταση"],detailsEn:["Tyvek print (waterproof, durable)","Custom design with organizer logo","Delivery to race location","4 safety pins per bib","Different colors per distance"]},
+    {icon:"⏱",titleEl:"Χρονομέτρηση",titleEn:"Timing",descEl:"Chip timing & live αποτελέσματα",descEn:"Chip timing & live results",detailsEl:["Chip timing με RFID technology","Πιστοποίηση χρόνων","Live αποτελέσματα κατά τη διάρκεια του αγώνα","Splits ανά τμήμα διαδρομής","Άμεση δημοσίευση στην πλατφόρμα"],detailsEn:["RFID chip timing technology","Certified times","Live results during the race","Splits per section","Instant publication on platform"]},
+    {icon:"📋",titleEl:"Διαχείριση Εγγραφών",titleEn:"Registration Management",descEl:"Online platform & υποστήριξη",descEn:"Online platform & support",detailsEl:["Online εγγραφές μέσω racemanagement.gr","Διαχείριση πληρωμών","Email επιβεβαίωσης αυτόματο","Export εγγεγραμμένων σε PDF/Excel","24/7 υποστήριξη"],detailsEn:["Online registrations via racemanagement.gr","Payment management","Automatic confirmation emails","Export registrants to PDF/Excel","24/7 support"]}
   ];
   return <div style={{margin:"24px 0 32px"}}>
     <div style={{textAlign:"center",marginBottom:"20px"}}>
       <h2 style={{margin:"0 0 6px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{lang==="el"?"Οι Υπηρεσίες μας":"Our Services"}</h2>
-      <p style={{margin:0,color:T.textMid,fontSize:"14px",maxWidth:"560px",marginLeft:"auto",marginRight:"auto",lineHeight:1.5}}>{lang==="el"?"Ολοκληρωμένη υποστήριξη για διοργανωτές αγώνων δρόμου & trail running":"Complete support for race organizers - running, trail & more"}</p>
+      <p style={{margin:0,color:T.textMid,fontSize:"14px",maxWidth:"560px",marginLeft:"auto",marginRight:"auto",lineHeight:1.5}}>{lang==="el"?"Ολοκληρωμένη υποστήριξη για διοργανωτές αγώνων δρόμου & trail running. Πάτησε για περισσότερα.":"Complete support for race organizers. Tap for more."}</p>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"12px"}}>
       {services.map((s,i)=>(
-        <div key={i} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"16px 18px",transition:"all 0.2s",cursor:"default"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+        <div key={i} onClick={()=>setActiveService(s)} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"16px 18px",transition:"all 0.2s",cursor:"pointer",position:"relative"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor=T.primary;}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=T.border;}}>
           <div style={{fontSize:"28px",marginBottom:"8px"}}>{s.icon}</div>
           <div style={{color:T.text,fontSize:"14px",fontWeight:800,marginBottom:"4px"}}>{lang==="el"?s.titleEl:s.titleEn}</div>
-          <div style={{color:T.textMid,fontSize:"12px",lineHeight:1.4}}>{lang==="el"?s.descEl:s.descEn}</div>
+          <div style={{color:T.textMid,fontSize:"12px",lineHeight:1.4,marginBottom:"8px"}}>{lang==="el"?s.descEl:s.descEn}</div>
+          <div style={{color:T.primary,fontSize:"11px",fontWeight:700,letterSpacing:"0.05em"}}>{lang==="el"?"Δες περισσότερα →":"More →"}</div>
         </div>
       ))}
     </div>
+    {activeService&&(
+      <div onClick={()=>setActiveService(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px"}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:"20px",maxWidth:"500px",width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+          <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,padding:"28px 24px",color:"#fff",position:"relative"}}>
+            <button onClick={()=>setActiveService(null)} style={{position:"absolute",top:"14px",right:"14px",background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",width:"32px",height:"32px",borderRadius:"50%",cursor:"pointer",fontSize:"18px",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+            <div style={{fontSize:"48px",marginBottom:"10px"}}>{activeService.icon}</div>
+            <h3 style={{margin:"0 0 6px",fontSize:"22px",fontWeight:900,letterSpacing:"-0.01em"}}>{lang==="el"?activeService.titleEl:activeService.titleEn}</h3>
+            <p style={{margin:0,fontSize:"13px",opacity:0.95}}>{lang==="el"?activeService.descEl:activeService.descEn}</p>
+          </div>
+          <div style={{padding:"24px"}}>
+            <h4 style={{margin:"0 0 12px",color:T.text,fontSize:"14px",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.1em"}}>{lang==="el"?"Τι Περιλαμβάνει":"What's Included"}</h4>
+            <ul style={{margin:"0 0 24px",padding:"0 0 0 4px",listStyle:"none"}}>
+              {(lang==="el"?activeService.detailsEl:activeService.detailsEn).map((d,i)=>(
+                <li key={i} style={{display:"flex",gap:"10px",color:T.textMid,fontSize:"14px",lineHeight:1.6,marginBottom:"8px"}}>
+                  <span style={{color:T.accent,flexShrink:0,fontWeight:700}}>✓</span>
+                  <span>{d}</span>
+                </li>
+              ))}
+            </ul>
+            <div style={{background:T.bgAlt,borderRadius:"12px",padding:"16px",marginBottom:"12px"}}>
+              <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px",textAlign:"center"}}>{lang==="el"?"Ενδιαφέρεσαι; Επικοινώνησε μαζί μας:":"Interested? Get in touch:"}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:"8px"}}>
+                <a href={`tel:${PHONE}`} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>📞 {lang==="el"?"Κλήση":"Call"}</a>
+                <a href={`https://wa.me/30${PHONE}?text=${encodeURIComponent((lang==="el"?"Γεια σας, ενδιαφέρομαι για: ":"Hello, I'm interested in: ")+(lang==="el"?activeService.titleEl:activeService.titleEn))}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>💬 WhatsApp</a>
+                <a href={`mailto:${EMAIL}?subject=${encodeURIComponent((lang==="el"?"Ενδιαφέρον για ":"Interested in ")+(lang==="el"?activeService.titleEl:activeService.titleEn))}&body=${encodeURIComponent(lang==="el"?"Γεια σας,\n\nΕνδιαφέρομαι για την υπηρεσία:":"Hello,\n\nI'm interested in:")}`} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>✉️ Email</a>
+              </div>
+            </div>
+            <div style={{textAlign:"center",color:T.textLight,fontSize:"11px"}}>📞 {PHONE} · ✉️ {EMAIL}</div>
+          </div>
+        </div>
+      </div>
+    )}
   </div>;
 }
 
