@@ -3034,6 +3034,78 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   const myRunner=myAllRunners[0]; // Primary runner for profile editing
   const myRunnerIds=myAllRunners.map(r=>r.id);
   const myRegs=registrations.filter(r=>myRunnerIds.includes(r.runner_id));
+  
+  // Personal activities (manual entries)
+  const [activities,setActivities]=useState([]);
+  const [showActivityModal,setShowActivityModal]=useState(false);
+  const [editingActivity,setEditingActivity]=useState(null);
+  const [actForm,setActForm]=useState({activity_type:"training",name:"",date:"",distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
+  async function fetchActivities(){
+    if(!myProfileId)return;
+    const {data}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
+    if(data)setActivities(data);
+  }
+  useEffect(()=>{fetchActivities();},[myProfileId]);
+  function openNewActivity(){
+    setEditingActivity(null);
+    setActForm({activity_type:"training",name:"",date:new Date().toISOString().split("T")[0],distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
+    setShowActivityModal(true);
+  }
+  function openEditActivity(act){
+    setEditingActivity(act);
+    const d=act.duration_seconds||0;
+    setActForm({
+      activity_type:act.activity_type,
+      name:act.name||"",
+      date:act.date||"",
+      distance_km:act.distance_km?String(act.distance_km):"",
+      duration_h:String(Math.floor(d/3600)),
+      duration_m:String(Math.floor((d%3600)/60)),
+      duration_s:String(d%60),
+      elevation_gain_m:act.elevation_gain_m?String(act.elevation_gain_m):"",
+      location:act.location||"",
+      notes:act.notes||"",
+      is_external_race:!!act.is_external_race
+    });
+    setShowActivityModal(true);
+  }
+  async function saveActivity(){
+    if(!actForm.name||!actForm.date){toast("Συμπληρώστε όνομα και ημερομηνία","error");return;}
+    const h=parseInt(actForm.duration_h)||0,m=parseInt(actForm.duration_m)||0,s=parseInt(actForm.duration_s)||0;
+    const totalSec=h*3600+m*60+s;
+    const payload={
+      profile_id:myProfileId,
+      activity_type:actForm.activity_type,
+      name:actForm.name,
+      date:actForm.date,
+      distance_km:actForm.distance_km?parseFloat(actForm.distance_km):null,
+      duration_seconds:totalSec>0?totalSec:null,
+      elevation_gain_m:actForm.elevation_gain_m?parseInt(actForm.elevation_gain_m):null,
+      location:actForm.location||null,
+      notes:actForm.notes||null,
+      is_external_race:actForm.activity_type==="race"||actForm.is_external_race
+    };
+    let res;
+    if(editingActivity){
+      res=await supabase.from("personal_activities").update(payload).eq("id",editingActivity.id);
+    }else{
+      res=await supabase.from("personal_activities").insert([payload]);
+    }
+    if(res.error){toast("Σφάλμα: "+res.error.message,"error");return;}
+    toast(lang==="el"?"✅ Αποθηκεύτηκε!":"✅ Saved!","success");
+    setShowActivityModal(false);
+    fetchActivities();
+  }
+  async function deleteActivity(id){
+    if(!confirm(lang==="el"?"Διαγραφή δραστηριότητας;":"Delete activity?"))return;
+    const {error}=await supabase.from("personal_activities").delete().eq("id",id);
+    if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","info");
+    fetchActivities();
+  }
+  // Combined km for stats (registrations + personal activities)
+  const personalKm=activities.reduce((sum,a)=>sum+(parseFloat(a.distance_km)||0),0);
+  
   const [form,setForm]=useState({
     first_name:myRunner?.first_name||"",last_name:myRunner?.last_name||"",
     phone:myRunner?.phone||"",dob:myRunner?.dob||"",gender:myRunner?.gender||"",
@@ -3261,6 +3333,128 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       </div>;
       }catch(err){console.error("Progress charts error:",err);return null;}
     })()}
+    {/* Personal Activities - Manual entries */}
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px"}}>🏃‍♂️ {lang==="el"?"Δραστηριότητες & Προπονήσεις":"Activities & Training"}</h3>
+        <button onClick={openNewActivity} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px"}}>+ {lang==="el"?"Νέα":"New"}</button>
+      </div>
+      {activities.length===0?(
+        <div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"30px",background:T.bg,borderRadius:"10px",lineHeight:1.5}}>
+          🏃 {lang==="el"?"Δεν έχεις προσθέσει δραστηριότητες ακόμα.":"No activities yet."}<br/>
+          <span style={{fontSize:"12px"}}>{lang==="el"?"Πρόσθεσε προπονήσεις ή αγώνες που έγιναν εκτός πλατφόρμας":"Add training or races outside the platform"}</span>
+        </div>
+      ):(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:"8px",marginBottom:"14px"}}>
+            <div style={{background:T.bg,borderRadius:"10px",padding:"10px 12px",textAlign:"center",border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:"18px",fontWeight:900,color:T.primary}}>{activities.length}</div>
+              <div style={{fontSize:"10px",color:T.textLight,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"2px"}}>{lang==="el"?"Συνολικά":"Total"}</div>
+            </div>
+            <div style={{background:T.bg,borderRadius:"10px",padding:"10px 12px",textAlign:"center",border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:"18px",fontWeight:900,color:T.accent}}>{personalKm.toFixed(0)}</div>
+              <div style={{fontSize:"10px",color:T.textLight,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"2px"}}>km</div>
+            </div>
+            <div style={{background:T.bg,borderRadius:"10px",padding:"10px 12px",textAlign:"center",border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:"18px",fontWeight:900,color:T.warning}}>{activities.filter(a=>a.is_external_race).length}</div>
+              <div style={{fontSize:"10px",color:T.textLight,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"2px"}}>{lang==="el"?"Αγώνες":"Races"}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            {activities.slice(0,10).map(act=>{
+              const typeIcon={race:"🏆",training:"🏃",long_run:"📏",tempo:"⚡",intervals:"🎯",recovery:"😌",other:"📝"}[act.activity_type]||"📝";
+              const typeLabel={race:lang==="el"?"Αγώνας":"Race",training:lang==="el"?"Προπόνηση":"Training",long_run:lang==="el"?"Long Run":"Long Run",tempo:"Tempo",intervals:"Intervals",recovery:lang==="el"?"Recovery":"Recovery",other:lang==="el"?"Άλλο":"Other"}[act.activity_type]||"";
+              const d=act.duration_seconds;
+              const durStr=d?`${Math.floor(d/3600)>0?Math.floor(d/3600)+":":""}${String(Math.floor((d%3600)/60)).padStart(2,"0")}:${String(d%60).padStart(2,"0")}`:"—";
+              const pace=(act.distance_km&&d)?((d/60)/act.distance_km):null;
+              const paceStr=pace?`${Math.floor(pace)}:${String(Math.round((pace-Math.floor(pace))*60)).padStart(2,"0")}/km`:"";
+              return <div key={act.id} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}}>
+                    <span style={{fontSize:"18px"}}>{typeIcon}</span>
+                    <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{act.name}</div>
+                    {act.is_external_race&&<span style={{background:T.warning+"22",color:T.warning,fontSize:"10px",fontWeight:700,padding:"2px 8px",borderRadius:"999px"}}>🏆 EXTERNAL</span>}
+                  </div>
+                  <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
+                    <span>📅 {act.date}</span>
+                    {act.distance_km&&<span>📏 {act.distance_km}km</span>}
+                    {durStr!=="—"&&<span>⏱ {durStr}</span>}
+                    {paceStr&&<span>🏃 {paceStr}</span>}
+                    {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
+                    {act.location&&<span>📍 {act.location}</span>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:"6px"}}>
+                  <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
+                  <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
+                </div>
+              </div>;
+            })}
+          </div>
+          {activities.length>10&&<div style={{textAlign:"center",color:T.textLight,fontSize:"12px",marginTop:"12px"}}>+{activities.length-10} {lang==="el"?"περισσότερες":"more"}</div>}
+        </div>
+      )}
+    </div>
+    {/* Activity Modal */}
+    {showActivityModal&&(
+      <div onClick={()=>setShowActivityModal(false)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px"}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:"16px",maxWidth:"500px",width:"100%",maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+          <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,padding:"20px 24px",color:"#fff",position:"relative"}}>
+            <button onClick={()=>setShowActivityModal(false)} style={{position:"absolute",top:"14px",right:"14px",background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",width:"32px",height:"32px",borderRadius:"50%",cursor:"pointer",fontSize:"18px",fontFamily:"inherit"}}>✕</button>
+            <h3 style={{margin:0,fontSize:"18px",fontWeight:900}}>{editingActivity?(lang==="el"?"✏️ Επεξεργασία":"✏️ Edit"):(lang==="el"?"+ Νέα Δραστηριότητα":"+ New Activity")}</h3>
+          </div>
+          <div style={{padding:"20px 24px"}}>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Τύπος":"Type"}</label>
+              <select value={actForm.activity_type} onChange={e=>setActForm({...actForm,activity_type:e.target.value})} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit"}}>
+                <option value="training">🏃 {lang==="el"?"Προπόνηση":"Training"}</option>
+                <option value="long_run">📏 Long Run</option>
+                <option value="tempo">⚡ Tempo</option>
+                <option value="intervals">🎯 Intervals</option>
+                <option value="recovery">😌 Recovery</option>
+                <option value="race">🏆 {lang==="el"?"Αγώνας (εκτός πλατφόρμας)":"Race (external)"}</option>
+                <option value="other">📝 {lang==="el"?"Άλλο":"Other"}</option>
+              </select>
+            </div>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Όνομα":"Name"} *</label>
+              <input type="text" value={actForm.name} onChange={e=>setActForm({...actForm,name:e.target.value})} placeholder={lang==="el"?"π.χ. Πρωινό τρέξιμο στο πάρκο":"e.g. Morning run in the park"} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Ημερομηνία":"Date"} *</label>
+              <input type="date" value={actForm.date} onChange={e=>setActForm({...actForm,date:e.target.value})} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"}}>
+              <div>
+                <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Απόσταση (km)":"Distance (km)"}</label>
+                <input type="number" step="0.01" value={actForm.distance_km} onChange={e=>setActForm({...actForm,distance_km:e.target.value})} placeholder="10.5" style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Υψομ. (m)":"Elev. (m)"}</label>
+                <input type="number" value={actForm.elevation_gain_m} onChange={e=>setActForm({...actForm,elevation_gain_m:e.target.value})} placeholder="120" style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Χρόνος":"Duration"}</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
+                <input type="number" min="0" value={actForm.duration_h} onChange={e=>setActForm({...actForm,duration_h:e.target.value})} placeholder={lang==="el"?"Ώρες":"H"} style={{padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",textAlign:"center",boxSizing:"border-box"}}/>
+                <input type="number" min="0" max="59" value={actForm.duration_m} onChange={e=>setActForm({...actForm,duration_m:e.target.value})} placeholder={lang==="el"?"Λεπτά":"M"} style={{padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",textAlign:"center",boxSizing:"border-box"}}/>
+                <input type="number" min="0" max="59" value={actForm.duration_s} onChange={e=>setActForm({...actForm,duration_s:e.target.value})} placeholder={lang==="el"?"Δευτ.":"S"} style={{padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",textAlign:"center",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Τοποθεσία":"Location"}</label>
+              <input type="text" value={actForm.location} onChange={e=>setActForm({...actForm,location:e.target.value})} placeholder={lang==="el"?"π.χ. Πάρκο Τρίτση":"e.g. Central Park"} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:"14px"}}>
+              <label style={{...css.label,marginBottom:"6px"}}>{lang==="el"?"Σημειώσεις":"Notes"}</label>
+              <textarea value={actForm.notes} onChange={e=>setActForm({...actForm,notes:e.target.value})} placeholder={lang==="el"?"Πώς πήγε; Πώς ένιωσες;":"How did it go?"} rows={3} style={{width:"100%",padding:"10px 12px",fontSize:"14px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+            </div>
+            <button onClick={saveActivity} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"14px",fontSize:"14px",fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{editingActivity?(lang==="el"?"💾 Αποθήκευση":"💾 Save"):(lang==="el"?"➕ Προσθήκη":"➕ Add")}</button>
+          </div>
+        </div>
+      </div>
+    )}
     {/* My Races - Auto-synced από registrations */}
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
