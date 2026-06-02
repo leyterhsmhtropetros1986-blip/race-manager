@@ -3103,6 +3103,78 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","info");
     fetchActivities();
   }
+  async function handleGpxUpload(e){
+    const file=e.target.files?.[0];
+    e.target.value=""; // Reset input
+    if(!file)return;
+    if(file.size>10485760){toast(lang==="el"?"⚠ Πολύ μεγάλο αρχείο (max 10MB)":"File too large (max 10MB)","error");return;}
+    try{
+      toast(lang==="el"?"📤 Επεξεργασία GPX...":"📤 Processing GPX...","info");
+      const text=await file.text();
+      const parser=new DOMParser();
+      const doc=parser.parseFromString(text,"text/xml");
+      const parseErr=doc.querySelector("parsererror");
+      if(parseErr)throw new Error("Invalid GPX file");
+      // Get trkpt elements
+      const trkpts=doc.querySelectorAll("trkpt");
+      if(trkpts.length<2)throw new Error("No GPS points found");
+      // Calculate distance, time, elevation
+      let totalDist=0,totalElevGain=0,startTime=null,endTime=null;
+      let prevLat=null,prevLon=null,prevEle=null;
+      // Get name from <name> in <trk>
+      const trkName=doc.querySelector("trk > name")?.textContent?.trim()||file.name.replace(/\.gpx$/i,"");
+      function haversine(lat1,lon1,lat2,lon2){
+        const R=6371; // km
+        const toRad=x=>x*Math.PI/180;
+        const dLat=toRad(lat2-lat1);
+        const dLon=toRad(lon2-lon1);
+        const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      }
+      trkpts.forEach((pt,i)=>{
+        const lat=parseFloat(pt.getAttribute("lat"));
+        const lon=parseFloat(pt.getAttribute("lon"));
+        const eleNode=pt.querySelector("ele");
+        const timeNode=pt.querySelector("time");
+        const ele=eleNode?parseFloat(eleNode.textContent):null;
+        const time=timeNode?new Date(timeNode.textContent):null;
+        if(time){
+          if(!startTime)startTime=time;
+          endTime=time;
+        }
+        if(prevLat!==null&&prevLon!==null){
+          totalDist+=haversine(prevLat,prevLon,lat,lon);
+        }
+        if(ele!==null&&prevEle!==null&&ele>prevEle){
+          totalElevGain+=ele-prevEle;
+        }
+        prevLat=lat;prevLon=lon;
+        if(ele!==null)prevEle=ele;
+      });
+      const durationSec=(startTime&&endTime)?Math.round((endTime-startTime)/1000):0;
+      const activityDate=startTime?startTime.toISOString().slice(0,10):new Date().toISOString().slice(0,10);
+      // Pre-fill form with parsed data
+      setActForm({
+        activity_type:"training",
+        name:trkName,
+        date:activityDate,
+        distance_km:totalDist.toFixed(2),
+        duration_h:String(Math.floor(durationSec/3600)),
+        duration_m:String(Math.floor((durationSec%3600)/60)),
+        duration_s:String(durationSec%60),
+        elevation_gain_m:totalElevGain>0?String(Math.round(totalElevGain)):"",
+        location:"",
+        notes:`📤 Από GPX: ${file.name}`,
+        is_external_race:false
+      });
+      setEditingActivity(null);
+      setShowActivityModal(true);
+      toast(lang==="el"?`✅ GPX επεξεργάστηκε! ${totalDist.toFixed(1)}km · ${Math.floor(durationSec/60)}min`:`✅ GPX parsed! ${totalDist.toFixed(1)}km · ${Math.floor(durationSec/60)}min`,"success");
+    }catch(err){
+      console.error("GPX parse error:",err);
+      toast(lang==="el"?"❌ Σφάλμα στο GPX: "+(err.message||"άγνωστο"):"❌ GPX error: "+(err.message||"unknown"),"error");
+    }
+  }
   // Combined km for stats (registrations + personal activities)
   const personalKm=activities.reduce((sum,a)=>sum+(parseFloat(a.distance_km)||0),0);
   
@@ -3337,7 +3409,13 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
         <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px"}}>🏃‍♂️ {lang==="el"?"Δραστηριότητες & Προπονήσεις":"Activities & Training"}</h3>
-        <button onClick={openNewActivity} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px"}}>+ {lang==="el"?"Νέα":"New"}</button>
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+          <label style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px"}}>
+            📤 {lang==="el"?"Upload GPX":"Upload GPX"}
+            <input type="file" accept=".gpx,application/gpx+xml,text/xml,application/xml" onChange={handleGpxUpload} style={{display:"none"}}/>
+          </label>
+          <button onClick={openNewActivity} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px"}}>+ {lang==="el"?"Νέα":"New"}</button>
+        </div>
       </div>
       {activities.length===0?(
         <div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"30px",background:T.bg,borderRadius:"10px",lineHeight:1.5}}>
