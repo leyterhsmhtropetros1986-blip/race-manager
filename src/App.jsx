@@ -4456,16 +4456,84 @@ function AdminPanel(){
   const [pendingOrgs,setPendingOrgs]=useState([]);
   const [allOrgs,setAllOrgs]=useState([]);
   const [pendingRaces,setPendingRaces]=useState([]);
+  const [duplicates,setDuplicates]=useState([]);
   const [loading,setLoading]=useState(true);
   const [tab,setTab]=useState("pendingRaces");
   async function fetchOrgs(){
     setLoading(true);
-    const [orgsRes,racesRes]=await Promise.all([
+    const [orgsRes,racesRes,runnersRes]=await Promise.all([
       supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false}),
-      supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true})
+      supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true}),
+      supabase.from("runners").select("id,first_name,last_name,email,dob,athlete_profile_id,created_at")
     ]);
     if(orgsRes.data){setPendingOrgs(orgsRes.data.filter(o=>o.status==="pending"));setAllOrgs(orgsRes.data);}
     if(racesRes.data)setPendingRaces(racesRes.data);
+    // Find duplicates
+    if(runnersRes.data){
+      const runners=runnersRes.data;
+      const dupGroups=[];
+      // Group by lowered email
+      const byEmail={};
+      runners.forEach(r=>{
+        if(!r.email)return;
+        const key=String(r.email).toLowerCase().trim();
+        if(!key)return;
+        if(!byEmail[key])byEmail[key]=[];
+        byEmail[key].push(r);
+      });
+      Object.entries(byEmail).forEach(([key,group])=>{
+        if(group.length>1)dupGroups.push({type:"email",key,runners:group});
+      });
+      // Group by name+dob
+      const byNameDob={};
+      runners.forEach(r=>{
+        if(!r.first_name||!r.last_name||!r.dob)return;
+        const key=`${String(r.first_name).toLowerCase().trim()}|${String(r.last_name).toLowerCase().trim()}|${r.dob}`;
+        if(!byNameDob[key])byNameDob[key]=[];
+        byNameDob[key].push(r);
+      });
+      Object.entries(byNameDob).forEach(([key,group])=>{
+        if(group.length>1){
+          // Skip if already detected as email duplicate
+          const ids=group.map(g=>g.id).sort().join(",");
+          const exists=dupGroups.some(d=>d.runners.map(r=>r.id).sort().join(",")===ids);
+          if(!exists)dupGroups.push({type:"name_dob",key,runners:group});
+        }
+      });
+      // Similar names (Levenshtein < 3) — light fuzzy detection
+      function levenshtein(a,b){
+        if(!a||!b)return 99;
+        a=a.toLowerCase().trim();b=b.toLowerCase().trim();
+        if(a===b)return 0;
+        if(Math.abs(a.length-b.length)>3)return 99;
+        const dp=Array(a.length+1).fill(null).map(()=>Array(b.length+1).fill(0));
+        for(let i=0;i<=a.length;i++)dp[i][0]=i;
+        for(let j=0;j<=b.length;j++)dp[0][j]=j;
+        for(let i=1;i<=a.length;i++){
+          for(let j=1;j<=b.length;j++){
+            dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])+1;
+          }
+        }
+        return dp[a.length][b.length];
+      }
+      // Check pairs with similar full names (only if they have DOB or city overlap to reduce false positives)
+      const fullNameRunners=runners.filter(r=>r.first_name&&r.last_name);
+      for(let i=0;i<fullNameRunners.length;i++){
+        for(let j=i+1;j<fullNameRunners.length;j++){
+          const a=fullNameRunners[i],b=fullNameRunners[j];
+          const aFull=`${a.first_name} ${a.last_name}`;
+          const bFull=`${b.first_name} ${b.last_name}`;
+          const aRev=`${a.last_name} ${a.first_name}`;
+          const dist=Math.min(levenshtein(aFull,bFull),levenshtein(aRev,bFull));
+          if(dist>0&&dist<=2){
+            const ids=[a.id,b.id].sort().join(",");
+            const exists=dupGroups.some(d=>d.runners.map(r=>r.id).sort().join(",")===ids);
+            if(!exists)dupGroups.push({type:"similar_name",key:`${aFull} ≈ ${bFull}`,runners:[a,b]});
+          }
+        }
+      }
+      setDuplicates(dupGroups);
+    }
     setLoading(false);
   }
   useEffect(()=>{fetchOrgs();},[]);
@@ -4533,6 +4601,7 @@ function AdminPanel(){
       <button onClick={()=>setTab("pendingRaces")} style={{background:tab==="pendingRaces"?T.warning:T.bgAlt,color:tab==="pendingRaces"?"#fff":T.textMid,border:`1px solid ${tab==="pendingRaces"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pendingRaces"?700:500,fontFamily:"inherit"}}>🏁 {lang==="el"?"Αγώνες προς Έγκριση":"Pending Races"} ({pendingRaces.length})</button>
       <button onClick={()=>setTab("pending")} style={{background:tab==="pending"?T.warning:T.bgAlt,color:tab==="pending"?"#fff":T.textMid,border:`1px solid ${tab==="pending"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pending"?700:500,fontFamily:"inherit"}}>{t.pendingTab} ({pendingOrgs.length})</button>
       <button onClick={()=>setTab("all")} style={{background:tab==="all"?T.primary:T.bgAlt,color:tab==="all"?"#fff":T.textMid,border:`1px solid ${tab==="all"?T.primary:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="all"?700:500,fontFamily:"inherit"}}>{t.allOrgsTab} ({allOrgs.length})</button>
+      <button onClick={()=>setTab("duplicates")} style={{background:tab==="duplicates"?T.danger:T.bgAlt,color:tab==="duplicates"?"#fff":T.textMid,border:`1px solid ${tab==="duplicates"?T.danger:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="duplicates"?700:500,fontFamily:"inherit"}}>🔍 {lang==="el"?"Πιθανοί Διπλοί":"Possible Duplicates"} ({duplicates.length})</button>
     </div>
 
     {tab==="pendingRaces"?(
@@ -4578,6 +4647,47 @@ function AdminPanel(){
         </div>
       ))}
     </div>
+  </div>)}
+  {tab==="duplicates"&&(<div>
+    {duplicates.length===0?(
+      <EmptyState icon="✅" title={lang==="el"?"Δεν βρέθηκαν διπλοί":"No duplicates found"} message={lang==="el"?"Όλοι οι αθλητές είναι μοναδικοί. Σύστημα καθαρό!":"All athletes are unique. Clean system!"}/>
+    ):(
+      <div>
+        <div style={{background:`${T.warning}11`,border:`1px solid ${T.warning}44`,borderRadius:"12px",padding:"14px 18px",marginBottom:"16px",color:T.text,fontSize:"13px",lineHeight:1.5}}>
+          🔍 <strong>{lang==="el"?"Βρέθηκαν":"Found"} {duplicates.length} {lang==="el"?"πιθανοί διπλοί αθλητές.":"possible duplicate groups."}</strong> {lang==="el"?"Έλεγξε τα στοιχεία κάθε ομάδας. Στο επόμενο update θα μπορείς να τους ενώσεις (merge).":"Check each group's details. In the next update you'll be able to merge them."}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {duplicates.map((dup,i)=>{
+            const typeLabel=dup.type==="email"?(lang==="el"?"📧 Ίδιο Email":"📧 Same Email"):dup.type==="name_dob"?(lang==="el"?"👤 Ίδιο Όνομα + Γέννηση":"👤 Same Name + DOB"):(lang==="el"?"🔍 Παρόμοιο Όνομα":"🔍 Similar Name");
+            const typeColor=dup.type==="email"?T.danger:dup.type==="name_dob"?T.warning:T.primary;
+            return <div key={i} style={{background:T.bgAlt,border:`2px solid ${typeColor}55`,borderRadius:"14px",padding:"18px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"12px",flexWrap:"wrap",gap:"8px"}}>
+                <div>
+                  <div style={{background:typeColor+"22",color:typeColor,fontSize:"11px",fontWeight:800,padding:"4px 10px",borderRadius:"999px",display:"inline-block",letterSpacing:"0.05em",marginBottom:"6px"}}>{typeLabel}</div>
+                  <div style={{color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",wordBreak:"break-all"}}>{dup.key}</div>
+                </div>
+                <div style={{background:T.bg,color:T.textMid,fontSize:"11px",fontWeight:700,padding:"4px 10px",borderRadius:"6px"}}>{dup.runners.length} {lang==="el"?"εγγραφές":"records"}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:"8px",marginTop:"12px"}}>
+                {dup.runners.map((r,j)=>(
+                  <div key={j} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"4px"}}>{r.first_name||"—"} {r.last_name||""}</div>
+                      <div style={{color:T.textMid,fontSize:"12px",display:"flex",gap:"12px",flexWrap:"wrap"}}>
+                        {r.email&&<span>✉️ {r.email}</span>}
+                        {r.dob&&<span>📅 {r.dob}</span>}
+                      </div>
+                      <div style={{color:T.textLight,fontSize:"10px",marginTop:"4px",fontFamily:"monospace"}}>ID: {r.id?.slice(0,8)}... {r.athlete_profile_id?"· 🔗 Linked":"· ⚠ Unlinked"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:"12px",padding:"10px 12px",background:T.bg,borderRadius:"8px",color:T.textLight,fontSize:"11px",textAlign:"center"}}>{lang==="el"?"💡 Merge functionality θα προστεθεί στο επόμενο update":"💡 Merge functionality coming in next update"}</div>
+            </div>;
+          })}
+        </div>
+      </div>
+    )}
   </div>)}
   </div>;
 }
