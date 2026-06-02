@@ -2280,6 +2280,32 @@ function PublicHomePage(){
           </div>
         </div>
       </div>
+      {/* Why Race Management - Features */}
+      <div style={{marginBottom:"40px"}}>
+        <div style={{textAlign:"center",marginBottom:"28px"}}>
+          <div style={{display:"inline-block",background:`${T.primary}11`,color:T.primary,padding:"5px 14px",borderRadius:"999px",fontSize:"11px",fontWeight:800,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:"12px"}}>{lang==="el"?"Γιατί Race Management":"Why Race Management"}</div>
+          <h2 style={{color:T.text,fontSize:"clamp(24px, 5vw, 36px)",fontWeight:900,margin:"0 0 8px",letterSpacing:"-0.02em",lineHeight:1.2}}>{lang==="el"?"Όλα όσα χρειάζεσαι, σε ένα μέρος":"Everything you need, in one place"}</h2>
+          <p style={{color:T.textMid,fontSize:"15px",margin:"0 auto",maxWidth:"560px",lineHeight:1.5}}>{lang==="el"?"Από την εγγραφή μέχρι τα αποτελέσματα. Απλά, γρήγορα, επαγγελματικά.":"From registration to results. Simple, fast, professional."}</p>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:"16px"}}>
+          {[
+            {icon:"🏃",title:lang==="el"?"Για Αθλητές":"For Athletes",desc:lang==="el"?"Βρες αγώνες, εγγράψου, δες τα αποτελέσματά σου, παρακολούθησε την πρόοδό σου.":"Find races, register, see results, track your progress.",color:T.primary},
+            {icon:"🏟",title:lang==="el"?"Για Διοργανωτές":"For Organizers",desc:lang==="el"?"Δημιούργησε αγώνες, διαχειρίσου εγγραφές, ανέβασε αποτελέσματα. Όλα online.":"Create races, manage registrations, upload results. All online.",color:T.accent},
+            {icon:"📊",title:lang==="el"?"Στατιστικά & Πρόοδος":"Stats & Progress",desc:lang==="el"?"Personal Records, achievements, γραφικά προόδου ανά απόσταση.":"Personal Records, achievements, progress charts per distance.",color:"#10b981"},
+            {icon:"🎯",title:lang==="el"?"Επαγγελματικό":"Professional",desc:lang==="el"?"PDF exports, CSV imports, χρονομέτρηση, αποτελέσματα, χορηγοί.":"PDF exports, CSV imports, timing, results, sponsors.",color:"#f59e0b"},
+            {icon:"📱",title:lang==="el"?"Mobile-First":"Mobile-First",desc:lang==="el"?"Εγκατάσταση σαν app στο κινητό σου. Δουλεύει παντού.":"Install as app on your phone. Works everywhere.",color:"#8b5cf6"},
+            {icon:"🇬🇷",title:lang==="el"?"Ελληνικά":"In Greek",desc:lang==="el"?"Πλήρης ελληνική υποστήριξη. GDPR compliant. Made in Greece.":"Full Greek support. GDPR compliant. Made in Greece.",color:"#06b6d4"}
+          ].map((f,i)=>(
+            <div key={i} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px 20px",transition:"all 0.25s",cursor:"default",position:"relative",overflow:"hidden"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=`0 12px 32px ${f.color}22`;e.currentTarget.style.borderColor=f.color+"66";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=T.border;}}>
+              <div style={{position:"absolute",top:"-10px",right:"-10px",width:"60px",height:"60px",borderRadius:"50%",background:f.color+"11",pointerEvents:"none"}}/>
+              <div style={{fontSize:"36px",marginBottom:"14px",position:"relative",zIndex:1}}>{f.icon}</div>
+              <h3 style={{color:T.text,fontSize:"17px",fontWeight:800,margin:"0 0 8px",letterSpacing:"-0.01em",position:"relative",zIndex:1}}>{f.title}</h3>
+              <p style={{color:T.textMid,fontSize:"13px",margin:0,lineHeight:1.5,position:"relative",zIndex:1}}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div id="races-section" style={{textAlign:"left",marginBottom:"16px"}}>
         <h2 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.publicRacesTitle}</h2>
         <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.publicRacesSub}</p>
