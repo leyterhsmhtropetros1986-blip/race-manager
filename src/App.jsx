@@ -3347,39 +3347,39 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
 
   return <div>
     {profile?.athlete_id&&(
-      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"16px",padding:"20px 24px",marginBottom:"20px",color:"#fff",boxShadow:`0 8px 24px ${T.primary}33`}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"12px"}}>
-          <div>
-            <div style={{fontSize:"11px",opacity:0.85,letterSpacing:"0.15em",textTransform:"uppercase",fontWeight:600,marginBottom:"4px"}}>Athlete ID</div>
-            <div style={{fontSize:"28px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"14px",padding:"12px 18px",marginBottom:"12px",color:"#fff",boxShadow:`0 4px 14px ${T.primary}33`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+            <div style={{fontSize:"22px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
+            <div style={{fontSize:"10px",opacity:0.8,letterSpacing:"0.15em",textTransform:"uppercase",fontWeight:600}}>Athlete</div>
           </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:"16px",fontWeight:700}}>{myRunner?.first_name} {myRunner?.last_name}</div>
-            <div style={{fontSize:"12px",opacity:0.85,marginTop:"2px"}}>{session?.user?.email}</div>
+          <div style={{textAlign:"right",minWidth:0,flex:"0 1 auto"}}>
+            <div style={{fontSize:"14px",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{myRunner?.first_name} {myRunner?.last_name}</div>
+            <div style={{fontSize:"11px",opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session?.user?.email}</div>
           </div>
         </div>
       </div>
     )}
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.profileTitle}</h2>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
-      <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-        <div style={{fontSize:"28px",marginBottom:"4px"}}>🏃</div>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.primary,lineHeight:1}}>{totalRaces}</div>
+    
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))",gap:"8px",marginBottom:"12px"}}>
+      <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"12px 10px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{fontSize:"20px",marginBottom:"2px"}}>🏃</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{totalRaces}</div>
         <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statTotalRaces}</div>
       </div>
-      <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
-        <div style={{fontSize:"28px",marginBottom:"4px"}}>✅</div>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.accent,lineHeight:1}}>{finishedCount}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"12px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"20px",marginBottom:"2px"}}>✅</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{finishedCount}</div>
         <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statFinished}</div>
       </div>
-      <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
-        <div style={{fontSize:"28px",marginBottom:"4px"}}>⏳</div>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.warning,lineHeight:1}}>{upcomingCount}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"12px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"20px",marginBottom:"2px"}}>⏳</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{upcomingCount}</div>
         <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statUpcoming}</div>
       </div>
-      <div style={{background:`linear-gradient(135deg, ${T.text}15 0%, ${T.text}05 100%)`,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px 16px",textAlign:"center"}}>
-        <div style={{fontSize:"28px",marginBottom:"4px"}}>📏</div>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.text,lineHeight:1}}>{totalKm.toFixed(0)}<span style={{fontSize:"14px",fontWeight:600,opacity:0.6}}>km</span></div>
+      <div style={{background:`linear-gradient(135deg, ${T.text}15 0%, ${T.text}05 100%)`,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"12px 10px",textAlign:"center"}}>
+        <div style={{fontSize:"20px",marginBottom:"2px"}}>📏</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.text,lineHeight:1}}>{totalKm.toFixed(0)}<span style={{fontSize:"14px",fontWeight:600,opacity:0.6}}>km</span></div>
         <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{t.statTotalKm}</div>
       </div>
     </div>
@@ -3396,7 +3396,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       if(prList.length>=3)badges.push({icon:"⏱",title:lang==="el"?"3 PRs":"3 PRs",desc:lang==="el"?"Personal Bests":"Personal Bests"});
       if(badges.length===0)return null;
       return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
-        <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px",display:"flex",alignItems:"center",gap:"8px"}}>🏅 {lang==="el"?"Επιτεύγματα":"Achievements"}</h3>
+        <h3 style={{margin:"0 0 10px",color:T.text,fontSize:"14px",display:"flex",alignItems:"center",gap:"6px"}}>🏅 {lang==="el"?"Επιτεύγματα":"Achievements"}</h3>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px"}}>
           {badges.map((b,i)=>(
             <div key={i} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center",transition:"all 0.2s",cursor:"default"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
@@ -3448,7 +3448,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         const validDists=Object.keys(byDist).filter(d=>byDist[d].length>=2).sort();
         validDists.forEach(d=>byDist[d].sort((a,b)=>a.date.localeCompare(b.date)));
       return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
-        <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px",display:"flex",alignItems:"center",gap:"8px"}}>📈 {lang==="el"?"Πρόοδος Χρόνων":"Time Progress"}</h3>
+        <h3 style={{margin:"0 0 10px",color:T.text,fontSize:"14px",display:"flex",alignItems:"center",gap:"6px"}}>📈 {lang==="el"?"Πρόοδος Χρόνων":"Time Progress"}</h3>
         {validDists.length===0?(
           <div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"30px",background:T.bg,borderRadius:"10px",lineHeight:1.5}}>
             📊 {lang==="el"?"Χρειάζεσαι 2+ ολοκληρωμένους αγώνες στην ίδια απόσταση για να εμφανιστεί η πρόοδος":"You need 2+ finished races at the same distance to see progress"}
