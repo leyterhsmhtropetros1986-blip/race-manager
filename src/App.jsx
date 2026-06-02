@@ -3354,15 +3354,19 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
 
   return <div>
     {profile?.athlete_id&&(
-      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"14px",padding:"12px 18px",marginBottom:"12px",color:"#fff",boxShadow:`0 4px 14px ${T.primary}33`}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:"10px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
-            <div style={{fontSize:"22px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
-            <div style={{fontSize:"10px",opacity:0.8,letterSpacing:"0.15em",textTransform:"uppercase",fontWeight:600}}>Athlete</div>
-          </div>
-          <div style={{textAlign:"right",minWidth:0,flex:"0 1 auto"}}>
-            <div style={{fontSize:"14px",fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{myRunner?.first_name} {myRunner?.last_name}</div>
-            <div style={{fontSize:"11px",opacity:0.85,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session?.user?.email}</div>
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,borderRadius:"14px",padding:"14px 18px",marginBottom:"12px",color:"#fff",boxShadow:`0 4px 14px ${T.primary}33`}}>
+        <div style={{display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap"}}>
+          {myRunner?.avatar_url?(
+            <img src={myRunner.avatar_url} alt="" data-no-invert="true" style={{width:"56px",height:"56px",borderRadius:"50%",objectFit:"cover",border:"3px solid rgba(255,255,255,0.4)",flexShrink:0}}/>
+          ):(
+            <div style={{width:"56px",height:"56px",borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",border:"3px solid rgba(255,255,255,0.3)",flexShrink:0}}>👤</div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:"16px",fontWeight:800,marginBottom:"3px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{myRunner?.first_name} {myRunner?.last_name}</div>
+            <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+              <span style={{fontSize:"13px",fontWeight:900,fontFamily:"monospace",letterSpacing:"0.05em",background:"rgba(255,255,255,0.2)",padding:"2px 8px",borderRadius:"6px"}}>{profile.athlete_id}</span>
+              <span style={{fontSize:"11px",opacity:0.9,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{session?.user?.email}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -5204,3 +5208,4 @@ export default function App(){
     <PWAInstallPrompt/>
   </LangContext.Provider>;
 }
+  
