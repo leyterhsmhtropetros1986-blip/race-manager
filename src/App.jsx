@@ -3028,16 +3028,25 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
     </div>
     {/* Progress Charts - Time improvements per distance */}
     {(()=>{
-      const finished=myRegs.filter(r=>r.finish_time).map(r=>{
-        const race=races.find(rc=>rc.id===r.race_id);
-        return{distance:r.distance,seconds:timeToSeconds(r.finish_time),date:race?.date||"",raceName:race?.name||""};
-      }).filter(r=>r.seconds>0&&r.date);
-      // Group by distance
-      const byDist={};
-      finished.forEach(r=>{if(!byDist[r.distance])byDist[r.distance]=[];byDist[r.distance].push(r);});
-      // Sort each group by date, keep only distances with 2+
-      const validDists=Object.keys(byDist).filter(d=>byDist[d].length>=2).sort();
-      validDists.forEach(d=>byDist[d].sort((a,b)=>a.date.localeCompare(b.date)));
+      try{
+        if(!races||!Array.isArray(races))return null;
+        const secToFormat=(sec)=>{
+          if(!sec||isNaN(sec))return"0:00";
+          const s=Math.abs(Math.round(sec));
+          const h=Math.floor(s/3600);
+          const m=Math.floor((s%3600)/60);
+          const ss=s%60;
+          if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+          return `${m}:${String(ss).padStart(2,"0")}`;
+        };
+        const finished=(myRegs||[]).filter(r=>r&&r.finish_time).map(r=>{
+          const race=races.find(rc=>rc&&rc.id===r.race_id);
+          return{distance:r.distance,seconds:timeToSeconds(r.finish_time),date:race?.date||"",raceName:race?.name||""};
+        }).filter(r=>r.seconds>0&&r.date);
+        const byDist={};
+        finished.forEach(r=>{if(!byDist[r.distance])byDist[r.distance]=[];byDist[r.distance].push(r);});
+        const validDists=Object.keys(byDist).filter(d=>byDist[d].length>=2).sort();
+        validDists.forEach(d=>byDist[d].sort((a,b)=>a.date.localeCompare(b.date)));
       return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
         <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"16px",display:"flex",alignItems:"center",gap:"8px"}}>📈 {lang==="el"?"Πρόοδος Χρόνων":"Time Progress"}</h3>
         {validDists.length===0?(
@@ -3066,7 +3075,7 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
                   <div style={{color:T.text,fontWeight:800,fontSize:"15px"}}>🏃 {dist}</div>
                   <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
                     <span style={{color:T.textMid,fontSize:"11px"}}>{data.length} {lang==="el"?"αγώνες":"races"}</span>
-                    {isImproving?(<span style={{background:T.accent+"22",color:T.accent,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📈 -{formatTime(improvement)}</span>):(<span style={{background:T.warning+"22",color:T.warning,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📉 +{formatTime(improvement)}</span>)}
+                    {isImproving?(<span style={{background:T.accent+"22",color:T.accent,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📈 -{secToFormat(improvement)}</span>):(<span style={{background:T.warning+"22",color:T.warning,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📉 +{secToFormat(improvement)}</span>)}
                   </div>
                 </div>
                 <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",maxHeight:"180px"}}>
@@ -3075,10 +3084,10 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
                   <path d={path} fill="none" stroke={isImproving?T.accent:T.warning} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   {points.map((p,i)=>(<g key={i}>
                     <circle cx={p.x} cy={p.y} r="5" fill={isImproving?T.accent:T.warning} stroke="#fff" strokeWidth="2"/>
-                    <title>{p.raceName} · {p.date} · {formatTime(p.seconds)}</title>
+                    <title>{p.raceName} · {p.date} · {secToFormat(p.seconds)}</title>
                   </g>))}
-                  <text x={pad-4} y={pad+4} textAnchor="end" fontSize="9" fill={T.textLight}>{formatTime(minSec)}</text>
-                  <text x={pad-4} y={H-pad+3} textAnchor="end" fontSize="9" fill={T.textLight}>{formatTime(maxSec)}</text>
+                  <text x={pad-4} y={pad+4} textAnchor="end" fontSize="9" fill={T.textLight}>{secToFormat(minSec)}</text>
+                  <text x={pad-4} y={H-pad+3} textAnchor="end" fontSize="9" fill={T.textLight}>{secToFormat(maxSec)}</text>
                 </svg>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:T.textLight,marginTop:"6px",padding:"0 16px"}}>
                   <span>{data[0].date}</span>
@@ -3089,6 +3098,7 @@ function AthleteProfile({runners,registrations,races,session,profile,onRefresh})
           </div>
         )}
       </div>;
+      }catch(err){console.error("Progress charts error:",err);return null;}
     })()}
     {/* My Races - Auto-synced από registrations */}
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
