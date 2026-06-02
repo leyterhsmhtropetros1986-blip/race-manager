@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 
 // Global keyframe injection for skeleton animation
 if (typeof document !== "undefined" && !document.getElementById("rm-global-styles")) {
@@ -2889,7 +2889,31 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   </Modal>;
 }
 
-function AthleteProfile({runners,registrations,races,session,profile,onRefresh}){
+class ProfileErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(error){return{hasError:true,error};}
+  componentDidCatch(error,info){console.error("Profile crashed:",error,info);}
+  render(){
+    if(this.state.hasError){
+      return <div style={{padding:"40px 24px",background:"#fff5f5",border:"1px solid #ff6b6b",borderRadius:"16px",margin:"20px"}}>
+        <h3 style={{color:"#dc2626",margin:"0 0 12px"}}>⚠️ Σφάλμα στο Προφίλ</h3>
+        <p style={{color:"#666",fontSize:"13px",lineHeight:1.5,margin:"0 0 8px"}}>Υπάρχει τεχνικό πρόβλημα. Δοκίμασε:</p>
+        <ul style={{color:"#666",fontSize:"13px",margin:"0 0 12px",paddingLeft:"20px"}}>
+          <li>Ανανέωση σελίδας (Ctrl+Shift+R)</li>
+          <li>Logout και ξανά login</li>
+        </ul>
+        <p style={{color:"#999",fontSize:"11px",margin:0,fontFamily:"monospace",background:"#fff",padding:"8px",borderRadius:"6px",wordBreak:"break-all"}}>{String(this.state.error?.message||this.state.error)}</p>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
+function AthleteProfile(props){
+  return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
+}
+
+function AthleteProfileInner({runners,registrations,races,session,profile,onRefresh}){
   const {t}=useLang();
   const myRunner=runners.find(r=>r.email===session.user.email);
   const myRegs=myRunner?registrations.filter(r=>r.runner_id===myRunner.id):[];
