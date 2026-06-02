@@ -76,7 +76,7 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
 }
 import { createClient } from "@supabase/supabase-js";
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -2592,6 +2592,7 @@ function LoginPage({onBack}){
   const [mode,setMode]=useState("signup");
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
+  const [showPassword,setShowPassword]=useState(false);
   const [name,setName]=useState("");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
@@ -2710,7 +2711,13 @@ function LoginPage({onBack}){
           {mode==="signup"&&role==="organizer"&&(<div style={{background:`${T.warning}15`,border:`1px solid ${T.warning}44`,borderRadius:"8px",padding:"10px 14px",color:T.warning,fontSize:"12px",marginBottom:"16px",lineHeight:"1.5"}}>{t.orgNeedsApproval}</div>)}
           {mode==="signup"&&<div style={{marginBottom:"14px"}}><label style={css.label}>{t.fullName}</label><input value={name} onChange={e=>setName(e.target.value)} style={css.input}/></div>}
           <div style={{marginBottom:"14px"}}><label style={css.label}>{t.email}</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={css.input}/></div>
-          <div style={{marginBottom:"20px"}}><label style={css.label}>{t.password}</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} style={css.input}/></div>
+          <div style={{marginBottom:"20px"}}>
+            <label style={css.label}>{t.password}</label>
+            <div style={{position:"relative"}}>
+              <input type={showPassword?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} style={{...css.input,paddingRight:"60px"}}/>
+              <button type="button" onClick={()=>setShowPassword(!showPassword)} style={{position:"absolute",right:"8px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"18px",padding:"6px 10px",fontFamily:"inherit"}} title={showPassword?(lang==="el"?"Απόκρυψη":"Hide"):(lang==="el"?"Εμφάνιση":"Show")}>{showPassword?"🙈":"👁"}</button>
+            </div>
+          </div>
           {error&&<div style={{background:error.startsWith("✅")?`${T.accent}15`:`${T.danger}15`,border:`1px solid ${error.startsWith("✅")?T.accent+"44":T.danger+"44"}`,borderRadius:"8px",padding:"10px 14px",color:error.startsWith("✅")?T.accent:T.danger,fontSize:"13px",marginBottom:"16px",lineHeight:"1.5"}}>{error}</div>}
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:roleColor,color:"#fff",border:"none",borderRadius:"10px",padding:"14px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:"12px",opacity:loading?0.6:1,boxShadow:T.shadow}}>{loading?"...":(mode==="signup"?`${t.signupBtn} ${roleLabel}`:t.loginBtn)}</button>
           {mode==="login"&&!forgotMode&&<button onClick={()=>{setForgotMode(true);setError("");}} style={{width:"100%",background:"none",border:"none",color:T.primary,cursor:"pointer",fontSize:"12px",fontFamily:"inherit",marginBottom:"8px",textDecoration:"underline"}}>{t.forgotPassword}</button>}
@@ -3029,6 +3036,66 @@ class ProfileErrorBoundary extends React.Component{
 
 function AthleteProfile(props){
   return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
+}
+
+function MiniGpxMap({gpxUrl,onClick}){
+  const [points,setPoints]=useState(null);
+  const [err,setErr]=useState(false);
+  useEffect(()=>{
+    if(!gpxUrl){setErr(true);return;}
+    let cancelled=false;
+    (async()=>{
+      try{
+        const res=await fetch(gpxUrl);
+        if(!res.ok)throw new Error("Cannot load");
+        const text=await res.text();
+        const doc=new DOMParser().parseFromString(text,"text/xml");
+        const trkpts=doc.querySelectorAll("trkpt");
+        if(trkpts.length<2)throw new Error("No points");
+        // Sample every Nth point for performance (keep ~200 points max)
+        const step=Math.max(1,Math.floor(trkpts.length/200));
+        const pts=[];
+        trkpts.forEach((pt,i)=>{
+          if(i%step!==0&&i!==trkpts.length-1)return;
+          const lat=parseFloat(pt.getAttribute("lat"));
+          const lon=parseFloat(pt.getAttribute("lon"));
+          if(!isNaN(lat)&&!isNaN(lon))pts.push([lat,lon]);
+        });
+        if(!cancelled)setPoints(pts);
+      }catch(e){
+        if(!cancelled)setErr(true);
+      }
+    })();
+    return()=>{cancelled=true;};
+  },[gpxUrl]);
+  if(err)return null;
+  if(!points)return <div style={{height:"140px",background:T.bgAlt,borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:T.textLight,fontSize:"12px"}}>🗺 Loading...</div>;
+  const lats=points.map(p=>p[0]);
+  const lngs=points.map(p=>p[1]);
+  const center=[(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2];
+  const startIcon=L.divIcon({html:'<div style="background:#10b981;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',iconSize:[20,20],iconAnchor:[10,10],className:""});
+  const finishIcon=L.divIcon({html:'<div style="background:#ef4444;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',iconSize:[20,20],iconAnchor:[10,10],className:""});
+  // Fit bounds
+  const FitBounds=()=>{
+    const map=useMap();
+    useEffect(()=>{
+      if(points.length>1){
+        const bounds=L.latLngBounds(points);
+        map.fitBounds(bounds,{padding:[20,20]});
+      }
+    },[map]);
+    return null;
+  };
+  return <div onClick={onClick} style={{borderRadius:"8px",overflow:"hidden",cursor:"pointer",position:"relative",border:`1px solid ${T.border}`}}>
+    <MapContainer center={center} zoom={13} style={{height:"140px",width:"100%",zIndex:1}} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false} attributionControl={false}>
+      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19}/>
+      <Polyline positions={points} pathOptions={{color:"#fbbf24",weight:3.5,opacity:0.95}}/>
+      <Marker position={points[0]} icon={startIcon}/>
+      <Marker position={points[points.length-1]} icon={finishIcon}/>
+      <FitBounds/>
+    </MapContainer>
+    <div style={{position:"absolute",top:"6px",right:"6px",background:"rgba(0,0,0,0.6)",color:"#fff",fontSize:"10px",padding:"3px 8px",borderRadius:"6px",fontWeight:700,zIndex:400}}>🗺 Click για μεγάλο χάρτη</div>
+  </div>;
 }
 
 function GpxMapModal({activity,onClose}){
@@ -3541,27 +3608,30 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
               const durStr=d?`${Math.floor(d/3600)>0?Math.floor(d/3600)+":":""}${String(Math.floor((d%3600)/60)).padStart(2,"0")}:${String(d%60).padStart(2,"0")}`:"—";
               const pace=(act.distance_km&&d)?((d/60)/act.distance_km):null;
               const paceStr=pace?`${Math.floor(pace)}:${String(Math.round((pace-Math.floor(pace))*60)).padStart(2,"0")}/km`:"";
-              return <div key={act.id} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}}>
-                    <span style={{fontSize:"18px"}}>{typeIcon}</span>
-                    <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{act.name}</div>
-                    {act.is_external_race&&<span style={{background:T.warning+"22",color:T.warning,fontSize:"10px",fontWeight:700,padding:"2px 8px",borderRadius:"999px"}}>🏆 EXTERNAL</span>}
+              return <div key={act.id} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`,marginBottom:"0"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"10px",flexWrap:"wrap",marginBottom:act.gpx_url?"10px":0}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}}>
+                      <span style={{fontSize:"18px"}}>{typeIcon}</span>
+                      <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{act.name}</div>
+                      {act.is_external_race&&<span style={{background:T.warning+"22",color:T.warning,fontSize:"10px",fontWeight:700,padding:"2px 8px",borderRadius:"999px"}}>🏆 EXTERNAL</span>}
+                    </div>
+                    <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
+                      <span>📅 {act.date}</span>
+                      {act.distance_km&&<span>📏 {act.distance_km}km</span>}
+                      {durStr!=="—"&&<span>⏱ {durStr}</span>}
+                      {paceStr&&<span>🏃 {paceStr}</span>}
+                      {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
+                      {act.location&&<span>📍 {act.location}</span>}
+                    </div>
                   </div>
-                  <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
-                    <span>📅 {act.date}</span>
-                    {act.distance_km&&<span>📏 {act.distance_km}km</span>}
-                    {durStr!=="—"&&<span>⏱ {durStr}</span>}
-                    {paceStr&&<span>🏃 {paceStr}</span>}
-                    {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
-                    {act.location&&<span>📍 {act.location}</span>}
+                  <div style={{display:"flex",gap:"6px"}}>
+                    {act.gpx_url&&<button onClick={()=>setMapModalActivity(act)} style={{background:T.accent+"22",border:`1px solid ${T.accent}66`,color:T.accent,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:700}} title={lang==="el"?"Δες χάρτη":"View map"}>🗺</button>}
+                    <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
+                    <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:"6px"}}>
-                  {act.gpx_url&&<button onClick={()=>setMapModalActivity(act)} style={{background:T.accent+"22",border:`1px solid ${T.accent}66`,color:T.accent,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:700}} title={lang==="el"?"Δες χάρτη":"View map"}>🗺</button>}
-                  <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
-                  <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
-                </div>
+                {act.gpx_url&&<MiniGpxMap gpxUrl={act.gpx_url} onClick={()=>setMapModalActivity(act)}/>}
               </div>;
             })}
           </div>
