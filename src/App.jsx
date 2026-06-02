@@ -2286,32 +2286,32 @@ function PublicHomePage(){
         </div>
       </div>
 
-      <div style={{background:`linear-gradient(135deg, #0f172a 0%, #1e293b 35%, ${T.primary} 100%)`,borderRadius:"24px",padding:"clamp(40px, 8vw, 72px) clamp(24px, 5vw, 48px)",marginBottom:"32px",color:"#fff",boxShadow:"0 20px 60px rgba(15,23,42,0.4)",position:"relative",overflow:"hidden"}}>
+      <div style={{background:`linear-gradient(135deg, #0f172a 0%, #1e293b 35%, ${T.primary} 100%)`,borderRadius:"20px",padding:"clamp(24px, 5vw, 44px) clamp(20px, 4vw, 36px)",marginBottom:"28px",color:"#fff",boxShadow:"0 12px 40px rgba(15,23,42,0.3)",position:"relative",overflow:"hidden"}}>
         {/* Decorative diagonal stripes */}
         <div style={{position:"absolute",top:"-50%",right:"-20%",width:"60%",height:"200%",background:`linear-gradient(115deg, transparent 45%, ${T.accent}22 45%, ${T.accent}22 50%, transparent 50%, transparent 55%, ${T.accent}11 55%, ${T.accent}11 60%, transparent 60%)`,pointerEvents:"none"}}/>
-        <div style={{position:"absolute",top:"-80px",right:"-80px",width:"320px",height:"320px",borderRadius:"50%",background:`radial-gradient(circle, ${T.accent}33 0%, transparent 70%)`,pointerEvents:"none"}}/>
-        <div style={{position:"absolute",bottom:"-100px",left:"-100px",width:"360px",height:"360px",borderRadius:"50%",background:`radial-gradient(circle, ${T.primary}44 0%, transparent 70%)`,pointerEvents:"none"}}/>
+        <div style={{position:"absolute",top:"-60px",right:"-60px",width:"240px",height:"240px",borderRadius:"50%",background:`radial-gradient(circle, ${T.accent}33 0%, transparent 70%)`,pointerEvents:"none"}}/>
+        <div style={{position:"absolute",bottom:"-80px",left:"-80px",width:"280px",height:"280px",borderRadius:"50%",background:`radial-gradient(circle, ${T.primary}44 0%, transparent 70%)`,pointerEvents:"none"}}/>
         <div style={{position:"relative",zIndex:1,textAlign:"center"}}>
-          <div style={{display:"inline-block",background:`${T.accent}22`,border:`1px solid ${T.accent}66`,color:T.accent,padding:"6px 16px",borderRadius:"999px",fontSize:"11px",fontWeight:800,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:"24px"}}>🏃 Race Management Platform</div>
-          <h1 style={{fontSize:"clamp(36px, 8vw, 64px)",fontWeight:900,margin:"0 0 16px",letterSpacing:"-0.03em",lineHeight:1.05,textTransform:"uppercase",textShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>One Platform.<br/><span style={{color:T.accent}}>Every Race.</span><br/>Every Athlete.</h1>
-          <p style={{fontSize:"clamp(15px, 2vw, 18px)",margin:"0 auto 36px",opacity:0.85,maxWidth:"600px",lineHeight:1.6}}>{lang==="el"?"Η μεγαλύτερη πλατφόρμα για ελληνικούς αγώνες δρόμου. Διοργάνωσε, εγγράψου, τρέξε.":"The biggest platform for Greek running races. Organize, register, run."}</p>
-          <div style={{display:"flex",gap:"12px",justifyContent:"center",flexWrap:"wrap",marginBottom:"40px"}}>
-            <button onClick={()=>{document.getElementById("races-section")?.scrollIntoView({behavior:"smooth"});}} style={{background:T.accent,color:"#0f172a",border:"none",borderRadius:"12px",padding:"16px 32px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.02em",boxShadow:`0 8px 24px ${T.accent}66`,transition:"transform 0.2s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>🏃 {lang==="el"?"ΔΕΣ ΑΓΩΝΕΣ":"VIEW RACES"}</button>
-            <button onClick={()=>openLogin()} style={{background:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"12px",padding:"16px 32px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.02em",transition:"all 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.22)";e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.transform="translateY(0)";}}>🏟 {lang==="el"?"ΔΙΟΡΓΑΝΩΣΕ":"ORGANIZE"}</button>
+          <div style={{display:"inline-block",background:`${T.accent}22`,border:`1px solid ${T.accent}66`,color:T.accent,padding:"5px 12px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:"16px"}}>🏃 Race Management</div>
+          <h1 style={{fontSize:"clamp(26px, 6vw, 44px)",fontWeight:900,margin:"0 0 12px",letterSpacing:"-0.03em",lineHeight:1.05,textTransform:"uppercase",textShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>One Platform.<br/><span style={{color:T.accent}}>Every Race.</span><br/>Every Athlete.</h1>
+          <p style={{fontSize:"clamp(13px, 1.8vw, 15px)",margin:"0 auto 24px",opacity:0.85,maxWidth:"540px",lineHeight:1.5}}>{lang==="el"?"Η μεγαλύτερη πλατφόρμα για ελληνικούς αγώνες δρόμου. Διοργάνωσε, εγγράψου, τρέξε.":"The biggest platform for Greek running races. Organize, register, run."}</p>
+          <div style={{display:"flex",gap:"10px",justifyContent:"center",flexWrap:"wrap",marginBottom:"24px"}}>
+            <button onClick={()=>{document.getElementById("races-section")?.scrollIntoView({behavior:"smooth"});}} style={{background:T.accent,color:"#0f172a",border:"none",borderRadius:"10px",padding:"12px 24px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.02em",boxShadow:`0 6px 20px ${T.accent}66`,transition:"transform 0.2s",minHeight:"44px"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>🏃 {lang==="el"?"ΔΕΣ ΑΓΩΝΕΣ":"VIEW RACES"}</button>
+            <button onClick={()=>openLogin()} style={{background:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"12px 24px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.02em",transition:"all 0.2s",minHeight:"44px"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.22)";e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.transform="translateY(0)";}}>🏟 {lang==="el"?"ΔΙΟΡΓΑΝΩΣΕ":"ORGANIZE"}</button>
           </div>
           {/* Stats Bar */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:"clamp(12px, 3vw, 32px)",maxWidth:"600px",margin:"0 auto",padding:"24px 0 0",borderTop:"1px solid rgba(255,255,255,0.15)"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:"clamp(8px, 2vw, 24px)",maxWidth:"500px",margin:"0 auto",padding:"16px 0 0",borderTop:"1px solid rgba(255,255,255,0.15)"}}>
             <div>
-              <div style={{fontSize:"clamp(24px, 5vw, 36px)",fontWeight:900,color:T.accent,lineHeight:1}}>{publicRaces.length}</div>
-              <div style={{fontSize:"11px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"6px"}}>{lang==="el"?"Αγώνες":"Races"}</div>
+              <div style={{fontSize:"clamp(18px, 4vw, 28px)",fontWeight:900,color:T.accent,lineHeight:1}}>{publicRaces.length}</div>
+              <div style={{fontSize:"10px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"4px"}}>{lang==="el"?"Αγώνες":"Races"}</div>
             </div>
             <div>
-              <div style={{fontSize:"clamp(24px, 5vw, 36px)",fontWeight:900,color:T.accent,lineHeight:1}}>2026</div>
-              <div style={{fontSize:"11px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"6px"}}>{lang==="el"?"Σεζόν":"Season"}</div>
+              <div style={{fontSize:"clamp(18px, 4vw, 28px)",fontWeight:900,color:T.accent,lineHeight:1}}>2026</div>
+              <div style={{fontSize:"10px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"4px"}}>{lang==="el"?"Σεζόν":"Season"}</div>
             </div>
             <div>
-              <div style={{fontSize:"clamp(24px, 5vw, 36px)",fontWeight:900,color:T.accent,lineHeight:1}}>🇬🇷</div>
-              <div style={{fontSize:"11px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"6px"}}>{lang==="el"?"Ελλάδα":"Greece"}</div>
+              <div style={{fontSize:"clamp(18px, 4vw, 28px)",fontWeight:900,color:T.accent,lineHeight:1}}>🇬🇷</div>
+              <div style={{fontSize:"10px",opacity:0.7,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:"4px"}}>{lang==="el"?"Ελλάδα":"Greece"}</div>
             </div>
           </div>
         </div>
