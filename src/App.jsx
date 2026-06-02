@@ -2631,6 +2631,22 @@ function LoginPage({onBack}){
     if(data.user){
       // Trigger automatically creates profile from metadata
       // No need for manual insert anymore
+      // Notify admin if a new organizer signed up
+      if(role==="organizer"){
+        try{
+          const adminBody=`
+            <p>Νέα εγγραφή διοργανωτή στην πλατφόρμα!</p>
+            <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+              <p style="margin:0 0 8px;"><strong>👤 Όνομα:</strong> ${name}</p>
+              <p style="margin:0 0 8px;"><strong>✉️ Email:</strong> ${email}</p>
+              <p style="margin:0;"><strong>🏷 Ρόλος:</strong> Διοργανωτής</p>
+            </div>
+            <p>Συνδέσου στο admin panel για να εγκρίνεις τη νέα εγγραφή.</p>
+            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Άνοιγμα Admin →</a></p>
+          `;
+          sendEmail("leyterhs.mhtropetros1986@gmail.com",`🔔 Νέος Διοργανωτής: ${name}`,emailTemplate("Νέα Εγγραφή Διοργανωτή",adminBody));
+        }catch(err){console.error("Admin notification failed:",err);}
+      }
       setError(role==="organizer"?t.signupOk:t.checkEmail);
     }
     setLoading(false);
