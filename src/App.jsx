@@ -2602,7 +2602,7 @@ function LoginPage({onBack}){
     setError("");
     if(!email){setError(t.fillEmailPass);return;}
     setLoading(true);
-    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+"/?reset=true"});
     if(error)setError(error.message);
     else setError(t.resetPasswordSent);
     setLoading(false);
@@ -5593,6 +5593,62 @@ function CRMDashboard({session,profile,races}){
   </div>;
 }
 
+function ResetPasswordModal({onClose}){
+  const {t,lang}=useLang();
+  const [password,setPassword]=useState("");
+  const [password2,setPassword2]=useState("");
+  const [show,setShow]=useState(false);
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [success,setSuccess]=useState(false);
+  async function submit(){
+    setError("");
+    if(!password||password.length<8){setError(lang==="el"?"❌ Κωδικός τουλάχιστον 8 χαρακτήρες":"❌ Password must be at least 8 chars");return;}
+    if(password!==password2){setError(lang==="el"?"❌ Οι κωδικοί δεν ταιριάζουν":"❌ Passwords do not match");return;}
+    setLoading(true);
+    const {error}=await supabase.auth.updateUser({password});
+    setLoading(false);
+    if(error){setError("❌ "+error.message);return;}
+    setSuccess(true);
+    setTimeout(()=>{
+      // Clean URL & redirect to login
+      window.history.replaceState({},"",window.location.pathname);
+      onClose();
+      window.location.reload();
+    },2500);
+  }
+  return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:"20px"}}>
+    <div style={{background:T.bg,borderRadius:"16px",maxWidth:"460px",width:"100%",padding:"32px 28px",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}>
+      <div style={{textAlign:"center",marginBottom:"20px"}}>
+        <div style={{fontSize:"40px",marginBottom:"8px"}}>🔐</div>
+        <h2 style={{margin:"0 0 6px",color:T.text,fontSize:"22px",fontWeight:900}}>{lang==="el"?"Νέος Κωδικός":"New Password"}</h2>
+        <p style={{margin:0,color:T.textMid,fontSize:"13px"}}>{lang==="el"?"Πληκτρολόγησε τον νέο σου κωδικό":"Enter your new password"}</p>
+      </div>
+      {success?(
+        <div style={{textAlign:"center",padding:"24px"}}>
+          <div style={{fontSize:"48px",marginBottom:"12px"}}>✅</div>
+          <p style={{color:T.accent,fontWeight:700,fontSize:"16px",margin:"0 0 8px"}}>{lang==="el"?"Ο κωδικός άλλαξε!":"Password updated!"}</p>
+          <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{lang==="el"?"Επαναφορά σε λίγα δευτερόλεπτα...":"Redirecting..."}</p>
+        </div>
+      ):(<>
+        <div style={{marginBottom:"14px"}}>
+          <label style={{display:"block",color:T.textMid,fontSize:"11px",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:"6px",fontWeight:700}}>{lang==="el"?"Νέος Κωδικός":"New Password"}</label>
+          <div style={{position:"relative"}}>
+            <input type={show?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" style={{width:"100%",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 50px 10px 14px",color:T.text,fontSize:"14px",outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+            <button onClick={()=>setShow(!show)} type="button" style={{position:"absolute",right:"8px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:"16px",padding:"6px"}}>{show?"🙈":"👁"}</button>
+          </div>
+        </div>
+        <div style={{marginBottom:"14px"}}>
+          <label style={{display:"block",color:T.textMid,fontSize:"11px",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:"6px",fontWeight:700}}>{lang==="el"?"Επιβεβαίωση":"Confirm"}</label>
+          <input type={show?"text":"password"} value={password2} onChange={e=>setPassword2(e.target.value)} placeholder="••••••••" style={{width:"100%",background:T.bgInput,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 14px",color:T.text,fontSize:"14px",outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+        </div>
+        {error&&<div style={{background:T.danger+"22",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"8px",padding:"10px 14px",fontSize:"13px",marginBottom:"14px"}}>{error}</div>}
+        <button onClick={submit} disabled={loading} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"12px",fontSize:"14px",fontWeight:800,cursor:loading?"wait":"pointer",fontFamily:"inherit",opacity:loading?0.6:1}}>{loading?"...":(lang==="el"?"🔒 Αποθήκευση":"🔒 Save")}</button>
+      </>)}
+    </div>
+  </div>;
+}
+
 function AppContent(){
   const {t}=useLang();
   const [session,setSession]=useState(null);
@@ -5602,10 +5658,18 @@ function AppContent(){
   const [runners,setRunners]=useState([]);
   const [registrations,setRegistrations]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [showResetPassword,setShowResetPassword]=useState(false);
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
-    supabase.auth.onAuthStateChange((_,session)=>setSession(session));
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+      setSession(session);
+      // If user clicked password reset link in email, Supabase fires PASSWORD_RECOVERY event
+      if(event==="PASSWORD_RECOVERY")setShowResetPassword(true);
+    });
+    // Also check URL for reset=true (fallback)
+    if(window.location.search.includes("reset=true")||window.location.hash.includes("type=recovery"))setShowResetPassword(true);
+    return()=>subscription?.unsubscribe();
   },[]);
 
   // Auto-logout after 30 minutes of inactivity
@@ -5648,6 +5712,7 @@ function AppContent(){
   }
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
 
+  if(showResetPassword)return <ResetPasswordModal onClose={()=>setShowResetPassword(false)}/>;
   if(!session)return <><PublicHomePage/><Footer/></>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>
       {t.loading}</div>;
