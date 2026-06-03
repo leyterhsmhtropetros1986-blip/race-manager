@@ -5684,7 +5684,7 @@ function CRMDashboard({session,profile,races}){
       <div style={{position:"relative",zIndex:1,maxWidth:"600px",margin:"0 auto"}}>
         <div style={{fontSize:"11px",opacity:0.85,textTransform:"uppercase",letterSpacing:"0.15em",fontWeight:700,marginBottom:"8px"}}>{lang==="el"?"Καλώς ήρθες πίσω":"Welcome back"}</div>
         <h2 style={{margin:"0 0 10px",fontSize:"26px",fontWeight:900,letterSpacing:"-0.01em"}}>{profile?.full_name||(lang==="el"?"Διοργανωτή":"Organizer")} 👋</h2>
-        <p style={{margin:"0 auto",fontSize:"13px",opacity:0.95,lineHeight:1.6}}>{lang==="el"?"Διαχείρισε αθλητές, χορηγούς, εθελοντές & εργασίες. Όλα τα δεδομένα είναι αποκλειστικά δικά σου — κανείς δεν τα βλέπει.":"Manage athletes, sponsors, volunteers & tasks. All data is private to you only."}</p>
+        <p style={{margin:"0 auto",fontSize:"13px",opacity:0.95,lineHeight:1.6}}>{lang==="el"?"Διαχειρίσου αθλητές, χορηγούς, εθελοντές & εργασίες. Όλα τα δεδομένα είναι αποκλειστικά δικά σου — κανείς δεν τα βλέπει.":"Manage athletes, sponsors, volunteers & tasks. All data is private to you only."}</p>
       </div>
     </div>
     {/* Stats Cards */}
