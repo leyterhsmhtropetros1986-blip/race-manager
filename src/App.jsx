@@ -531,7 +531,7 @@ function DarkModeToggle(){
       localStorage.setItem("rm-dark-mode","0");
     }
   },[dark]);
-  return <button onClick={()=>setDark(d=>!d)} title={dark?"Light mode":"Dark mode"} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"8px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:"16px",lineHeight:1,minWidth:"40px",height:"36px",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>;
+  return <button onClick={()=>setDark(d=>!d)} title={dark?"Light mode":"Dark mode"} style={{background:dark?"linear-gradient(135deg,#fbbf24,#f59e0b)":"linear-gradient(135deg,#1e293b,#0f172a)",border:`2px solid ${dark?"#fbbf24":"#475569"}`,borderRadius:"10px",padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:"18px",lineHeight:1,minWidth:"44px",height:"38px",display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:dark?"0 2px 12px rgba(251,191,36,0.4)":"0 2px 12px rgba(30,41,59,0.3)",transition:"all 0.3s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.08)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>{dark?"☀️":"🌙"}</button>;
 }
 
 function validateGreekPhone(phone){
@@ -4878,6 +4878,13 @@ ${sections}
         const paidCount=registrations.filter(r=>r.race_id===race.id&&r.payment_status==="paid").length;
         const fillPct=race.max_runners?Math.min(100,Math.round((regCount/race.max_runners)*100)):0;
         return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"0",boxShadow:"0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)",overflow:"hidden",transition:"box-shadow 0.2s, transform 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 10px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(0)";}}>
+          {/* Banner Preview */}
+          {race.banner_url&&(
+            <div style={{width:"100%",height:"120px",overflow:"hidden",background:`linear-gradient(135deg,${T.primary},${T.accent})`,position:"relative"}}>
+              <img src={race.banner_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.35) 100%)"}}/>
+            </div>
+          )}
           {/* Header: Name + Status */}
           <div style={{padding:"18px 22px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
             <div style={{flex:1,minWidth:0}}>
