@@ -5197,15 +5197,19 @@ function AdminPanel(){
   }
   async function approve(id){
     const org=allOrgs.find(o=>o.id===id);
-    // Optimistic update FIRST for instant UI
-    setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
-    setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"approved"}:o));
-    const {error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id);
+    // Update DB FIRST with .select() to verify it actually wrote
+    const {data:updated,error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id).select().maybeSingle();
     if(error){
-      toast("Σφάλμα: "+error.message,"error");
-      fetchOrgs(); // Restore from DB if failed
+      toast("⚠ "+(lang==="el"?"Σφάλμα έγκρισης":"Approval failed")+": "+error.message,"error");
       return;
     }
+    if(!updated||updated.status!=="approved"){
+      toast("⚠ "+(lang==="el"?"Δεν εγκρίθηκε στη βάση. Δοκίμασε ξανά.":"Not approved in DB. Try again."),"warning");
+      return;
+    }
+    // Only NOW update UI state
+    setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
+    setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"approved"}:o));
     toast(lang==="el"?"✅ Εγκρίθηκε!":"✅ Approved!","success");
     if(org?.email){
       const body=`
@@ -5225,10 +5229,11 @@ function AdminPanel(){
   }
   async function reject(id){
     if(!confirm(t.rejectConfirm))return;
+    const {data:updated,error}=await supabase.from("profiles").update({status:"rejected"}).eq("id",id).select().maybeSingle();
+    if(error){toast("⚠ "+error.message,"error");return;}
+    if(!updated||updated.status!=="rejected"){toast("⚠ "+(lang==="el"?"Δεν αποθηκεύτηκε":"Not saved"),"warning");return;}
     setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
     setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"rejected"}:o));
-    const {error}=await supabase.from("profiles").update({status:"rejected"}).eq("id",id);
-    if(error){toast("Σφάλμα: "+error.message,"error");fetchOrgs();}
   }
   async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
   const list=tab==="pending"?pendingOrgs:allOrgs;
