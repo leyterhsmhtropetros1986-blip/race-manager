@@ -4570,6 +4570,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const [routeListRace,setRouteListRace]=useState(null);
   const [routeSearch,setRouteSearch]=useState("");
   const [routeFilter,setRouteFilter]=useState("all");
+  const [raceSearch,setRaceSearch]=useState("");
+  const [statusFilter,setStatusFilter]=useState("all");
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
@@ -4820,13 +4822,56 @@ ${sections}
   const statusLabels={upcoming:t.statusUpcoming,active:t.statusActive,finished:t.statusFinished};
 
   return <div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"24px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px",flexWrap:"wrap",gap:"12px"}}>
       <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.myRacesTitle} {isAdmin&&<span style={{color:T.textMid,fontSize:"13px"}}>{t.adminAll}</span>}</h2>
       <Btn onClick={()=>setShowForm(true)}>{t.newRace}</Btn>
     </div>
+    {/* Stats Bar */}
+    {myRaces.length>0&&(()=>{
+      const totalRegs=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).length;
+      const totalRevenue=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
+      const activeRaces=myRaces.filter(r=>r.status==="active"||r.status==="upcoming").length;
+      return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"16px"}}>
+        <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}05 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"12px",padding:"12px 16px"}}>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>🏁 {lang==="el"?"Σύνολο":"Total"}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{myRaces.length}</div>
+        </div>
+        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>⚡ {lang==="el"?"Ενεργοί":"Active"}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{activeRaces}</div>
+        </div>
+        <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}05 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"12px",padding:"12px 16px"}}>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>👥 {lang==="el"?"Εγγραφές":"Registrations"}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{totalRegs}</div>
+        </div>
+        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>💰 {lang==="el"?"Έσοδα":"Revenue"}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalRevenue.toFixed(0)}€</div>
+        </div>
+      </div>;
+    })()}
+    {/* Search & Filter */}
+    {myRaces.length>0&&(
+      <div style={{display:"flex",gap:"8px",marginBottom:"16px",flexWrap:"wrap"}}>
+        <input type="text" value={raceSearch} onChange={e=>setRaceSearch(e.target.value)} placeholder={lang==="el"?"🔍 Αναζήτηση...":"🔍 Search..."} style={{flex:1,minWidth:"200px",padding:"9px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+          <option value="all">📊 {lang==="el"?"Όλα τα status":"All status"}</option>
+          <option value="upcoming">{statusLabels.upcoming||"Upcoming"}</option>
+          <option value="active">{statusLabels.active||"Active"}</option>
+          <option value="finished">{statusLabels.finished||"Finished"}</option>
+        </select>
+      </div>
+    )}
     {myRaces.length===0&&<EmptyState icon="🏟" title={t.noRacesYet} message="Δημιούργησε τον πρώτο σου αγώνα!" actionLabel={t.newRace} onAction={()=>setShowForm(true)} action={true}/>}
     <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
-      {myRaces.map(race=>{
+      {myRaces.filter(race=>{
+        if(raceSearch){
+          const q=raceSearch.toLowerCase();
+          if(!(race.name||"").toLowerCase().includes(q)&&!(race.location||"").toLowerCase().includes(q))return false;
+        }
+        if(statusFilter!=="all"&&race.status!==statusFilter)return false;
+        return true;
+      }).map(race=>{
         const regCount=registrations.filter(r=>r.race_id===race.id).length;
         const distances=race.distance?race.distance.split(" | "):[];
         const totalRevenue=registrations.filter(r=>r.race_id===race.id).reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
