@@ -2643,7 +2643,6 @@ function LoginPage({onBack}){
     }
     if(data.user){
       // Trigger automatically creates profile from metadata
-      // No need for manual insert anymore
       // Notify admin if a new organizer signed up
       if(role==="organizer"){
         try{
@@ -2660,7 +2659,18 @@ function LoginPage({onBack}){
           sendEmail("leyterhs.mhtropetros1986@gmail.com",`🔔 Νέος Διοργανωτής: ${name}`,emailTemplate("Νέα Εγγραφή Διοργανωτή",adminBody));
         }catch(err){console.error("Admin notification failed:",err);}
       }
-      setError(role==="organizer"?t.signupOk:t.checkEmail);
+      // Auto-login: If session is returned, user is already in. Otherwise try password sign-in.
+      if(data.session){
+        // Session active immediately - user is logged in
+        setLoading(false);return;
+      }
+      // No session yet - try to log in with the password they just used
+      const loginResult=await supabase.auth.signInWithPassword({email,password});
+      if(loginResult.error){
+        // Login failed - probably needs email confirmation
+        setError(role==="organizer"?t.signupOk:(lang==="el"?"✅ Λογαριασμός δημιουργήθηκε! Έλεγξε το email σου ή δοκίμασε να συνδεθείς.":"✅ Account created! Check email or try to sign in."));
+      }
+      // Login succeeded - app will reload via auth state change
     }
     setLoading(false);
   }
