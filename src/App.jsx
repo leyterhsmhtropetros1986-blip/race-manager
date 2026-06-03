@@ -5152,6 +5152,132 @@ function AdminPanel(){
   </div>;
 }
 
+function CRMDashboard({session,profile,races}){
+  const {lang}=useLang();
+  const [contacts,setContacts]=useState([]);
+  const [sponsors,setSponsors]=useState([]);
+  const [volunteers,setVolunteers]=useState([]);
+  const [tasks,setTasks]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [activeView,setActiveView]=useState("overview");
+  const [search,setSearch]=useState("");
+  async function fetchCRM(){
+    setLoading(true);
+    const [c,s,v,t]=await Promise.all([
+      supabase.from("crm_contacts").select("*").order("last_race_date",{ascending:false,nullsFirst:false}),
+      supabase.from("crm_sponsors").select("*").order("created_at",{ascending:false}),
+      supabase.from("crm_volunteers").select("*").order("created_at",{ascending:false}),
+      supabase.from("crm_tasks").select("*").order("due_date",{ascending:true,nullsFirst:false})
+    ]);
+    if(c.data)setContacts(c.data);
+    if(s.data)setSponsors(s.data);
+    if(v.data)setVolunteers(v.data);
+    if(t.data)setTasks(t.data);
+    setLoading(false);
+  }
+  useEffect(()=>{fetchCRM();},[]);
+  if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>🔄 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
+  const athleteContacts=contacts.filter(c=>c.contact_type==="athlete");
+  const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
+  const confirmedSponsors=sponsors.filter(s=>s.status==="confirmed");
+  const totalSponsorAmount=confirmedSponsors.reduce((sum,s)=>sum+(parseFloat(s.amount)||0),0);
+  const filteredContacts=athleteContacts.filter(c=>{
+    if(!search)return true;
+    const q=search.toLowerCase();
+    return (c.full_name||"").toLowerCase().includes(q)||
+           (c.email||"").toLowerCase().includes(q)||
+           (c.city||"").toLowerCase().includes(q);
+  });
+  return <div>
+    <div style={{marginBottom:"20px"}}>
+      <h2 style={{margin:"0 0 6px",color:T.text,fontSize:"22px",fontWeight:900}}>🏢 {lang==="el"?"CRM Διοργανωτή":"Organizer CRM"}</h2>
+      <p style={{margin:0,color:T.textMid,fontSize:"13px"}}>{lang==="el"?"Διαχείριση αθλητών, χορηγών, εθελοντών & εργασιών. Αποκλειστικά δικό σου — κανείς άλλος δεν βλέπει αυτά τα δεδομένα.":"Manage athletes, sponsors, volunteers & tasks. Private to you only."}</p>
+    </div>
+    {/* Stats Cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
+      <div onClick={()=>setActiveView("contacts")} style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px",cursor:"pointer",transition:"transform 0.2s"}}>
+        <div style={{fontSize:"22px",marginBottom:"4px"}}>👥</div>
+        <div style={{fontSize:"26px",fontWeight:900,color:T.primary,lineHeight:1}}>{athleteContacts.length}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Αθλητές":"Athletes"}</div>
+      </div>
+      <div onClick={()=>setActiveView("sponsors")} style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
+        <div style={{fontSize:"22px",marginBottom:"4px"}}>🤝</div>
+        <div style={{fontSize:"26px",fontWeight:900,color:T.accent,lineHeight:1}}>{sponsors.length}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Χορηγοί":"Sponsors"}</div>
+      </div>
+      <div onClick={()=>setActiveView("volunteers")} style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
+        <div style={{fontSize:"22px",marginBottom:"4px"}}>🙋</div>
+        <div style={{fontSize:"26px",fontWeight:900,color:T.warning,lineHeight:1}}>{volunteers.length}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Εθελοντές":"Volunteers"}</div>
+      </div>
+      <div onClick={()=>setActiveView("tasks")} style={{background:`linear-gradient(135deg, ${T.danger}15 0%, ${T.danger}08 100%)`,border:`1px solid ${T.danger}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
+        <div style={{fontSize:"22px",marginBottom:"4px"}}>📋</div>
+        <div style={{fontSize:"26px",fontWeight:900,color:T.danger,lineHeight:1}}>{todoTasks.length}</div>
+        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Tasks":"Tasks"}</div>
+      </div>
+    </div>
+    {/* View tabs */}
+    <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
+      {[{id:"overview",label:"📊 "+(lang==="el"?"Επισκόπηση":"Overview")},{id:"contacts",label:"👥 "+(lang==="el"?"Αθλητές":"Athletes")},{id:"sponsors",label:"🤝 "+(lang==="el"?"Χορηγοί":"Sponsors")},{id:"volunteers",label:"🙋 "+(lang==="el"?"Εθελοντές":"Volunteers")},{id:"tasks",label:"📋 Tasks"}].map(v=>(
+        <button key={v.id} onClick={()=>setActiveView(v.id)} style={{background:activeView===v.id?T.primary:T.bgAlt,color:activeView===v.id?"#fff":T.textMid,border:`1px solid ${activeView===v.id?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>{v.label}</button>
+      ))}
+    </div>
+    {/* OVERVIEW */}
+    {activeView==="overview"&&<div>
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"14px"}}>
+        <h3 style={{margin:"0 0 12px",fontSize:"14px",color:T.text}}>🏃 {lang==="el"?"Πρόσφατες Εγγραφές":"Recent Registrations"}</h3>
+        {athleteContacts.slice(0,5).map(c=>(
+          <div key={c.id} style={{padding:"10px 0",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{c.full_name}</div>
+              <div style={{color:T.textMid,fontSize:"11px"}}>{c.email} {c.city&&`· ${c.city}`}</div>
+            </div>
+            <div style={{textAlign:"right",fontSize:"11px",color:T.textMid}}>
+              <div style={{background:T.primary+"22",color:T.primary,padding:"2px 8px",borderRadius:"6px",fontWeight:700,marginBottom:"2px",display:"inline-block"}}>{c.total_registrations} {lang==="el"?"αγώνες":"races"}</div>
+              {c.last_race_date&&<div>{c.last_race_date}</div>}
+            </div>
+          </div>
+        ))}
+        {athleteContacts.length===0&&<div style={{color:T.textLight,textAlign:"center",padding:"20px",fontSize:"12px"}}>{lang==="el"?"Καμία εγγραφή ακόμα":"No registrations yet"}</div>}
+      </div>
+      <div style={{background:`${T.accent}11`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"14px 18px",fontSize:"12px",color:T.textMid,lineHeight:1.5}}>
+        💡 <strong style={{color:T.text}}>{lang==="el"?"Tip:":"Tip:"}</strong> {lang==="el"?"Όταν αθλητής εγγράφεται σε αγώνα σου, εμφανίζεται αυτόματα εδώ. Sponsors, Volunteers και Tasks θα προστεθούν σε επόμενες φάσεις.":"When an athlete registers for your race, they appear here automatically. Sponsors, Volunteers and Tasks coming soon."}
+      </div>
+    </div>}
+    {/* CONTACTS LIST */}
+    {activeView==="contacts"&&<div>
+      <input type="text" placeholder={lang==="el"?"🔍 Αναζήτηση αθλητή...":"🔍 Search athlete..."} value={search} onChange={e=>setSearch(e.target.value)} style={{width:"100%",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,marginBottom:"12px",boxSizing:"border-box",fontFamily:"inherit"}}/>
+      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+        {filteredContacts.map(c=>(
+          <div key={c.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"3px"}}>{c.full_name}</div>
+              <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"10px",flexWrap:"wrap"}}>
+                {c.email&&<span>✉️ {c.email}</span>}
+                {c.phone&&<span>📞 {c.phone}</span>}
+                {c.city&&<span>📍 {c.city}</span>}
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{background:T.primary+"22",color:T.primary,padding:"3px 10px",borderRadius:"6px",fontWeight:700,fontSize:"11px",display:"inline-block",marginBottom:"3px"}}>🏃 {c.total_registrations}</div>
+              {c.last_race_date&&<div style={{fontSize:"10px",color:T.textLight}}>{c.last_race_date}</div>}
+            </div>
+          </div>
+        ))}
+        {filteredContacts.length===0&&<div style={{textAlign:"center",padding:"30px",color:T.textLight}}>{lang==="el"?"Δεν βρέθηκαν":"None found"}</div>}
+      </div>
+    </div>}
+    {/* SPONSORS / VOLUNTEERS / TASKS - placeholders for next phases */}
+    {(activeView==="sponsors"||activeView==="volunteers"||activeView==="tasks")&&(
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{fontSize:"48px",marginBottom:"12px"}}>🚧</div>
+        <h3 style={{color:T.text,margin:"0 0 8px",fontSize:"16px"}}>{lang==="el"?"Έρχεται σύντομα":"Coming soon"}</h3>
+        <p style={{color:T.textMid,fontSize:"13px",margin:0,lineHeight:1.5}}>{lang==="el"?"Αυτή η ενότητα θα προστεθεί σε επόμενη φάση. Η βάση δεδομένων είναι ήδη έτοιμη.":"This section will be added in the next phase. Database is ready."}</p>
+      </div>
+    )}
+  </div>;
+}
+
 function AppContent(){
   const {t}=useLang();
   const [session,setSession]=useState(null);
@@ -5257,7 +5383,7 @@ function AppContent(){
 
     {isOrganizer&&(<>
       <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt,flexWrap:"wrap"}}>
-        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
+        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},{id:"crm",label:"🏢 CRM"},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
           <button key={tb.id} onClick={()=>setTab(tb.id)} style={{background:tab===tb.id?T.primary:"none",color:tab===tb.id?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"13px",fontWeight:tab===tb.id?700:500,fontFamily:"inherit"}}>{tb.label}</button>
         ))}
       </div>
@@ -5265,6 +5391,7 @@ function AppContent(){
         {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile}/>}
         {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile}/>}
         {tab==="stats"&&<OrganizerStats races={races} registrations={registrations} session={session} profile={profile}/>}
+        {tab==="crm"&&<CRMDashboard session={session} profile={profile} races={races}/>}
         {tab==="admin"&&isAdmin&&<AdminPanel/>}
       </div>
     </>)}
