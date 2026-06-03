@@ -5454,6 +5454,7 @@ function CRMDashboard({session,profile,races}){
   const [loading,setLoading]=useState(true);
   const [activeView,setActiveView]=useState("overview");
   const [search,setSearch]=useState("");
+  const [contactSort,setContactSort]=useState("recent");
   async function fetchCRM(){
     setLoading(true);
     const [c,s,v,t]=await Promise.all([
@@ -5482,9 +5483,14 @@ function CRMDashboard({session,profile,races}){
            (c.city||"").toLowerCase().includes(q);
   });
   return <div>
-    <div style={{marginBottom:"20px"}}>
-      <h2 style={{margin:"0 0 6px",color:T.text,fontSize:"22px",fontWeight:900}}>🏢 {lang==="el"?"CRM Διοργανωτή":"Organizer CRM"}</h2>
-      <p style={{margin:0,color:T.textMid,fontSize:"13px"}}>{lang==="el"?"Διαχείριση αθλητών, χορηγών, εθελοντών & εργασιών. Αποκλειστικά δικό σου — κανείς άλλος δεν βλέπει αυτά τα δεδομένα.":"Manage athletes, sponsors, volunteers & tasks. Private to you only."}</p>
+    {/* Hero Banner */}
+    <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"16px",padding:"24px 28px",marginBottom:"20px",color:"#fff",boxShadow:`0 8px 24px ${T.primary}33`,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:"-30px",right:"-30px",fontSize:"140px",opacity:0.1,lineHeight:1}}>🏢</div>
+      <div style={{position:"relative",zIndex:1}}>
+        <div style={{fontSize:"11px",opacity:0.85,textTransform:"uppercase",letterSpacing:"0.15em",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Καλώς ήρθες πίσω":"Welcome back"}</div>
+        <h2 style={{margin:"0 0 8px",fontSize:"24px",fontWeight:900,letterSpacing:"-0.01em"}}>{profile?.full_name||(lang==="el"?"Διοργανωτή":"Organizer")} 👋</h2>
+        <p style={{margin:0,fontSize:"13px",opacity:0.95,maxWidth:"600px",lineHeight:1.5}}>{lang==="el"?"Διαχείρισε αθλητές, χορηγούς, εθελοντές & εργασίες. Όλα τα δεδομένα είναι αποκλειστικά δικά σου — κανείς δεν τα βλέπει.":"Manage athletes, sponsors, volunteers & tasks. All data is private to you only."}</p>
+      </div>
     </div>
     {/* Stats Cards */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
@@ -5538,13 +5544,25 @@ function CRMDashboard({session,profile,races}){
       </div>
     </div>}
     {/* CONTACTS LIST */}
-    {activeView==="contacts"&&<div>
+    {activeView==="contacts"&&(()=>{
+      const sortedContacts=[...filteredContacts].sort((a,b)=>{
+        if(contactSort==="alpha")return (a.full_name||"").localeCompare(b.full_name||"","el");
+        if(contactSort==="races")return (b.total_registrations||0)-(a.total_registrations||0);
+        // recent
+        return (b.last_race_date||"").localeCompare(a.last_race_date||"");
+      });
+      return <div>
       <div style={{display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap"}}>
         <input type="text" placeholder={lang==="el"?"🔍 Αναζήτηση αθλητή...":"🔍 Search athlete..."} value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,boxSizing:"border-box",fontFamily:"inherit"}}/>
+        <select value={contactSort} onChange={e=>setContactSort(e.target.value)} style={{padding:"10px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+          <option value="recent">📅 {lang==="el"?"Πρόσφατοι":"Recent"}</option>
+          <option value="alpha">🔤 {lang==="el"?"Αλφαβητικά":"Alphabetical"}</option>
+          <option value="races">🏃 {lang==="el"?"Περισσότεροι αγώνες":"Most races"}</option>
+        </select>
         <button onClick={()=>{
-          if(!filteredContacts.length){toast(lang==="el"?"Καμία επαφή":"No contacts","warning");return;}
+          if(!sortedContacts.length){toast(lang==="el"?"Καμία επαφή":"No contacts","warning");return;}
           const rows=[["Full Name","Email","Phone","City","Total Races","Last Race Date","Source"]];
-          filteredContacts.forEach(c=>{
+          sortedContacts.forEach(c=>{
             rows.push([c.full_name||"",c.email||"",c.phone||"",c.city||"",c.total_registrations||0,c.last_race_date||"",c.source||""]);
           });
           const csv="\uFEFF"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -5555,11 +5573,11 @@ function CRMDashboard({session,profile,races}){
           a.download=`crm-contacts-${new Date().toISOString().slice(0,10)}.csv`;
           document.body.appendChild(a);a.click();document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          toast(lang==="el"?`✅ Εξήχθησαν ${filteredContacts.length} επαφές`:`✅ Exported ${filteredContacts.length} contacts`,"success");
+          toast(lang==="el"?`✅ Εξήχθησαν ${sortedContacts.length} επαφές`:`✅ Exported ${sortedContacts.length} contacts`,"success");
         }} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 {lang==="el"?"Export CSV":"Export CSV"}</button>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-        {filteredContacts.map(c=>(
+        {sortedContacts.map(c=>(
           <div key={c.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
             <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:"10px"}}>
               <div style={{width:"32px",height:"32px",borderRadius:"50%",background:T.primary+"22",color:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"12px",flexShrink:0}}>{(c.full_name||"?").charAt(0).toUpperCase()}</div>
@@ -5579,9 +5597,10 @@ function CRMDashboard({session,profile,races}){
             </div>
           </div>
         ))}
-        {filteredContacts.length===0&&<div style={{textAlign:"center",padding:"30px",color:T.textLight}}>{lang==="el"?"Δεν βρέθηκαν":"None found"}</div>}
+        {sortedContacts.length===0&&<div style={{textAlign:"center",padding:"30px",color:T.textLight}}>{lang==="el"?"Δεν βρέθηκαν":"None found"}</div>}
       </div>
-    </div>}
+    </div>;
+    })()}
     {/* SPONSORS / VOLUNTEERS / TASKS - placeholders for next phases */}
     {(activeView==="sponsors"||activeView==="volunteers"||activeView==="tasks")&&(
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"40px 24px",textAlign:"center"}}>
