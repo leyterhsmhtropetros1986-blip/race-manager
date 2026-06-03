@@ -5647,7 +5647,7 @@ function CRMDashboard({session,profile,races}){
   const [volunteers,setVolunteers]=useState([]);
   const [tasks,setTasks]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [activeView,setActiveView]=useState("overview");
+  const [activeView,setActiveView]=useState("finance");
   const [search,setSearch]=useState("");
   const [contactSort,setContactSort]=useState("recent");
   async function fetchCRM(){
@@ -5712,32 +5712,12 @@ function CRMDashboard({session,profile,races}){
     </div>
     {/* View tabs */}
     <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
-      {[{id:"overview",label:"📊 "+(lang==="el"?"Επισκόπηση":"Overview")},{id:"contacts",label:"👥 "+(lang==="el"?"Αθλητές":"Athletes")},{id:"sponsors",label:"🤝 "+(lang==="el"?"Χορηγοί":"Sponsors")},{id:"volunteers",label:"🙋 "+(lang==="el"?"Εθελοντές":"Volunteers")},{id:"tasks",label:"📋 Tasks"}].map(v=>(
+      {[{id:"finance",label:"💰 "+(lang==="el"?"Οικονομικά":"Finance")},{id:"contacts",label:"👥 "+(lang==="el"?"Αθλητές":"Athletes")},{id:"sponsors",label:"🤝 "+(lang==="el"?"Χορηγοί":"Sponsors")},{id:"volunteers",label:"🙋 "+(lang==="el"?"Εθελοντές":"Volunteers")},{id:"tasks",label:"📋 Tasks"}].map(v=>(
         <button key={v.id} onClick={()=>setActiveView(v.id)} style={{background:activeView===v.id?T.primary:T.bgAlt,color:activeView===v.id?"#fff":T.textMid,border:`1px solid ${activeView===v.id?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>{v.label}</button>
       ))}
     </div>
-    {/* OVERVIEW */}
-    {activeView==="overview"&&<div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"14px"}}>
-        <h3 style={{margin:"0 0 12px",fontSize:"14px",color:T.text}}>🏃 {lang==="el"?"Πρόσφατες Εγγραφές":"Recent Registrations"}</h3>
-        {athleteContacts.slice(0,5).map(c=>(
-          <div key={c.id} style={{padding:"10px 0",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{c.full_name}</div>
-              <div style={{color:T.textMid,fontSize:"11px"}}>{c.email} {c.city&&`· ${c.city}`}</div>
-            </div>
-            <div style={{textAlign:"right",fontSize:"11px",color:T.textMid}}>
-              <div style={{background:T.primary+"22",color:T.primary,padding:"2px 8px",borderRadius:"6px",fontWeight:700,marginBottom:"2px",display:"inline-block"}}>{c.total_registrations} {lang==="el"?"αγώνες":"races"}</div>
-              {c.last_race_date&&<div>{c.last_race_date}</div>}
-            </div>
-          </div>
-        ))}
-        {athleteContacts.length===0&&<div style={{color:T.textLight,textAlign:"center",padding:"20px",fontSize:"12px"}}>{lang==="el"?"Καμία εγγραφή ακόμα":"No registrations yet"}</div>}
-      </div>
-      <div style={{background:`${T.accent}11`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"14px 18px",fontSize:"12px",color:T.textMid,lineHeight:1.5}}>
-        💡 <strong style={{color:T.text}}>{lang==="el"?"Tip:":"Tip:"}</strong> {lang==="el"?"Όταν αθλητής εγγράφεται σε αγώνα σου, εμφανίζεται αυτόματα εδώ. Sponsors, Volunteers και Tasks θα προστεθούν σε επόμενες φάσεις.":"When an athlete registers for your race, they appear here automatically. Sponsors, Volunteers and Tasks coming soon."}
-      </div>
-    </div>}
+    {/* FINANCE MODULE */}
+    {activeView==="finance"&&<FinanceModule organizerId={profile?.id} races={races} lang={lang}/>}
     {/* CONTACTS LIST */}
     {activeView==="contacts"&&(()=>{
       const sortedContacts=[...filteredContacts].sort((a,b)=>{
@@ -5910,6 +5890,167 @@ function TasksModule({tasks,onRefresh,myProfileId,lang}){
         </div>
       </div>
     )}
+  </div>;
+}
+
+function FinanceModule({organizerId,races,lang}){
+  const [txs,setTxs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [raceFilter,setRaceFilter]=useState("all");
+  const [typeFilter,setTypeFilter]=useState("all");
+  // Form
+  const [showForm,setShowForm]=useState(false);
+  const [fDesc,setFDesc]=useState("");
+  const [fAmount,setFAmount]=useState("");
+  const [fType,setFType]=useState("sponsorship");
+  const [fRaceId,setFRaceId]=useState("");
+  const [fDate,setFDate]=useState(new Date().toISOString().slice(0,10));
+  const [busy,setBusy]=useState(false);
+
+  async function fetchTxs(){
+    setLoading(true);
+    const {data}=await supabase.from("crm_transactions").select("*").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});
+    setTxs(data||[]);
+    setLoading(false);
+  }
+  useEffect(()=>{fetchTxs();},[]);
+
+  async function addTx(){
+    if(!fDesc.trim()||!fAmount||!organizerId)return;
+    const amt=parseFloat(fAmount);
+    if(isNaN(amt)||amt===0){toast(lang==="el"?"⚠ Άκυρο ποσό":"⚠ Invalid amount","warning");return;}
+    setBusy(true);
+    // Income types positive, expense negative
+    const finalAmount=fType==="expense"||fType==="refund"?-Math.abs(amt):Math.abs(amt);
+    const {error}=await supabase.from("crm_transactions").insert({
+      organizer_id:organizerId,
+      race_id:fRaceId||null,
+      type:fType,
+      amount:finalAmount,
+      description:fDesc.trim(),
+      source:"manual",
+      status:"completed",
+      transaction_date:fDate
+    });
+    setBusy(false);
+    if(error){toast("⚠ "+error.message,"error");return;}
+    setFDesc("");setFAmount("");setFRaceId("");setFType("sponsorship");setFDate(new Date().toISOString().slice(0,10));
+    setShowForm(false);
+    fetchTxs();
+    toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
+  }
+  async function deleteTx(id){
+    if(!confirm(lang==="el"?"Διαγραφή συναλλαγής;":"Delete transaction?"))return;
+    const {error}=await supabase.from("crm_transactions").delete().eq("id",id);
+    if(!error){fetchTxs();toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");}
+  }
+
+  // Apply filters
+  const filtered=txs.filter(t=>{
+    if(raceFilter!=="all"&&t.race_id!==raceFilter)return false;
+    if(typeFilter!=="all"&&t.type!==typeFilter)return false;
+    return true;
+  });
+  const totalIncome=filtered.filter(t=>t.amount>0).reduce((s,t)=>s+parseFloat(t.amount),0);
+  const totalExpense=filtered.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+  const netProfit=totalIncome-totalExpense;
+
+  const typeIcons={registration:"🏃",sponsorship:"🤝",expense:"📉",other_income:"💰",refund:"↩️"};
+  const typeLabels={registration:lang==="el"?"Εγγραφή":"Registration",sponsorship:lang==="el"?"Χορηγία":"Sponsorship",expense:lang==="el"?"Έξοδο":"Expense",other_income:lang==="el"?"Άλλο Έσοδο":"Other Income",refund:lang==="el"?"Επιστροφή":"Refund"};
+
+  if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>💰 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
+
+  return <div>
+    {/* Summary cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"16px"}}>
+      <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"14px 16px"}}>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>💰 {lang==="el"?"Έσοδα":"Income"}</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalIncome.toFixed(2)}€</div>
+      </div>
+      <div style={{background:`linear-gradient(135deg, ${T.danger}15 0%, ${T.danger}05 100%)`,border:`1px solid ${T.danger}33`,borderRadius:"12px",padding:"14px 16px"}}>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>📉 {lang==="el"?"Έξοδα":"Expenses"}</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.danger,lineHeight:1}}>{totalExpense.toFixed(2)}€</div>
+      </div>
+      <div style={{background:`linear-gradient(135deg, ${netProfit>=0?T.primary:T.warning}15 0%, transparent 100%)`,border:`1px solid ${netProfit>=0?T.primary:T.warning}33`,borderRadius:"12px",padding:"14px 16px"}}>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>{netProfit>=0?"✅":"⚠️"} {lang==="el"?"Καθαρό":"Net"}</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:netProfit>=0?T.primary:T.warning,lineHeight:1}}>{netProfit.toFixed(2)}€</div>
+      </div>
+      <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}05 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"12px",padding:"14px 16px"}}>
+        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>📅 {lang==="el"?"Συναλλαγές":"Transactions"}</div>
+        <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{filtered.length}</div>
+      </div>
+    </div>
+
+    {/* Filters + Add button */}
+    <div style={{display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"}}>
+      <select value={raceFilter} onChange={e=>setRaceFilter(e.target.value)} style={{flex:1,minWidth:"160px",padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+        <option value="all">🏁 {lang==="el"?"Όλοι οι αγώνες":"All races"}</option>
+        {races.filter(r=>r.user_id===organizerId).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+      </select>
+      <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+        <option value="all">💱 {lang==="el"?"Όλοι οι τύποι":"All types"}</option>
+        <option value="registration">🏃 {typeLabels.registration}</option>
+        <option value="sponsorship">🤝 {typeLabels.sponsorship}</option>
+        <option value="expense">📉 {typeLabels.expense}</option>
+        <option value="other_income">💰 {typeLabels.other_income}</option>
+        <option value="refund">↩️ {typeLabels.refund}</option>
+      </select>
+      <button onClick={()=>setShowForm(!showForm)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{showForm?"✕ "+(lang==="el"?"Άκυρο":"Cancel"):"➕ "+(lang==="el"?"Νέα":"New")}</button>
+    </div>
+
+    {/* Add form */}
+    {showForm&&(
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",marginBottom:"16px"}}>
+        <h3 style={{margin:"0 0 12px",fontSize:"13px",color:T.text,fontWeight:800}}>➕ {lang==="el"?"Νέα Συναλλαγή":"New Transaction"}</h3>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"10px",marginBottom:"10px"}}>
+          <input type="text" value={fDesc} onChange={e=>setFDesc(e.target.value)} placeholder={lang==="el"?"Περιγραφή...":"Description..."} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+          <input type="number" step="0.01" value={fAmount} onChange={e=>setFAmount(e.target.value)} placeholder={lang==="el"?"Ποσό (€)":"Amount (€)"} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+          <select value={fType} onChange={e=>setFType(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+            <option value="sponsorship">🤝 {typeLabels.sponsorship}</option>
+            <option value="other_income">💰 {typeLabels.other_income}</option>
+            <option value="expense">📉 {typeLabels.expense}</option>
+            <option value="refund">↩️ {typeLabels.refund}</option>
+          </select>
+          <select value={fRaceId} onChange={e=>setFRaceId(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+            <option value="">{lang==="el"?"— Χωρίς αγώνα —":"— No race —"}</option>
+            {races.filter(r=>r.user_id===organizerId).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <input type="date" value={fDate} onChange={e=>setFDate(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+          <button onClick={addTx} disabled={busy||!fDesc.trim()||!fAmount} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:busy||!fDesc.trim()||!fAmount?"not-allowed":"pointer",fontFamily:"inherit",opacity:busy||!fDesc.trim()||!fAmount?0.5:1}}>{busy?"...":(lang==="el"?"💾 Αποθήκευση":"💾 Save")}</button>
+        </div>
+        <p style={{margin:0,fontSize:"11px",color:T.textLight}}>💡 {lang==="el"?"Έσοδα: θετικό ποσό. Έξοδα/Επιστροφές: αυτόματα γίνονται αρνητικά.":"Income: positive. Expenses/Refunds: auto-negative."}</p>
+      </div>
+    )}
+
+    {/* Transactions list */}
+    <div>
+      <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800}}>📋 {lang==="el"?"Συναλλαγές":"Transactions"}</h3>
+      {filtered.length===0?(
+        <div style={{textAlign:"center",padding:"30px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"10px"}}>{lang==="el"?"Καμία συναλλαγή":"No transactions"}</div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+          {filtered.map(tx=>{
+            const race=races.find(r=>r.id===tx.race_id);
+            const isPositive=parseFloat(tx.amount)>=0;
+            return <div key={tx.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px"}}>
+              <div style={{fontSize:"18px",flexShrink:0}}>{typeIcons[tx.type]||"💱"}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.text,fontWeight:600,fontSize:"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tx.description}</div>
+                <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"2px"}}>
+                  <span>📅 {tx.transaction_date}</span>
+                  {race&&<span>🏁 {race.name}</span>}
+                  {tx.source==="auto_registration"&&<span style={{color:T.accent}}>🤖 Auto</span>}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:"15px",fontWeight:800,color:isPositive?T.accent:T.danger,fontFamily:"monospace",whiteSpace:"nowrap"}}>{isPositive?"+":""}{parseFloat(tx.amount).toFixed(2)}€</div>
+              </div>
+              {tx.source==="manual"&&<button onClick={()=>deleteTx(tx.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit",flexShrink:0}}>🗑</button>}
+            </div>;
+          })}
+        </div>
+      )}
+    </div>
   </div>;
 }
 
