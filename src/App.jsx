@@ -2054,7 +2054,7 @@ function ShareMenu({raceName,raceDate,onClose}){
     const encText=encodeURIComponent(shareText);
     let target="";
     if(platform==="facebook")target=`https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
-    else if(platform==="whatsapp")target=`https://wa.me/?text=${encText}%20${encUrl}`;
+    else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
     else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
     else if(platform==="telegram")target=`https://t.me/share/url?url=${encUrl}&text=${encText}`;
     else if(platform==="twitter")target=`https://twitter.com/intent/tweet?text=${encText}&url=${encUrl}`;
@@ -2069,7 +2069,7 @@ function ShareMenu({raceName,raceDate,onClose}){
   }
   const opts=[
     {id:"facebook",label:"Facebook",icon:"📘",bg:"#1877f2"},
-    {id:"whatsapp",label:"WhatsApp",icon:"💬",bg:"#25d366"},
+    {id:"viber",label:"Viber",icon:"💬",bg:"#7360f2"},
     {id:"viber",label:"Viber",icon:"📞",bg:"#7360f2"},
     {id:"telegram",label:"Telegram",icon:"✈️",bg:"#0088cc"},
     {id:"twitter",label:"X / Twitter",icon:"🐦",bg:"#000"}
@@ -2177,12 +2177,12 @@ function HomeServicesSection(){
   const PHONE="6936960328";
   const EMAIL="leyterhs.mhtropetros1986@gmail.com";
   const services=[
-    {icon:"🎤",titleEl:"Ηχητική Κάλυψη",titleEn:"Sound Coverage",descEl:"Επαγγελματικός εξοπλισμός ήχου & MC",descEn:"Professional sound equipment & MC",detailsEl:["Ηχητικά συστήματα μεγάλης ισχύος για outdoor αγώνες","Επαγγελματικός MC με εμπειρία σε αθλητικά events","Ασύρματα μικρόφωνα & ραντίφωνα","Μουσική ατμόσφαιρα πριν & μετά τον αγώνα","Ηχογράφηση announcements"],detailsEn:["High-power outdoor sound systems","Professional MC with sports event experience","Wireless microphones & headsets","Music atmosphere before & after","Recorded announcements"]},
-    {icon:"🎨",titleEl:"Γραφιστικά",titleEn:"Graphics",descEl:"Αφίσες, banner, social media",descEn:"Posters, banners, social media",detailsEl:["Σχεδιασμός αφίσας του αγώνα","Banner εκτύπωσης (vinyl, μπροσούρες)","Posts για Facebook, Instagram, Stories","Σχεδιασμός μεταλλίων","Layout για αναμνηστικό t-shirt"],detailsEn:["Race poster design","Print banners (vinyl, brochures)","Facebook, Instagram, Stories posts","Medal design","Souvenir t-shirt layout"]},
-    {icon:"📹",titleEl:"Κάλυψη με Drone",titleEn:"Drone Coverage",descEl:"Αεροφωτογραφίες & βίντεο HD",descEn:"Aerial photos & HD video",detailsEl:["Αεροφωτογράφηση HD/4K","Cinematic βίντεο της διαδρομής","Live streaming (κατόπιν συνεννόησης)","Αδειοδοτημένοι χειριστές","Post-production & editing"],detailsEn:["HD/4K aerial photography","Cinematic route videos","Live streaming (on request)","Licensed operators","Post-production & editing"]},
-    {icon:"🎫",titleEl:"BIB Numbers",titleEn:"BIB Numbers",descEl:"Εκτύπωση & παράδοση",descEn:"Print & delivery",detailsEl:["Εκτύπωση Tyvek (αδιάβροχο, ανθεκτικό)","Custom design με λογότυπο διοργανωτή","Παράδοση στον τόπο του αγώνα","4 παραμάνες ανά bib","Διαφορετικά χρώματα ανά απόσταση"],detailsEn:["Tyvek print (waterproof, durable)","Custom design with organizer logo","Delivery to race location","4 safety pins per bib","Different colors per distance"]},
-    {icon:"⏱",titleEl:"Χρονομέτρηση",titleEn:"Timing",descEl:"Chip timing & live αποτελέσματα",descEn:"Chip timing & live results",detailsEl:["Chip timing με RFID technology","Πιστοποίηση χρόνων","Live αποτελέσματα κατά τη διάρκεια του αγώνα","Splits ανά τμήμα διαδρομής","Άμεση δημοσίευση στην πλατφόρμα"],detailsEn:["RFID chip timing technology","Certified times","Live results during the race","Splits per section","Instant publication on platform"]},
-    {icon:"📋",titleEl:"Διαχείριση Εγγραφών",titleEn:"Registration Management",descEl:"Online platform & υποστήριξη",descEn:"Online platform & support",detailsEl:["Online εγγραφές μέσω racemanagement.gr","Διαχείριση πληρωμών","Email επιβεβαίωσης αυτόματο","Export εγγεγραμμένων σε PDF/Excel","24/7 υποστήριξη"],detailsEn:["Online registrations via racemanagement.gr","Payment management","Automatic confirmation emails","Export registrants to PDF/Excel","24/7 support"]}
+    {icon:"⏱",titleEl:"Χρονομέτρηση Αγώνα",titleEn:"Race Timing",descEl:"Chip timing με RFID & live αποτελέσματα",descEn:"RFID chip timing & live results",detailsEl:["Chip timing με RFID technology","Πιστοποίηση χρόνων ανά αθλητή","Live αποτελέσματα κατά τη διάρκεια","Splits ανά τμήμα διαδρομής","Άμεση δημοσίευση στην πλατφόρμα"],detailsEn:["RFID chip timing technology","Certified times per athlete","Live results during race","Splits per route section","Instant publication on platform"]},
+    {icon:"📋",titleEl:"Online Εγγραφές",titleEn:"Online Registrations",descEl:"Πλατφόρμα εγγραφών 24/7 με GDPR",descEn:"24/7 registration platform with GDPR",detailsEl:["Online εγγραφές μέσω racemanagement.gr","Διαχείριση πληρωμών (Stripe-ready)","Αυτόματο email επιβεβαίωσης","Export εγγεγραμμένων σε PDF/Excel","Πλήρης GDPR συμμόρφωση"],detailsEn:["Online registrations via racemanagement.gr","Payment management (Stripe-ready)","Automatic confirmation emails","Export registrants to PDF/Excel","Full GDPR compliance"]},
+    {icon:"📸",titleEl:"Race Photography",titleEn:"Race Photography",descEl:"Επαγγελματική κάλυψη + drone",descEn:"Professional coverage + drone",detailsEl:["Επαγγελματίες φωτογράφοι στη διαδρομή","HD/4K αεροφωτογραφίες με drone","Cinematic βίντεο highlights","Online gallery για κάθε αθλητή","Παράδοση εντός 48 ωρών"],detailsEn:["Professional photographers on route","HD/4K drone aerial photos","Cinematic video highlights","Online gallery per athlete","Delivery within 48 hours"]},
+    {icon:"🚑",titleEl:"Ιατρική Υποστήριξη",titleEn:"Medical Support",descEl:"Ασθενοφόρα & ιατρικό προσωπικό",descEn:"Ambulances & medical staff",detailsEl:["Ασθενοφόρα & πιστοποιημένοι διασώστες","Ιατρικοί σταθμοί στη διαδρομή","First aid kits σε σημεία ελέγχου","Συνεργασία με τοπικά νοσοκομεία","Πρωτόκολλο έκτακτης ανάγκης"],detailsEn:["Ambulances & certified paramedics","Medical stations along route","First aid kits at checkpoints","Local hospital partnerships","Emergency response protocol"]},
+    {icon:"💬",titleEl:"Viber Notifications",titleEn:"Viber Notifications",descEl:"Άμεσα μηνύματα σε αθλητές & διοργανωτές",descEn:"Instant messages to athletes & organizers",detailsEl:["Επιβεβαίωση εγγραφής στο Viber","Υπενθυμίσεις για την ημέρα αγώνα","Αλλαγές προγράμματος σε real-time","Αποστολή χρόνου τερματισμού","Group chat ανά αγώνα"],detailsEn:["Registration confirmation via Viber","Race day reminders","Real-time schedule changes","Finish time delivery","Race-specific group chats"]},
+    {icon:"📊",titleEl:"Live Αποτελέσματα",titleEn:"Live Results",descEl:"Real-time tracking & rankings",descEn:"Real-time tracking & rankings",detailsEl:["Live timing dashboard","Ranking ανά κατηγορία & φύλο","Splits & intermediate times","Public results page για θεατές","Auto-share σε social media"],detailsEn:["Live timing dashboard","Rankings by category & gender","Splits & intermediate times","Public results page for spectators","Auto-share to social media"]}
   ];
   return <div style={{margin:"24px 0 32px"}}>
     <div style={{textAlign:"center",marginBottom:"20px"}}>
@@ -2222,7 +2222,7 @@ function HomeServicesSection(){
               <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px",textAlign:"center"}}>{lang==="el"?"Ενδιαφέρεσαι; Επικοινώνησε μαζί μας:":"Interested? Get in touch:"}</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:"8px"}}>
                 <a href={`tel:${PHONE}`} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>📞 {lang==="el"?"Κλήση":"Call"}</a>
-                <a href={`https://wa.me/30${PHONE}?text=${encodeURIComponent((lang==="el"?"Γεια σας, ενδιαφέρομαι για: ":"Hello, I'm interested in: ")+(lang==="el"?activeService.titleEl:activeService.titleEn))}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>💬 WhatsApp</a>
+                <a href={`viber://chat?number=%2B30${PHONE}`} target="_blank" rel="noopener noreferrer" style={{background:"#25D366",color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>💬 Viber</a>
                 <a href={`mailto:${EMAIL}?subject=${encodeURIComponent((lang==="el"?"Ενδιαφέρον για ":"Interested in ")+(lang==="el"?activeService.titleEl:activeService.titleEn))}&body=${encodeURIComponent(lang==="el"?"Γεια σας,\n\nΕνδιαφέρομαι για την υπηρεσία:":"Hello,\n\nI'm interested in:")}`} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 12px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>✉️ Email</a>
               </div>
             </div>
@@ -2348,7 +2348,6 @@ function PublicHomePage(){
       </div>
       <div style={{marginBottom:"20px"}}>
 <RecentRegistrationsTicker/>
-        <HomeServicesSection/>
         <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={t.searchPlaceholder} style={{width:"100%",padding:"12px 16px",fontSize:"14px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
         <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"}}>
           <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} style={{padding:"8px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
@@ -2431,6 +2430,7 @@ function PublicHomePage(){
         </div>);
       })()}
     </div>
+    <HomeServicesSection/>
   </div>;
 }
 
