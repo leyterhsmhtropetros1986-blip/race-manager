@@ -2182,7 +2182,8 @@ function HomeServicesSection(){
     {icon:"📸",titleEl:"Race Photography",titleEn:"Race Photography",descEl:"Επαγγελματική κάλυψη + drone",descEn:"Professional coverage + drone",detailsEl:["Επαγγελματίες φωτογράφοι στη διαδρομή","HD/4K αεροφωτογραφίες με drone","Cinematic βίντεο highlights","Online gallery για κάθε αθλητή","Παράδοση εντός 48 ωρών"],detailsEn:["Professional photographers on route","HD/4K drone aerial photos","Cinematic video highlights","Online gallery per athlete","Delivery within 48 hours"]},
     {icon:"🚑",titleEl:"Ιατρική Υποστήριξη",titleEn:"Medical Support",descEl:"Ασθενοφόρα & ιατρικό προσωπικό",descEn:"Ambulances & medical staff",detailsEl:["Ασθενοφόρα & πιστοποιημένοι διασώστες","Ιατρικοί σταθμοί στη διαδρομή","First aid kits σε σημεία ελέγχου","Συνεργασία με τοπικά νοσοκομεία","Πρωτόκολλο έκτακτης ανάγκης"],detailsEn:["Ambulances & certified paramedics","Medical stations along route","First aid kits at checkpoints","Local hospital partnerships","Emergency response protocol"]},
     {icon:"💬",titleEl:"Viber Notifications",titleEn:"Viber Notifications",descEl:"Άμεσα μηνύματα σε αθλητές & διοργανωτές",descEn:"Instant messages to athletes & organizers",detailsEl:["Επιβεβαίωση εγγραφής στο Viber","Υπενθυμίσεις για την ημέρα αγώνα","Αλλαγές προγράμματος σε real-time","Αποστολή χρόνου τερματισμού","Group chat ανά αγώνα"],detailsEn:["Registration confirmation via Viber","Race day reminders","Real-time schedule changes","Finish time delivery","Race-specific group chats"]},
-    {icon:"📊",titleEl:"Live Αποτελέσματα",titleEn:"Live Results",descEl:"Real-time tracking & rankings",descEn:"Real-time tracking & rankings",detailsEl:["Live timing dashboard","Ranking ανά κατηγορία & φύλο","Splits & intermediate times","Public results page για θεατές","Auto-share σε social media"],detailsEn:["Live timing dashboard","Rankings by category & gender","Splits & intermediate times","Public results page for spectators","Auto-share to social media"]}
+    {icon:"📊",titleEl:"Live Αποτελέσματα",titleEn:"Live Results",descEl:"Real-time tracking & rankings",descEn:"Real-time tracking & rankings",detailsEl:["Live timing dashboard","Ranking ανά κατηγορία & φύλο","Splits & intermediate times","Public results page για θεατές","Auto-share σε social media"],detailsEn:["Live timing dashboard","Rankings by category & gender","Splits & intermediate times","Public results page for spectators","Auto-share to social media"]},
+    {icon:"🎤",titleEl:"Ηχητική Κάλυψη",titleEn:"Sound Coverage",descEl:"Επαγγελματικός εξοπλισμός ήχου & MC",descEn:"Professional sound equipment & MC",detailsEl:["Ηχητικά συστήματα μεγάλης ισχύος για outdoor αγώνες","Επαγγελματικός MC με εμπειρία σε αθλητικά events","Ασύρματα μικρόφωνα & ραντίφωνα","Μουσική ατμόσφαιρα πριν & μετά τον αγώνα","Ηχογράφηση announcements"],detailsEn:["High-power outdoor sound systems","Professional MC with sports event experience","Wireless microphones & headsets","Music atmosphere before & after","Recorded announcements"]}
   ];
   return <div style={{margin:"24px 0 32px"}}>
     <div style={{textAlign:"center",marginBottom:"20px"}}>
@@ -4566,6 +4567,9 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
   const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
   const [importRace,setImportRace]=useState(null);
+  const [routeListRace,setRouteListRace]=useState(null);
+  const [routeSearch,setRouteSearch]=useState("");
+  const [routeFilter,setRouteFilter]=useState("all");
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
@@ -4693,6 +4697,108 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
     toast("✅ Άνοιξε νέο tab - πάτα '🖨️ Εκτύπωση' πάνω δεξιά","success");
   }
 
+  function exportPDFByRoute(race,distanceFilter){
+    const allRegs=registrations.filter(r=>r.race_id===race.id);
+    const regs=distanceFilter==="all"?allRegs:allRegs.filter(r=>r.distance===distanceFilter);
+    if(!regs.length){toast(lang==="el"?"Καμία εγγραφή":"No registrations","warning");return;}
+    // Group by distance
+    const groups={};
+    regs.forEach(reg=>{
+      const dist=reg.distance||"—";
+      if(!groups[dist])groups[dist]=[];
+      groups[dist].push(reg);
+    });
+    const sortedDists=Object.keys(groups).sort();
+    let sections="";
+    sortedDists.forEach(dist=>{
+      const groupRegs=groups[dist].sort((a,b)=>(a.bib_number||999)-(b.bib_number||999));
+      const rows=groupRegs.map((reg,i)=>{
+        const r=runners.find(x=>x.id===reg.runner_id)||{};
+        const fullName=`${r.first_name||""} ${r.last_name||""}`.trim()||"—";
+        // Calculate age category from dob
+        let ageCat="—";
+        if(r.dob){
+          const birth=new Date(r.dob);
+          const age=Math.floor((Date.now()-birth)/31557600000);
+          if(age>0){
+            if(age<20)ageCat="U20";
+            else if(age<30)ageCat="20-29";
+            else if(age<40)ageCat="30-39";
+            else if(age<50)ageCat="40-49";
+            else if(age<60)ageCat="50-59";
+            else ageCat="60+";
+          }
+        }
+        const gender=r.gender==="male"?"♂":r.gender==="female"?"♀":"—";
+        const regDate=reg.created_at?new Date(reg.created_at).toLocaleDateString("el-GR"):"—";
+        return `<tr>
+          <td class="num">${i+1}</td>
+          <td class="bib">#${reg.bib_number||"-"}</td>
+          <td><strong>${fullName}</strong></td>
+          <td class="center">${gender}</td>
+          <td class="center">${ageCat}</td>
+          <td>${r.club||"—"}</td>
+          <td class="center">${regDate}</td>
+        </tr>`;
+      }).join("");
+      sections+=`
+        <div class="route-section">
+          <h2>🏃 ${dist} <span class="count">(${groupRegs.length} ${lang==="el"?"συμμετέχοντες":"participants"})</span></h2>
+          <table>
+            <thead><tr>
+              <th>#</th><th>BIB</th><th>${lang==="el"?"Ονοματεπώνυμο":"Full Name"}</th>
+              <th>${lang==="el"?"Φύλο":"Gender"}</th><th>${lang==="el"?"Κατηγορία":"Age Cat"}</th>
+              <th>${lang==="el"?"Σύλλογος":"Club"}</th><th>${lang==="el"?"Εγγραφή":"Registered"}</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    });
+    const distLabel=distanceFilter==="all"?(lang==="el"?"Όλες οι Αποστάσεις":"All Routes"):distanceFilter;
+    const html=`<!DOCTYPE html>
+<html lang="el"><head><meta charset="UTF-8"><title>${race.name} - ${distLabel}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:10.5pt}
+  .header{border-bottom:3px solid #4a5dc7;padding-bottom:14px;margin-bottom:24px}
+  h1{font-size:20pt;color:#1a1a1a;margin-bottom:6px}
+  .meta{color:#666;font-size:10pt}
+  .subtitle{margin-top:8px;font-size:11pt;color:#4a5dc7;font-weight:700}
+  .route-section{margin-bottom:30px;page-break-inside:avoid}
+  .route-section h2{font-size:14pt;color:#1a1a1a;background:#f5f3ef;padding:10px 14px;border-left:4px solid #4a5dc7;margin-bottom:0}
+  .route-section h2 .count{color:#666;font-weight:400;font-size:10pt;margin-left:8px}
+  table{width:100%;border-collapse:collapse;font-size:10pt}
+  thead{background:#4a5dc7;color:#fff}
+  th{padding:9px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
+  td{padding:7px 8px;border-bottom:1px solid #e8e6df}
+  tbody tr:nth-child(even){background:#fafaf7}
+  .num{text-align:right;font-variant-numeric:tabular-nums;color:#999;width:30px}
+  .bib{font-weight:700;color:#4a5dc7;font-family:monospace;width:50px}
+  .center{text-align:center}
+  .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
+  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#3a4dab}
+  @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
+</style></head><body>
+<button class="print-note" onclick="window.print()">🖨️ ${lang==="el"?"Εκτύπωση / Save as PDF":"Print / Save as PDF"}</button>
+<div class="header">
+  <h1>${race.name}</h1>
+  <div class="meta">📅 ${race.date||"-"} &nbsp;·&nbsp; 📍 ${race.location||"-"}</div>
+  <div class="subtitle">📋 ${lang==="el"?"Λίστα Συμμετεχόντων":"Participants List"} · ${distLabel} · ${regs.length} ${lang==="el"?"εγγραφές":"registrations"}</div>
+</div>
+${sections}
+<div class="footer">
+  <div>Race Management · racemanagement.gr</div>
+  <div>${lang==="el"?"Εκτύπωση":"Printed"}: ${new Date().toLocaleString("el-GR")}</div>
+</div>
+</body></html>`;
+    const w=window.open("","_blank");
+    if(!w){toast("⚠️ Επέτρεψε τα popups","warning");return;}
+    w.document.write(html);
+    w.document.close();
+    toast("✅ "+(lang==="el"?"PDF έτοιμο":"PDF ready"),"success");
+  }
+
   async function exportExcel(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
@@ -4737,6 +4843,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
             <Btn sm v="sec" onClick={()=>openEdit(race)}>{t.editBtn}</Btn>
             <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
             <Btn sm v="grn" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
+            <Btn sm v="grn" onClick={()=>setRouteListRace(race)}>📋 {lang==="el"?"Ανά Απόσταση":"By Route"}</Btn>
             <Btn sm v="sec" onClick={()=>setImportRace(race)}>{t.importResultsBtn}</Btn>
             <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
           </div>
@@ -4744,6 +4851,75 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
       })}
     </div>
     {importRace&&<ImportResultsModal race={importRace} registrations={registrations} runners={runners} onClose={()=>setImportRace(null)} onSuccess={()=>{if(onRefresh)onRefresh();}}/>}
+    {routeListRace&&(()=>{
+      const allRegs=registrations.filter(r=>r.race_id===routeListRace.id);
+      const distances=[...new Set(allRegs.map(r=>r.distance).filter(Boolean))].sort();
+      const filtered=allRegs.filter(reg=>{
+        if(routeFilter!=="all"&&reg.distance!==routeFilter)return false;
+        if(routeSearch){
+          const r=runners.find(x=>x.id===reg.runner_id);
+          const q=routeSearch.toLowerCase();
+          const name=`${r?.first_name||""} ${r?.last_name||""}`.toLowerCase();
+          if(!name.includes(q))return false;
+        }
+        return true;
+      });
+      const groups={};
+      filtered.forEach(reg=>{
+        const d=reg.distance||"—";
+        if(!groups[d])groups[d]=[];
+        groups[d].push(reg);
+      });
+      return <div onClick={()=>{setRouteListRace(null);setRouteSearch("");setRouteFilter("all");}} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px"}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:"20px",maxWidth:"900px",width:"100%",maxHeight:"90vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.4)"}}>
+          <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,padding:"20px 24px",color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
+            <div>
+              <h3 style={{margin:"0 0 4px",fontSize:"18px",fontWeight:900}}>📋 {lang==="el"?"Συμμετέχοντες ανά Διαδρομή":"Participants by Route"}</h3>
+              <div style={{fontSize:"12px",opacity:0.95}}>{routeListRace.name} · {allRegs.length} {lang==="el"?"εγγραφές":"registrations"}</div>
+            </div>
+            <button onClick={()=>{setRouteListRace(null);setRouteSearch("");setRouteFilter("all");}} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",width:"32px",height:"32px",borderRadius:"50%",cursor:"pointer",fontSize:"18px",fontFamily:"inherit"}}>✕</button>
+          </div>
+          <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",gap:"10px",flexWrap:"wrap",alignItems:"center"}}>
+            <input type="text" value={routeSearch} onChange={e=>setRouteSearch(e.target.value)} placeholder={lang==="el"?"🔍 Αναζήτηση ονόματος...":"🔍 Search name..."} style={{flex:1,minWidth:"200px",padding:"9px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+            <select value={routeFilter} onChange={e=>setRouteFilter(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+              <option value="all">📚 {lang==="el"?"Όλες οι αποστάσεις":"All routes"}</option>
+              {distances.map(d=><option key={d} value={d}>🏃 {d}</option>)}
+            </select>
+            <button onClick={()=>exportPDFByRoute(routeListRace,routeFilter)} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📄 PDF</button>
+          </div>
+          <div style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
+            {Object.keys(groups).length===0?(
+              <div style={{textAlign:"center",padding:"40px",color:T.textLight}}>{lang==="el"?"Δεν βρέθηκαν συμμετέχοντες":"No participants found"}</div>
+            ):Object.keys(groups).sort().map(dist=>(
+              <div key={dist} style={{marginBottom:"20px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.bgAlt,padding:"10px 14px",borderRadius:"8px",borderLeft:`4px solid ${T.primary}`,marginBottom:"8px"}}>
+                  <h4 style={{margin:0,fontSize:"14px",color:T.text,fontWeight:800}}>🏃 {dist} <span style={{color:T.textMid,fontWeight:500,fontSize:"12px",marginLeft:"6px"}}>({groups[dist].length})</span></h4>
+                  <button onClick={()=>exportPDFByRoute(routeListRace,dist)} style={{background:"transparent",border:`1px solid ${T.primary}66`,color:T.primary,borderRadius:"6px",padding:"5px 10px",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📄 {lang==="el"?"PDF":"PDF"}</button>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+                  {groups[dist].sort((a,b)=>(a.bib_number||999)-(b.bib_number||999)).map(reg=>{
+                    const r=runners.find(x=>x.id===reg.runner_id)||{};
+                    return <div key={reg.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+                      <div style={{display:"flex",gap:"10px",alignItems:"center",flex:1,minWidth:0}}>
+                        <span style={{background:T.primary+"22",color:T.primary,padding:"3px 8px",borderRadius:"6px",fontSize:"11px",fontWeight:800,fontFamily:"monospace",flexShrink:0}}>#{reg.bib_number||"-"}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{color:T.text,fontWeight:600,fontSize:"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.first_name} {r.last_name}</div>
+                          <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"10px",flexWrap:"wrap"}}>
+                            {r.gender&&<span>{r.gender==="male"?"♂":r.gender==="female"?"♀":"—"}</span>}
+                            {r.club&&<span>👥 {r.club}</span>}
+                            {r.city&&<span>📍 {r.city}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>;
+    })()}
     {showForm&&<Modal title={editId?t.editRaceTitle:t.newRaceTitle} onClose={()=>{setShowForm(false);resetForm();}} wide>
       <In label={t.raceName} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
       <div style={{marginBottom:"14px"}}>
