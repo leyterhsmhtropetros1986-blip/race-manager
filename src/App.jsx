@@ -3049,6 +3049,143 @@ function AthleteProfile(props){
   return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
 }
 
+function GpxSplits({gpxUrl}){
+  const [splits,setSplits]=useState(null);
+  const [err,setErr]=useState(false);
+  useEffect(()=>{
+    if(!gpxUrl){setErr(true);return;}
+    let cancelled=false;
+    (async()=>{
+      try{
+        const res=await fetch(gpxUrl);
+        if(!res.ok)throw new Error("Cannot load");
+        const text=await res.text();
+        const doc=new DOMParser().parseFromString(text,"text/xml");
+        const trkpts=doc.querySelectorAll("trkpt");
+        if(trkpts.length<10)throw new Error("Not enough points");
+        function haversine(lat1,lon1,lat2,lon2){
+          const R=6371000; // meters
+          const toRad=x=>x*Math.PI/180;
+          const dLat=toRad(lat2-lat1);
+          const dLon=toRad(lon2-lon1);
+          const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+          return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+        }
+        // Walk through points, accumulate distance, and at each km boundary record split
+        let totalDist=0; // meters
+        let prevLat=null,prevLon=null,prevEle=null,prevTime=null;
+        let currentKmStart={time:null,ele:null,distAtStart:0};
+        const result=[];
+        let nextKmTarget=1000; // 1km in meters
+        let kmElevGain=0,kmElevLoss=0;
+        trkpts.forEach((pt,i)=>{
+          const lat=parseFloat(pt.getAttribute("lat"));
+          const lon=parseFloat(pt.getAttribute("lon"));
+          const eleNode=pt.querySelector("ele");
+          const timeNode=pt.querySelector("time");
+          const ele=eleNode?parseFloat(eleNode.textContent):null;
+          const time=timeNode?new Date(timeNode.textContent):null;
+          if(i===0){
+            currentKmStart={time,ele,distAtStart:0};
+            prevLat=lat;prevLon=lon;prevEle=ele;prevTime=time;
+            return;
+          }
+          const segDist=haversine(prevLat,prevLon,lat,lon);
+          totalDist+=segDist;
+          if(ele!==null&&prevEle!==null){
+            const dEle=ele-prevEle;
+            if(dEle>0)kmElevGain+=dEle;
+            else kmElevLoss+=Math.abs(dEle);
+          }
+          // Check if we crossed a km boundary
+          while(totalDist>=nextKmTarget){
+            const kmNum=Math.round(nextKmTarget/1000);
+            const kmSec=(time&&currentKmStart.time)?(time-currentKmStart.time)/1000:0;
+            const pacePerKm=kmSec/((nextKmTarget-currentKmStart.distAtStart)/1000);
+            result.push({
+              km:kmNum,
+              pace_sec:Math.round(pacePerKm),
+              elev_gain:Math.round(kmElevGain),
+              elev_loss:Math.round(kmElevLoss),
+              has_time:!!time
+            });
+            currentKmStart={time,ele,distAtStart:nextKmTarget};
+            kmElevGain=0;kmElevLoss=0;
+            nextKmTarget+=1000;
+          }
+          prevLat=lat;prevLon=lon;
+          if(ele!==null)prevEle=ele;
+          if(time)prevTime=time;
+        });
+        // Final partial km (if remaining > 100m)
+        const remaining=totalDist-(nextKmTarget-1000);
+        if(remaining>100){
+          const lastFullKm=Math.floor(totalDist/1000);
+          const partialKmDist=totalDist-(lastFullKm*1000);
+          const kmSec=(prevTime&&currentKmStart.time)?(prevTime-currentKmStart.time)/1000:0;
+          const pacePerKm=kmSec>0?kmSec/(partialKmDist/1000):0;
+          result.push({
+            km:lastFullKm+1,
+            pace_sec:Math.round(pacePerKm),
+            elev_gain:Math.round(kmElevGain),
+            elev_loss:Math.round(kmElevLoss),
+            has_time:!!prevTime,
+            partial:true,
+            partial_dist:Math.round(partialKmDist)
+          });
+        }
+        if(!cancelled)setSplits(result);
+      }catch(e){
+        if(!cancelled)setErr(true);
+      }
+    })();
+    return()=>{cancelled=true;};
+  },[gpxUrl]);
+  if(err||!gpxUrl)return null;
+  if(!splits)return <div style={{padding:"12px",textAlign:"center",fontSize:"11px",color:T.textLight}}>⏱ Υπολογισμός splits...</div>;
+  if(!splits.length)return null;
+  // Find best & worst pace for highlighting
+  const paces=splits.filter(s=>s.pace_sec>0&&s.has_time).map(s=>s.pace_sec);
+  const bestPace=paces.length?Math.min(...paces):null;
+  const worstPace=paces.length?Math.max(...paces):null;
+  function fmtPace(sec){
+    if(!sec||sec<=0)return "—";
+    const m=Math.floor(sec/60);
+    const s=Math.round(sec%60);
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+  return <div style={{marginTop:"10px",background:T.bg,border:`1px solid ${T.border}`,borderRadius:"10px",overflow:"hidden"}}>
+    <div style={{background:T.bgAlt,padding:"8px 12px",borderBottom:`1px solid ${T.border}`,fontSize:"12px",fontWeight:800,color:T.text,display:"flex",alignItems:"center",gap:"6px"}}>📊 Splits ανά km <span style={{color:T.textLight,fontWeight:500,fontSize:"11px"}}>({splits.length} {splits.length===1?"χλμ":"χλμ"})</span></div>
+    <div style={{maxHeight:"260px",overflow:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:"12px"}}>
+        <thead style={{position:"sticky",top:0,background:T.bgAlt,zIndex:1}}>
+          <tr>
+            <th style={{padding:"6px 10px",textAlign:"left",color:T.textMid,fontWeight:700,fontSize:"10px",letterSpacing:"0.06em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`}}>KM</th>
+            <th style={{padding:"6px 10px",textAlign:"left",color:T.textMid,fontWeight:700,fontSize:"10px",letterSpacing:"0.06em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`}}>Pace</th>
+            <th style={{padding:"6px 10px",textAlign:"right",color:T.textMid,fontWeight:700,fontSize:"10px",letterSpacing:"0.06em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`}}>+ Ele</th>
+            <th style={{padding:"6px 10px",textAlign:"right",color:T.textMid,fontWeight:700,fontSize:"10px",letterSpacing:"0.06em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`}}>- Ele</th>
+            <th style={{padding:"6px 10px",textAlign:"left",color:T.textMid,fontWeight:700,fontSize:"10px",letterSpacing:"0.06em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,width:"40%"}}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {splits.map((s,i)=>{
+            const isBest=s.pace_sec===bestPace&&bestPace!==null;
+            const isWorst=s.pace_sec===worstPace&&worstPace!==null&&bestPace!==worstPace;
+            const barWidth=worstPace?Math.min(100,(s.pace_sec/worstPace)*100):0;
+            return <tr key={i} style={{borderBottom:i<splits.length-1?`1px solid ${T.border}`:"none"}}>
+              <td style={{padding:"7px 10px",fontWeight:700,color:T.text,fontFamily:"monospace"}}>{s.km}{s.partial?<span style={{fontSize:"9px",color:T.textLight,marginLeft:"3px"}}>({(s.partial_dist/1000).toFixed(2)})</span>:""}</td>
+              <td style={{padding:"7px 10px",fontFamily:"monospace",fontWeight:700,color:isBest?T.accent:isWorst?T.warning:T.text}}>{fmtPace(s.pace_sec)}{isBest&&<span style={{fontSize:"10px",marginLeft:"4px"}}>🏆</span>}</td>
+              <td style={{padding:"7px 10px",textAlign:"right",color:s.elev_gain>0?T.accent:T.textLight,fontWeight:600,fontFamily:"monospace"}}>{s.elev_gain>0?`+${s.elev_gain}m`:"—"}</td>
+              <td style={{padding:"7px 10px",textAlign:"right",color:s.elev_loss>0?T.warning:T.textLight,fontWeight:600,fontFamily:"monospace"}}>{s.elev_loss>0?`-${s.elev_loss}m`:"—"}</td>
+              <td style={{padding:"7px 10px"}}><div style={{height:"6px",background:T.border,borderRadius:"3px",overflow:"hidden"}}><div style={{height:"100%",width:`${barWidth}%`,background:isBest?T.accent:isWorst?T.warning:T.primary,transition:"width 0.3s"}}/></div></td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+
 function InlineGpxMap({gpxUrl}){
   const [points,setPoints]=useState(null);
   const [err,setErr]=useState(false);
@@ -3614,6 +3751,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
+                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
               </div>;
             })}
           </div>
