@@ -4825,27 +4825,74 @@ ${sections}
       <Btn onClick={()=>setShowForm(true)}>{t.newRace}</Btn>
     </div>
     {myRaces.length===0&&<EmptyState icon="🏟" title={t.noRacesYet} message="Δημιούργησε τον πρώτο σου αγώνα!" actionLabel={t.newRace} onAction={()=>setShowForm(true)} action={true}/>}
-    <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+    <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
       {myRaces.map(race=>{
         const regCount=registrations.filter(r=>r.race_id===race.id).length;
         const distances=race.distance?race.distance.split(" | "):[];
         const totalRevenue=registrations.filter(r=>r.race_id===race.id).reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
-        return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px 24px",boxShadow:T.shadow}}>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"8px",flexWrap:"wrap"}}>
-            <span style={{color:T.text,fontWeight:700,fontSize:"16px"}}>{race.name}</span>
-            <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}44`,borderRadius:"99px",padding:"2px 10px",fontSize:"11px",fontWeight:600}}>{statusLabels[race.status]}</span>
+        const paidCount=registrations.filter(r=>r.race_id===race.id&&r.payment_status==="paid").length;
+        const fillPct=race.max_runners?Math.min(100,Math.round((regCount/race.max_runners)*100)):0;
+        return <div key={race.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"0",boxShadow:"0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)",overflow:"hidden",transition:"box-shadow 0.2s, transform 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 10px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(0)";}}>
+          {/* Header: Name + Status */}
+          <div style={{padding:"18px 22px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <h3 style={{margin:"0 0 6px",color:T.text,fontWeight:800,fontSize:"17px",letterSpacing:"-0.01em",lineHeight:1.25}}>{race.name}</h3>
+              <div style={{display:"flex",gap:"14px",color:T.textMid,fontSize:"12.5px",flexWrap:"wrap"}}>
+                <span>📅 {race.date}</span>
+                <span title={race.location||""}>📍 {truncLoc(race.location,40)}</span>
+              </div>
+            </div>
+            <span style={{background:`${statusColors[race.status]}15`,color:statusColors[race.status],border:`1px solid ${statusColors[race.status]}33`,borderRadius:"999px",padding:"4px 12px",fontSize:"11px",fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>{statusLabels[race.status]}</span>
           </div>
-          <div style={{color:T.textMid,fontSize:"13px",lineHeight:"1.8",marginBottom:"10px"}}>📅 {race.date} &nbsp; 📍 <span title={race.location||""}>{truncLoc(race.location,40)}</span> &nbsp; 👤 {regCount} {t.registered}{totalRevenue>0&&<> &nbsp; 💰 {totalRevenue.toFixed(2)}€</>}</div>
-          {distances.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"8px"}}>{distances.map((d,i)=>{const pr=(race.pricing||[]).find(p=>p.distance===d);return <span key={i} style={{background:`${T.primary}12`,border:`1px solid ${T.primary}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.primary,fontWeight:500}}>🏃 {d}{pr?.price>0?` · ${pr.price}€`:""}</span>;})}</div>)}
-          {(race.perks||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>{race.perks.map((p,i)=>(<span key={i} style={{background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"6px",padding:"3px 10px",fontSize:"12px",color:T.accent}}>{translatePerk(p,lang)}</span>))}</div>)}
-          <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
-            <Btn sm v="ghost" onClick={()=>toggleStatus(race)}>{t.statusBtn}</Btn>
-            <Btn sm v="sec" onClick={()=>openEdit(race)}>{t.editBtn}</Btn>
-            <Btn sm v="grn" onClick={()=>exportExcel(race)}>{t.excelBtn}</Btn>
-            <Btn sm v="grn" onClick={()=>exportPDF(race)}>{t.pdfBtn}</Btn>
-            <Btn sm v="grn" onClick={()=>setRouteListRace(race)}>📋 {lang==="el"?"Ανά Απόσταση":"By Route"}</Btn>
-            <Btn sm v="sec" onClick={()=>setImportRace(race)}>{t.importResultsBtn}</Btn>
-            <Btn sm v="red" onClick={()=>del(race.id)}>{t.deleteBtn}</Btn>
+          {/* Metrics Row: Registrations + Revenue + Capacity */}
+          <div style={{padding:"14px 22px",background:T.bg,display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))",gap:"10px",borderBottom:`1px solid ${T.border}`}}>
+            <div>
+              <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>👥 {lang==="el"?"Εγγραφές":"Registered"}</div>
+              <div style={{fontSize:"18px",fontWeight:800,color:T.text,lineHeight:1}}>{regCount}{race.max_runners?<span style={{color:T.textLight,fontSize:"12px",fontWeight:500}}>/{race.max_runners}</span>:""}</div>
+              {race.max_runners&&<div style={{marginTop:"4px",height:"3px",background:T.border,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${fillPct}%`,background:fillPct>=80?T.danger:fillPct>=50?T.warning:T.accent,transition:"width 0.3s"}}/></div>}
+            </div>
+            <div>
+              <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>💰 {lang==="el"?"Έσοδα":"Revenue"}</div>
+              <div style={{fontSize:"18px",fontWeight:800,color:totalRevenue>0?T.accent:T.textLight,lineHeight:1}}>{totalRevenue.toFixed(2)}€</div>
+              <div style={{fontSize:"10px",color:T.textLight,marginTop:"3px"}}>{paidCount}/{regCount} {lang==="el"?"πληρωμένοι":"paid"}</div>
+            </div>
+            <div>
+              <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>🏃 {lang==="el"?"Διαδρομές":"Routes"}</div>
+              <div style={{fontSize:"18px",fontWeight:800,color:T.text,lineHeight:1}}>{distances.length||"—"}</div>
+            </div>
+          </div>
+          {/* Distances + Services */}
+          {(distances.length>0||(race.perks||[]).length>0)&&(
+            <div style={{padding:"14px 22px",borderBottom:`1px solid ${T.border}`}}>
+              {distances.length>0&&(
+                <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:(race.perks||[]).length>0?"10px":0}}>
+                  {distances.map((d,i)=>{
+                    const pr=(race.pricing||[]).find(p=>p.distance===d);
+                    return <span key={i} style={{background:`linear-gradient(135deg, ${T.primary}18, ${T.primary}08)`,border:`1px solid ${T.primary}44`,borderRadius:"8px",padding:"4px 11px",fontSize:"12px",color:T.primary,fontWeight:700,display:"inline-flex",alignItems:"center",gap:"5px"}}>🏃 {d}{pr?.price>0?<span style={{color:T.text,fontWeight:600}}>· {pr.price}€</span>:""}</span>;
+                  })}
+                </div>
+              )}
+              {(race.perks||[]).length>0&&(
+                <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+                  {race.perks.map((p,i)=>(
+                    <span key={i} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"6px",padding:"3px 9px",fontSize:"11px",color:T.textMid,fontWeight:500}}>{translatePerk(p,lang)}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Action Toolbar: Primary + Secondary */}
+          <div style={{padding:"12px 22px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+              <button onClick={()=>openEdit(race)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 14px",fontSize:"12.5px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"5px"}}>✏️ {lang==="el"?"Επεξεργασία":"Edit"}</button>
+              <button onClick={()=>setRouteListRace(race)} style={{background:T.bg,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 14px",fontSize:"12.5px",fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"5px"}}>📋 {lang==="el"?"Συμμετέχοντες":"Athletes"}</button>
+              <button onClick={()=>exportExcel(race)} style={{background:T.bg,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 14px",fontSize:"12.5px",fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"5px"}}>📊 Excel</button>
+              <button onClick={()=>setImportRace(race)} style={{background:T.bg,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 14px",fontSize:"12.5px",fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"5px"}}>📥 Import</button>
+            </div>
+            <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+              <button onClick={()=>toggleStatus(race)} title={t.statusBtn} style={{background:"transparent",color:T.textMid,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",fontSize:"12.5px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>⟳</button>
+              <button onClick={()=>del(race.id)} title={t.deleteBtn} style={{background:"transparent",color:T.danger,border:`1px solid ${T.danger}44`,borderRadius:"8px",padding:"8px 12px",fontSize:"12.5px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+            </div>
           </div>
         </div>;
       })}
