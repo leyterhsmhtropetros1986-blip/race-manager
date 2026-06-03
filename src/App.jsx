@@ -3038,6 +3038,42 @@ function AthleteProfile(props){
   return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
 }
 
+function InlineGpxMap({gpxUrl}){
+  const [points,setPoints]=useState(null);
+  const [err,setErr]=useState(false);
+  useEffect(()=>{
+    if(!gpxUrl){setErr(true);return;}
+    let cancelled=false;
+    (async()=>{
+      try{
+        const res=await fetch(gpxUrl);
+        if(!res.ok)throw new Error("Cannot load");
+        const text=await res.text();
+        const doc=new DOMParser().parseFromString(text,"text/xml");
+        const trkpts=doc.querySelectorAll("trkpt");
+        if(trkpts.length<2)throw new Error("No points");
+        const step=Math.max(1,Math.floor(trkpts.length/150));
+        const pts=[];
+        trkpts.forEach((pt,i)=>{
+          if(i%step!==0&&i!==trkpts.length-1)return;
+          const lat=parseFloat(pt.getAttribute("lat"));
+          const lon=parseFloat(pt.getAttribute("lon"));
+          if(!isNaN(lat)&&!isNaN(lon))pts.push([lat,lon]);
+        });
+        if(!cancelled)setPoints(pts);
+      }catch(e){
+        if(!cancelled)setErr(true);
+      }
+    })();
+    return()=>{cancelled=true;};
+  },[gpxUrl]);
+  if(err||!gpxUrl)return null;
+  if(!points)return <div style={{height:"160px",background:T.bgAlt,borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:T.textLight,fontSize:"12px",marginTop:"10px"}}>🗺 Φόρτωση χάρτη...</div>;
+  return <div style={{marginTop:"10px",borderRadius:"8px",overflow:"hidden",border:`1px solid ${T.border}`}}>
+    <RouteMap points={points} height="180px" defaultLayer="satellite"/>
+  </div>;
+}
+
 function GpxMapModal({activity,onClose}){
   const {lang}=useLang();
   const [points,setPoints]=useState(null);
@@ -3553,27 +3589,30 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
               const durStr=d?`${Math.floor(d/3600)>0?Math.floor(d/3600)+":":""}${String(Math.floor((d%3600)/60)).padStart(2,"0")}:${String(d%60).padStart(2,"0")}`:"—";
               const pace=(act.distance_km&&d)?((d/60)/act.distance_km):null;
               const paceStr=pace?`${Math.floor(pace)}:${String(Math.round((pace-Math.floor(pace))*60)).padStart(2,"0")}/km`:"";
-              return <div key={act.id} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}}>
-                    <span style={{fontSize:"18px"}}>{typeIcon}</span>
-                    <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{act.name}</div>
-                    {act.is_external_race&&<span style={{background:T.warning+"22",color:T.warning,fontSize:"10px",fontWeight:700,padding:"2px 8px",borderRadius:"999px"}}>🏆 EXTERNAL</span>}
+              return <div key={act.id} style={{background:T.bg,borderRadius:"10px",padding:"12px 14px",border:`1px solid ${T.border}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px",flexWrap:"wrap"}}>
+                      <span style={{fontSize:"18px"}}>{typeIcon}</span>
+                      <div style={{color:T.text,fontWeight:700,fontSize:"14px"}}>{act.name}</div>
+                      {act.is_external_race&&<span style={{background:T.warning+"22",color:T.warning,fontSize:"10px",fontWeight:700,padding:"2px 8px",borderRadius:"999px"}}>🏆 EXTERNAL</span>}
+                    </div>
+                    <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
+                      <span>📅 {act.date}</span>
+                      {act.distance_km&&<span>📏 {act.distance_km}km</span>}
+                      {durStr!=="—"&&<span>⏱ {durStr}</span>}
+                      {paceStr&&<span>🏃 {paceStr}</span>}
+                      {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
+                      {act.location&&<span>📍 {act.location}</span>}
+                    </div>
                   </div>
-                  <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
-                    <span>📅 {act.date}</span>
-                    {act.distance_km&&<span>📏 {act.distance_km}km</span>}
-                    {durStr!=="—"&&<span>⏱ {durStr}</span>}
-                    {paceStr&&<span>🏃 {paceStr}</span>}
-                    {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
-                    {act.location&&<span>📍 {act.location}</span>}
+                  <div style={{display:"flex",gap:"6px"}}>
+                    {act.gpx_url&&<button onClick={()=>setMapModalActivity(act)} style={{background:T.accent+"22",border:`1px solid ${T.accent}66`,color:T.accent,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:700}} title={lang==="el"?"Μεγαλο":"Big"}>🗺</button>}
+                    <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
+                    <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:"6px"}}>
-                  {act.gpx_url&&<button onClick={()=>setMapModalActivity(act)} style={{background:T.accent+"22",border:`1px solid ${T.accent}66`,color:T.accent,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:700}} title={lang==="el"?"Δες χάρτη":"View map"}>🗺</button>}
-                  <button onClick={()=>openEditActivity(act)} style={{background:"none",border:`1px solid ${T.border}`,color:T.textMid,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>✏️</button>
-                  <button onClick={()=>deleteActivity(act.id)} style={{background:"none",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>🗑</button>
-                </div>
+                {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
               </div>;
             })}
           </div>
@@ -5240,3 +5279,4 @@ export default function App(){
     <ToastContainer/>
     <PWAInstallPrompt/>
   </LangContext.Provider>;
+}
