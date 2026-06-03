@@ -5021,11 +5021,15 @@ function AdminPanel(){
   }
   async function approve(id){
     const org=allOrgs.find(o=>o.id===id);
-    const {error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id);
-    if(error){toast("Σφάλμα: "+error.message,"error");return;}
-    // Optimistic update for instant UI refresh
+    // Optimistic update FIRST for instant UI
     setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
     setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"approved"}:o));
+    const {error}=await supabase.from("profiles").update({status:"approved"}).eq("id",id);
+    if(error){
+      toast("Σφάλμα: "+error.message,"error");
+      fetchOrgs(); // Restore from DB if failed
+      return;
+    }
     toast(lang==="el"?"✅ Εγκρίθηκε!":"✅ Approved!","success");
     if(org?.email){
       const body=`
@@ -5042,14 +5046,13 @@ function AdminPanel(){
       `;
       sendEmail(org.email,"✅ Ο λογαριασμός σας εγκρίθηκε",emailTemplate("Καλωσήρθατε!",body));
     }
-    fetchOrgs();
   }
   async function reject(id){
     if(!confirm(t.rejectConfirm))return;
-    await supabase.from("profiles").update({status:"rejected"}).eq("id",id);
     setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
     setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"rejected"}:o));
-    fetchOrgs();
+    const {error}=await supabase.from("profiles").update({status:"rejected"}).eq("id",id);
+    if(error){toast("Σφάλμα: "+error.message,"error");fetchOrgs();}
   }
   async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
   const list=tab==="pending"?pendingOrgs:allOrgs;
@@ -5247,20 +5250,22 @@ function CRMDashboard({session,profile,races}){
     {/* CONTACTS LIST */}
     {activeView==="contacts"&&<div>
       <input type="text" placeholder={lang==="el"?"🔍 Αναζήτηση αθλητή...":"🔍 Search athlete..."} value={search} onChange={e=>setSearch(e.target.value)} style={{width:"100%",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,marginBottom:"12px",boxSizing:"border-box",fontFamily:"inherit"}}/>
-      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
         {filteredContacts.map(c=>(
-          <div key={c.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"3px"}}>{c.full_name}</div>
-              <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"10px",flexWrap:"wrap"}}>
-                {c.email&&<span>✉️ {c.email}</span>}
-                {c.phone&&<span>📞 {c.phone}</span>}
-                {c.city&&<span>📍 {c.city}</span>}
+          <div key={c.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
+            <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:"10px"}}>
+              <div style={{width:"32px",height:"32px",borderRadius:"50%",background:T.primary+"22",color:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"12px",flexShrink:0}}>{(c.full_name||"?").charAt(0).toUpperCase()}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.text,fontWeight:600,fontSize:"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.full_name}</div>
+                <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"10px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  {c.email&&<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>✉️ {c.email}</span>}
+                  {c.city&&<span>📍 {c.city}</span>}
+                </div>
               </div>
             </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{background:T.primary+"22",color:T.primary,padding:"3px 10px",borderRadius:"6px",fontWeight:700,fontSize:"11px",display:"inline-block",marginBottom:"3px"}}>🏃 {c.total_registrations}</div>
-              {c.last_race_date&&<div style={{fontSize:"10px",color:T.textLight}}>{c.last_race_date}</div>}
+            <div style={{display:"flex",alignItems:"center",gap:"6px",flexShrink:0}}>
+              {c.phone&&<a href={`tel:${c.phone}`} style={{background:T.accent+"22",color:T.accent,padding:"4px 8px",borderRadius:"6px",fontSize:"11px",textDecoration:"none",fontWeight:700}} title={c.phone}>📞</a>}
+              <div style={{background:T.primary+"22",color:T.primary,padding:"3px 8px",borderRadius:"6px",fontWeight:700,fontSize:"11px"}}>🏃 {c.total_registrations}</div>
             </div>
           </div>
         ))}
