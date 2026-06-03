@@ -5529,7 +5529,25 @@ function CRMDashboard({session,profile,races}){
     </div>}
     {/* CONTACTS LIST */}
     {activeView==="contacts"&&<div>
-      <input type="text" placeholder={lang==="el"?"🔍 Αναζήτηση αθλητή...":"🔍 Search athlete..."} value={search} onChange={e=>setSearch(e.target.value)} style={{width:"100%",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,marginBottom:"12px",boxSizing:"border-box",fontFamily:"inherit"}}/>
+      <div style={{display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap"}}>
+        <input type="text" placeholder={lang==="el"?"🔍 Αναζήτηση αθλητή...":"🔍 Search athlete..."} value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,boxSizing:"border-box",fontFamily:"inherit"}}/>
+        <button onClick={()=>{
+          if(!filteredContacts.length){toast(lang==="el"?"Καμία επαφή":"No contacts","warning");return;}
+          const rows=[["Full Name","Email","Phone","City","Total Races","Last Race Date","Source"]];
+          filteredContacts.forEach(c=>{
+            rows.push([c.full_name||"",c.email||"",c.phone||"",c.city||"",c.total_registrations||0,c.last_race_date||"",c.source||""]);
+          });
+          const csv="\uFEFF"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+          const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url;
+          a.download=`crm-contacts-${new Date().toISOString().slice(0,10)}.csv`;
+          document.body.appendChild(a);a.click();document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast(lang==="el"?`✅ Εξήχθησαν ${filteredContacts.length} επαφές`:`✅ Exported ${filteredContacts.length} contacts`,"success");
+        }} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 {lang==="el"?"Export CSV":"Export CSV"}</button>
+      </div>
       <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
         {filteredContacts.map(c=>(
           <div key={c.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}>
@@ -5544,7 +5562,9 @@ function CRMDashboard({session,profile,races}){
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:"6px",flexShrink:0}}>
-              {c.phone&&<a href={`tel:${c.phone}`} style={{background:T.accent+"22",color:T.accent,padding:"4px 8px",borderRadius:"6px",fontSize:"11px",textDecoration:"none",fontWeight:700}} title={c.phone}>📞</a>}
+              {c.phone&&<a href={`tel:${c.phone}`} style={{background:T.accent+"22",color:T.accent,padding:"4px 8px",borderRadius:"6px",fontSize:"11px",textDecoration:"none",fontWeight:700}} title={lang==="el"?"Κλήση: "+c.phone:"Call: "+c.phone}>📞</a>}
+              {c.email&&<a href={`mailto:${c.email}`} style={{background:T.primary+"22",color:T.primary,padding:"4px 8px",borderRadius:"6px",fontSize:"11px",textDecoration:"none",fontWeight:700}} title={lang==="el"?"Email: "+c.email:"Email: "+c.email}>✉️</a>}
+              {c.phone&&<a href={`viber://chat?number=%2B30${(c.phone||"").replace(/[^0-9]/g,"").replace(/^30/,"")}`} style={{background:"#7360f222",color:"#7360f2",padding:"4px 8px",borderRadius:"6px",fontSize:"11px",textDecoration:"none",fontWeight:700}} title="Viber">💬</a>}
               <div style={{background:T.primary+"22",color:T.primary,padding:"3px 8px",borderRadius:"6px",fontWeight:700,fontSize:"11px"}}>🏃 {c.total_registrations}</div>
             </div>
           </div>
