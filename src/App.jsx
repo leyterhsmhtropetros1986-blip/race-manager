@@ -3049,6 +3049,42 @@ function AthleteProfile(props){
   return <ProfileErrorBoundary><AthleteProfileInner {...props}/></ProfileErrorBoundary>;
 }
 
+function KudosButton({activityId,myProfileId}){
+  const [count,setCount]=useState(0);
+  const [hasLiked,setHasLiked]=useState(false);
+  const [busy,setBusy]=useState(false);
+  useEffect(()=>{
+    if(!activityId)return;
+    let cancelled=false;
+    (async()=>{
+      const {count:total}=await supabase.from("activity_kudos").select("id",{count:"exact",head:true}).eq("activity_id",activityId);
+      if(myProfileId){
+        const {data:mine}=await supabase.from("activity_kudos").select("id").eq("activity_id",activityId).eq("user_id",myProfileId).maybeSingle();
+        if(!cancelled){setHasLiked(!!mine);}
+      }
+      if(!cancelled)setCount(total||0);
+    })();
+    return()=>{cancelled=true;};
+  },[activityId,myProfileId]);
+  async function toggle(){
+    if(!myProfileId||busy)return;
+    setBusy(true);
+    if(hasLiked){
+      // Unlike
+      const {error}=await supabase.from("activity_kudos").delete().eq("activity_id",activityId).eq("user_id",myProfileId);
+      if(!error){setHasLiked(false);setCount(c=>Math.max(0,c-1));}
+    }else{
+      const {error}=await supabase.from("activity_kudos").insert({activity_id:activityId,user_id:myProfileId});
+      if(!error){setHasLiked(true);setCount(c=>c+1);}
+    }
+    setBusy(false);
+  }
+  return <button onClick={toggle} disabled={busy||!myProfileId} style={{background:hasLiked?`${T.accent}22`:"transparent",border:`1px solid ${hasLiked?T.accent:T.border}`,color:hasLiked?T.accent:T.textMid,borderRadius:"999px",padding:"5px 12px",cursor:busy?"wait":"pointer",fontFamily:"inherit",fontSize:"12px",fontWeight:700,display:"inline-flex",alignItems:"center",gap:"5px",transition:"all 0.15s"}} title={hasLiked?"Unlike":"Kudos!"}>
+    <span style={{fontSize:"14px",transform:hasLiked?"scale(1.1)":"scale(1)",display:"inline-block",transition:"transform 0.15s"}}>{hasLiked?"👏":"🤍"}</span>
+    {count>0&&<span>{count}</span>}
+  </button>;
+}
+
 function GpxSplits({gpxUrl}){
   const [splits,setSplits]=useState(null);
   const [err,setErr]=useState(false);
@@ -3752,6 +3788,9 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
                 {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
+                <div style={{marginTop:"10px",display:"flex",alignItems:"center",gap:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
+                  <KudosButton activityId={act.id} myProfileId={myProfileId}/>
+                </div>
               </div>;
             })}
           </div>
@@ -5757,12 +5796,118 @@ function CRMDashboard({session,profile,races}){
       </div>
     </div>;
     })()}
-    {/* SPONSORS / VOLUNTEERS / TASKS - placeholders for next phases */}
-    {(activeView==="sponsors"||activeView==="volunteers"||activeView==="tasks")&&(
+    {/* TASKS MODULE - simplified */}
+    {activeView==="tasks"&&(()=>{
+      const [newTitle,priorityValue]=["",""];
+      return <TasksModule tasks={tasks} onRefresh={fetchCRM} myProfileId={profile?.id} lang={lang}/>;
+    })()}
+    {/* SPONSORS / VOLUNTEERS - placeholders for next phases */}
+    {(activeView==="sponsors"||activeView==="volunteers")&&(
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"40px 24px",textAlign:"center"}}>
         <div style={{fontSize:"48px",marginBottom:"12px"}}>🚧</div>
         <h3 style={{color:T.text,margin:"0 0 8px",fontSize:"16px"}}>{lang==="el"?"Έρχεται σύντομα":"Coming soon"}</h3>
         <p style={{color:T.textMid,fontSize:"13px",margin:0,lineHeight:1.5}}>{lang==="el"?"Αυτή η ενότητα θα προστεθεί σε επόμενη φάση. Η βάση δεδομένων είναι ήδη έτοιμη.":"This section will be added in the next phase. Database is ready."}</p>
+      </div>
+    )}
+  </div>;
+}
+
+function TasksModule({tasks,onRefresh,myProfileId,lang}){
+  const [newTitle,setNewTitle]=useState("");
+  const [newPriority,setNewPriority]=useState("medium");
+  const [adding,setAdding]=useState(false);
+  const [busyId,setBusyId]=useState(null);
+  async function addTask(){
+    if(!newTitle.trim()||!myProfileId)return;
+    setAdding(true);
+    const {error}=await supabase.from("crm_tasks").insert({
+      organizer_id:myProfileId,
+      title:newTitle.trim(),
+      priority:newPriority,
+      status:"todo"
+    });
+    setAdding(false);
+    if(!error){
+      setNewTitle("");
+      setNewPriority("medium");
+      if(onRefresh)onRefresh();
+      toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
+    }else{
+      toast("⚠ "+error.message,"error");
+    }
+  }
+  async function markDone(taskId){
+    setBusyId(taskId);
+    const {error}=await supabase.from("crm_tasks").update({status:"done",completed_at:new Date().toISOString()}).eq("id",taskId);
+    setBusyId(null);
+    if(!error){if(onRefresh)onRefresh();toast(lang==="el"?"✅ Ολοκληρώθηκε":"✅ Done","success");}
+  }
+  async function reopen(taskId){
+    setBusyId(taskId);
+    const {error}=await supabase.from("crm_tasks").update({status:"todo",completed_at:null}).eq("id",taskId);
+    setBusyId(null);
+    if(!error){if(onRefresh)onRefresh();}
+  }
+  async function deleteTask(taskId){
+    if(!confirm(lang==="el"?"Διαγραφή task;":"Delete task?"))return;
+    setBusyId(taskId);
+    const {error}=await supabase.from("crm_tasks").delete().eq("id",taskId);
+    setBusyId(null);
+    if(!error){if(onRefresh)onRefresh();toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");}
+  }
+  const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
+  const doneTasks=tasks.filter(t=>t.status==="done");
+  const priorityColors={urgent:T.danger,high:T.warning,medium:T.primary,low:T.textMid};
+  const priorityLabels={urgent:lang==="el"?"🔴 Επείγον":"🔴 Urgent",high:lang==="el"?"🟠 Υψηλή":"🟠 High",medium:lang==="el"?"🔵 Μέτρια":"🔵 Medium",low:lang==="el"?"⚪ Χαμηλή":"⚪ Low"};
+  return <div>
+    {/* Add new task */}
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",marginBottom:"16px"}}>
+      <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800}}>➕ {lang==="el"?"Νέα Εργασία":"New Task"}</h3>
+      <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+        <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder={lang==="el"?"π.χ. Αγορά μεταλλίων":"e.g. Buy medals"} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+        <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} style={{padding:"10px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+          <option value="low">⚪ {lang==="el"?"Χαμηλή":"Low"}</option>
+          <option value="medium">🔵 {lang==="el"?"Μέτρια":"Medium"}</option>
+          <option value="high">🟠 {lang==="el"?"Υψηλή":"High"}</option>
+          <option value="urgent">🔴 {lang==="el"?"Επείγον":"Urgent"}</option>
+        </select>
+        <button onClick={addTask} disabled={adding||!newTitle.trim()} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 18px",fontSize:"13px",fontWeight:700,cursor:adding||!newTitle.trim()?"not-allowed":"pointer",fontFamily:"inherit",opacity:adding||!newTitle.trim()?0.5:1}}>{adding?"...":(lang==="el"?"➕ Προσθήκη":"➕ Add")}</button>
+      </div>
+    </div>
+    {/* TODO list */}
+    <div style={{marginBottom:"20px"}}>
+      <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800,display:"flex",alignItems:"center",gap:"6px"}}>📋 {lang==="el"?`Σε εκκρεμότητα (${todoTasks.length})`:`To Do (${todoTasks.length})`}</h3>
+      {todoTasks.length===0?(
+        <div style={{textAlign:"center",padding:"30px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"10px"}}>🎉 {lang==="el"?"Καμία εκκρεμότητα!":"No pending tasks!"}</div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+          {todoTasks.map(task=>(
+            <div key={task.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
+              <button onClick={()=>markDone(task.id)} disabled={busyId===task.id} style={{background:"transparent",border:`2px solid ${T.border}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit"}} title={lang==="el"?"Ολοκλήρωση":"Complete"}></button>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{task.title}</div>
+                {task.description&&<div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>{task.description}</div>}
+              </div>
+              <span style={{background:priorityColors[task.priority]+"22",color:priorityColors[task.priority],padding:"3px 9px",borderRadius:"6px",fontSize:"10px",fontWeight:700,whiteSpace:"nowrap"}}>{priorityLabels[task.priority]}</span>
+              <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit"}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+    {/* DONE list */}
+    {doneTasks.length>0&&(
+      <div>
+        <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.textMid,fontWeight:800}}>✅ {lang==="el"?`Ολοκληρωμένες (${doneTasks.length})`:`Done (${doneTasks.length})`}</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+          {doneTasks.slice(0,10).map(task=>(
+            <div key={task.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",alignItems:"center",gap:"10px",opacity:0.6}}>
+              <button onClick={()=>reopen(task.id)} style={{background:T.accent,border:`2px solid ${T.accent}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit",color:"#fff",fontSize:"12px",fontWeight:900}} title={lang==="el"?"Αναίρεση":"Reopen"}>✓</button>
+              <div style={{flex:1,minWidth:0,color:T.textMid,fontSize:"12px",textDecoration:"line-through"}}>{task.title}</div>
+              <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"12px",padding:"4px",fontFamily:"inherit"}}>🗑</button>
+            </div>
+          ))}
+        </div>
       </div>
     )}
   </div>;
