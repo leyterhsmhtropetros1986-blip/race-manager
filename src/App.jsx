@@ -3158,6 +3158,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   // Personal activities (manual entries)
   const [activities,setActivities]=useState([]);
   const [showActivityModal,setShowActivityModal]=useState(false);
+  const [showAllActivities,setShowAllActivities]=useState(false);
   const [gpxQueue,setGpxQueue]=useState([]); // Array of parsed GPX files awaiting save
   const [gpxQueueIndex,setGpxQueueIndex]=useState(0);
   const [mapModalActivity,setMapModalActivity]=useState(null);
@@ -3582,7 +3583,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
             </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-            {activities.slice(0,10).map(act=>{
+            {(showAllActivities?activities.slice(0,10):activities.slice(0,1)).map(act=>{
               const typeIcon={race:"🏆",training:"🏃",long_run:"📏",tempo:"⚡",intervals:"🎯",recovery:"😌",other:"📝"}[act.activity_type]||"📝";
               const typeLabel={race:lang==="el"?"Αγώνας":"Race",training:lang==="el"?"Προπόνηση":"Training",long_run:lang==="el"?"Long Run":"Long Run",tempo:"Tempo",intervals:"Intervals",recovery:lang==="el"?"Recovery":"Recovery",other:lang==="el"?"Άλλο":"Other"}[act.activity_type]||"";
               const d=act.duration_seconds;
@@ -3616,7 +3617,16 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
               </div>;
             })}
           </div>
-          {activities.length>10&&<div style={{textAlign:"center",color:T.textLight,fontSize:"12px",marginTop:"12px"}}>+{activities.length-10} {lang==="el"?"περισσότερες":"more"}</div>}
+          {activities.length>1&&(
+            <button onClick={()=>setShowAllActivities(!showAllActivities)} style={{width:"100%",marginTop:"10px",background:T.bg,border:`1px dashed ${T.border}`,color:T.primary,borderRadius:"10px",padding:"10px",cursor:"pointer",fontFamily:"inherit",fontSize:"13px",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"background 0.2s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bgAlt} onMouseLeave={e=>e.currentTarget.style.background=T.bg}>
+              {showAllActivities?(
+                <>▲ {lang==="el"?"Λιγότερα":"Show less"}</>
+              ):(
+                <>▼ {lang==="el"?`Προηγούμενες (${Math.min(activities.length-1,9)})`:`Previous (${Math.min(activities.length-1,9)})`}</>
+              )}
+            </button>
+          )}
+          {showAllActivities&&activities.length>10&&<div style={{textAlign:"center",color:T.textLight,fontSize:"12px",marginTop:"12px"}}>+{activities.length-10} {lang==="el"?"περισσότερες":"more"}</div>}
         </div>
       )}
     </div>
