@@ -4875,7 +4875,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
     setLoading(false);setShowForm(false);resetForm();
   }
   async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
-  async function toggleStatus(race){const s=["upcoming","active","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
+  async function toggleStatus(race){const s=["upcoming","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
 
   async function exportPDF(race){
     const regs=registrations.filter(r=>r.race_id===race.id);
@@ -6453,7 +6453,7 @@ function ResetPasswordModal({onClose}){
 }
 
 function AppContent(){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [session,setSession]=useState(null);
   const [profile,setProfile]=useState(null);
   const [tab,setTab]=useState("races");
@@ -6541,6 +6541,8 @@ function AppContent(){
       <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
         <DarkModeToggle/><LangToggle/>
         <span style={{color:T.textMid,fontSize:"13px"}}>{profile?.full_name||session.user.email}</span>
+        {profile?.athlete_id&&<span style={{background:`${T.primary}15`,color:T.primary,border:`1px solid ${T.primary}44`,borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700,fontFamily:"monospace",letterSpacing:"0.03em"}}>🆔 {profile.athlete_id}</span>}
+        {profile?.athlete_id&&<button onClick={()=>window.open(`${window.location.origin}/?athlete=${profile.athlete_id}`,"_blank")} title={lang==="el"?"Δες το δημόσιο προφίλ σου":"View your public profile"} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:"6px",padding:"3px 8px",fontSize:"11px",fontWeight:600,color:T.textMid,cursor:"pointer",fontFamily:"inherit"}}>🌍 {lang==="el"?"Προφίλ":"Profile"}</button>}
         {profile?.role==="admin"&&<span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>{t.badgeAdmin}</span>}
         {profile?.role==="athlete"&&<span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,borderRadius:"6px",padding:"2px 8px",fontSize:"11px",fontWeight:700}}>{t.badgeAthlete}</span>}
         <button onClick={()=>supabase.auth.signOut()} style={{background:`${T.danger}15`,color:T.danger,border:`1px solid ${T.danger}33`,borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit"}}>{t.logout}</button>
