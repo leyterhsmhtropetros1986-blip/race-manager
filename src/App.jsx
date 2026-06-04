@@ -455,7 +455,7 @@ function emailTemplate(title,bodyHtml){
         </div>
         <div style="background:#f9f9fb;padding:20px 28px;border-top:1px solid #eee;text-align:center;color:#888;font-size:12px;">
           <p style="margin:0 0 6px;">© ${new Date().getFullYear()} ΜΗΤΡΟΠΕΤΡΟΣ ΕΛΕΥΘΕΡΙΟΣ · ΑΦΜ 105127494</p>
-          <p style="margin:0;">📞 693 6960328 · ✉️ <a href="mailto:leyterhs.mhtropetros1986@gmail.com" style="color:#4a5dc7;text-decoration:none;">leyterhs.mhtropetros1986@gmail.com</a></p>
+          <p style="margin:0;">📞 693 6960328 · ✉️ <a href="mailto:info@racemanagement.gr" style="color:#4a5dc7;text-decoration:none;">info@racemanagement.gr</a></p>
         </div>
       </div>
     </div>
@@ -797,7 +797,7 @@ function LocationAutocomplete({value,onChange,label,placeholder}){
 const LEGAL_INFO = {
   responsible: "ΜΗΤΡΟΠΕΤΡΟΣ ΕΛΕΥΘΕΡΙΟΣ",
   address: "Στύρα Ευβοίας, Ελλάδα",
-  email: "leyterhs.mhtropetros1986@gmail.com",
+  email: "info@racemanagement.gr",
   afm: "105127494",
   domain: "racemanagement.gr",
   lastUpdate: "31 Μαΐου 2026"
@@ -2197,7 +2197,7 @@ function HomeServicesSection(){
   const {lang}=useLang();
   const [activeService,setActiveService]=useState(null);
   const PHONE="6936960328";
-  const EMAIL="leyterhs.mhtropetros1986@gmail.com";
+  const EMAIL="info@racemanagement.gr";
   const services=[
     {icon:"⏱",titleEl:"Χρονομέτρηση Αγώνα",titleEn:"Race Timing",descEl:"Chip timing με RFID & live αποτελέσματα",descEn:"RFID chip timing & live results",detailsEl:["Chip timing με RFID technology","Πιστοποίηση χρόνων ανά αθλητή","Live αποτελέσματα κατά τη διάρκεια","Splits ανά τμήμα διαδρομής","Άμεση δημοσίευση στην πλατφόρμα"],detailsEn:["RFID chip timing technology","Certified times per athlete","Live results during race","Splits per route section","Instant publication on platform"]},
     {icon:"📋",titleEl:"Online Εγγραφές",titleEn:"Online Registrations",descEl:"Πλατφόρμα εγγραφών 24/7 με GDPR",descEn:"24/7 registration platform with GDPR",detailsEl:["Online εγγραφές μέσω racemanagement.gr","Διαχείριση πληρωμών (Stripe-ready)","Αυτόματο email επιβεβαίωσης","Export εγγεγραμμένων σε PDF/Excel","Πλήρης GDPR συμμόρφωση"],detailsEn:["Online registrations via racemanagement.gr","Payment management (Stripe-ready)","Automatic confirmation emails","Export registrants to PDF/Excel","Full GDPR compliance"]},
@@ -2678,7 +2678,7 @@ function LoginPage({onBack}){
             <p>Συνδέσου στο admin panel για να εγκρίνεις τη νέα εγγραφή.</p>
             <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Άνοιγμα Admin →</a></p>
           `;
-          sendEmail("leyterhs.mhtropetros1986@gmail.com",`🔔 Νέος Διοργανωτής: ${name}`,emailTemplate("Νέα Εγγραφή Διοργανωτή",adminBody));
+          sendEmail("info@racemanagement.gr",`🔔 Νέος Διοργανωτής: ${name}`,emailTemplate("Νέα Εγγραφή Διοργανωτή",adminBody));
         }catch(err){console.error("Admin notification failed:",err);}
       }
       // Auto-login: If session is returned, user is already in. Otherwise try password sign-in.
