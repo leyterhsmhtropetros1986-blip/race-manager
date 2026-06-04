@@ -5328,14 +5328,22 @@ ${sections}
   </div>;
 }
 
-function OrganizerRegistrations({races,runners,registrations,session,profile}){
-  const {t}=useLang();
+function OrganizerRegistrations({races,runners,registrations,session,profile,onRefresh}){
+  const {t,lang}=useLang();
   const [filterRace,setFilterRace]=useState("all");
   async function togglePayment(reg){
     const newStatus=reg.payment_status==="paid"?"pending":"paid";
     const {error}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
     if(error){toast("Σφάλμα: "+error.message,"error");return;}
-    window.location.reload();
+    if(onRefresh)onRefresh();
+    else window.location.reload();
+  }
+  async function deleteReg(reg,runner){
+    if(!confirm(lang==="el"?`Διαγραφή εγγραφής: ${runner.first_name} ${runner.last_name} (BIB #${reg.bib_number||"-"});`:`Delete registration: ${runner.first_name} ${runner.last_name}?`))return;
+    const {error}=await supabase.from("registrations").delete().eq("id",reg.id);
+    if(error){toast("⚠ "+error.message,"error");return;}
+    toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");
+    if(onRefresh)onRefresh();
   }
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
@@ -5361,6 +5369,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile}){
             <div style={{color:T.textMid,fontSize:"12px"}}>{race.name}{reg.distance?` · 🏃 ${reg.distance}`:""} · {reg.category} · {reg.tshirt}</div>
             <div style={{color:T.textLight,fontSize:"12px"}}>{runner.email}{runner.phone?` · ${runner.phone}`:""}</div>
           </div>
+          <button onClick={()=>deleteReg(reg,runner)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"8px",padding:"6px 12px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑 {lang==="el"?"Διαγραφή":"Delete"}</button>
         </div>;
       })}
     </div>
