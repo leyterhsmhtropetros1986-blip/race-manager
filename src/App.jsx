@@ -6054,188 +6054,6 @@ function FinanceModule({organizerId,races,lang}){
   </div>;
 }
 
-function PublicAthleteProfile({athleteId,currentSession,onClose}){
-  const {lang}=useLang();
-  const [profileData,setProfileData]=useState(null);
-  const [activities,setActivities]=useState([]);
-  const [runnerData,setRunnerData]=useState(null);
-  const [registrations,setRegistrations]=useState([]);
-  const [followersCount,setFollowersCount]=useState(0);
-  const [followingCount,setFollowingCount]=useState(0);
-  const [iFollowThem,setIFollowThem]=useState(false);
-  const [loading,setLoading]=useState(true);
-  const [notFound,setNotFound]=useState(false);
-  const [busyFollow,setBusyFollow]=useState(false);
-  const myUserId=currentSession?.user?.id;
-  const isOwnProfile=profileData?.id===myUserId;
-
-  async function load(){
-    setLoading(true);
-    // Fetch profile by athlete_id
-    const {data:p}=await supabase.from("profiles").select("*").eq("athlete_id",athleteId).maybeSingle();
-    if(!p){setNotFound(true);setLoading(false);return;}
-    if(!p.profile_public&&p.id!==myUserId){setNotFound(true);setLoading(false);return;}
-    setProfileData(p);
-    
-    // Fetch linked runner (for avatar, club, etc)
-    const {data:r}=await supabase.from("runners").select("*").eq("athlete_profile_id",p.id).limit(1).maybeSingle();
-    if(r)setRunnerData(r);
-    
-    // Fetch race history (registrations linked to this athlete)
-    const {data:regs}=await supabase.from("registrations").select("*, races(name,date,location)").eq("runner_id",r?.id);
-    if(regs)setRegistrations(regs.filter(reg=>reg.races));
-    
-    // Fetch public activities
-    const {data:acts}=await supabase.from("personal_activities").select("*").eq("profile_id",p.id).eq("visibility","public").order("date",{ascending:false}).limit(10);
-    if(acts)setActivities(acts);
-    
-    // Fetch follow counts
-    const {count:followers}=await supabase.from("athlete_follows").select("id",{count:"exact",head:true}).eq("following_id",p.id);
-    const {count:following}=await supabase.from("athlete_follows").select("id",{count:"exact",head:true}).eq("follower_id",p.id);
-    setFollowersCount(followers||0);
-    setFollowingCount(following||0);
-    
-    // Check if I follow them
-    if(myUserId&&myUserId!==p.id){
-      const {data:f}=await supabase.from("athlete_follows").select("id").eq("follower_id",myUserId).eq("following_id",p.id).maybeSingle();
-      setIFollowThem(!!f);
-    }
-    setLoading(false);
-  }
-  useEffect(()=>{load();},[athleteId]);
-
-  async function toggleFollow(){
-    if(!myUserId||busyFollow)return;
-    setBusyFollow(true);
-    if(iFollowThem){
-      await supabase.from("athlete_follows").delete().eq("follower_id",myUserId).eq("following_id",profileData.id);
-      setIFollowThem(false);
-      setFollowersCount(c=>Math.max(0,c-1));
-    }else{
-      await supabase.from("athlete_follows").insert({follower_id:myUserId,following_id:profileData.id});
-      setIFollowThem(true);
-      setFollowersCount(c=>c+1);
-    }
-    setBusyFollow(false);
-  }
-
-  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>⏳ {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
-  if(notFound)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px",fontFamily:"Inter,sans-serif",textAlign:"center"}}>
-    <div style={{fontSize:"64px",marginBottom:"16px"}}>🔒</div>
-    <h2 style={{color:T.text,margin:"0 0 8px"}}>{lang==="el"?"Δεν βρέθηκε":"Not found"}</h2>
-    <p style={{color:T.textMid,margin:"0 0 24px"}}>{lang==="el"?"Το προφίλ δεν υπάρχει ή είναι ιδιωτικό":"Profile doesn't exist or is private"}</p>
-    <button onClick={onClose} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"12px 24px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="el"?"← Επιστροφή":"← Back"}</button>
-  </div>;
-
-  // Calculate stats
-  const totalRaces=registrations.length;
-  const totalKm=registrations.reduce((sum,reg)=>{
-    const dist=parseInt((reg.distance||"").match(/\d+/)?.[0]||0);
-    return sum+dist;
-  },0);
-  const totalActivityKm=activities.reduce((sum,a)=>sum+parseFloat(a.distance_km||0),0);
-
-  return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",color:T.text}}>
-    {/* Top Bar */}
-    <div style={{padding:"12px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:T.bgAlt,position:"sticky",top:0,zIndex:10}}>
-      <button onClick={onClose} style={{background:"none",border:`1px solid ${T.border}`,color:T.text,borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>← {lang==="el"?"Πίσω":"Back"}</button>
-      <div style={{fontWeight:800,fontSize:"14px",color:T.primary}}>🏃 racemanagement.gr</div>
-      <div style={{width:"60px"}}/>
-    </div>
-
-    {/* Hero */}
-    <div style={{maxWidth:"800px",margin:"0 auto",padding:"24px 20px"}}>
-      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"20px",padding:"30px 24px",color:"#fff",marginBottom:"20px",boxShadow:`0 10px 30px ${T.primary}33`,position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:"-50px",right:"-50px",fontSize:"200px",opacity:0.08,lineHeight:1}}>🏃</div>
-        <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"center",gap:"20px",flexWrap:"wrap"}}>
-          {runnerData?.avatar_url?(
-            <img src={runnerData.avatar_url} alt="" data-no-invert="true" style={{width:"100px",height:"100px",borderRadius:"50%",objectFit:"cover",border:"4px solid rgba(255,255,255,0.4)",flexShrink:0}}/>
-          ):(
-            <div style={{width:"100px",height:"100px",borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"40px",border:"4px solid rgba(255,255,255,0.3)",flexShrink:0}}>👤</div>
-          )}
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:"24px",fontWeight:900,marginBottom:"4px"}}>{runnerData?(runnerData.first_name+" "+runnerData.last_name).trim():profileData.full_name||"Athlete"}</div>
-            <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap",marginBottom:"8px"}}>
-              <span style={{background:"rgba(255,255,255,0.25)",padding:"3px 12px",borderRadius:"8px",fontSize:"13px",fontWeight:800,fontFamily:"monospace"}}>{profileData.athlete_id}</span>
-              {runnerData?.city&&<span style={{fontSize:"13px",opacity:0.95}}>📍 {runnerData.city}</span>}
-              {runnerData?.club&&<span style={{fontSize:"13px",opacity:0.95}}>👥 {runnerData.club}</span>}
-            </div>
-            {profileData.bio&&<div style={{fontSize:"13px",opacity:0.9,lineHeight:1.5,maxWidth:"400px"}}>"{profileData.bio}"</div>}
-          </div>
-          {!isOwnProfile&&myUserId&&(
-            <button onClick={toggleFollow} disabled={busyFollow} style={{background:iFollowThem?"rgba(255,255,255,0.2)":"#fff",color:iFollowThem?"#fff":T.primary,border:iFollowThem?"2px solid rgba(255,255,255,0.4)":"2px solid #fff",borderRadius:"10px",padding:"10px 20px",fontSize:"13px",fontWeight:800,cursor:busyFollow?"wait":"pointer",fontFamily:"inherit",letterSpacing:"0.02em"}}>{busyFollow?"...":(iFollowThem?"✓ "+(lang==="el"?"Ακολουθώ":"Following"):"➕ "+(lang==="el"?"Ακολούθα":"Follow"))}</button>
-          )}
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(120px, 1fr))",gap:"10px",marginBottom:"20px"}}>
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{totalRaces}</div>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>🏁 {lang==="el"?"Αγώνες":"Races"}</div>
-        </div>
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalKm+Math.round(totalActivityKm)}</div>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>📏 km</div>
-        </div>
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center",cursor:"pointer"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{followersCount}</div>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>👥 Followers</div>
-        </div>
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.textMid,lineHeight:1}}>{followingCount}</div>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>➡️ Following</div>
-        </div>
-      </div>
-
-      {/* Race History */}
-      {registrations.length>0&&(
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
-          <h3 style={{margin:"0 0 12px",fontSize:"15px",fontWeight:800,color:T.text}}>🏁 {lang==="el"?"Αγώνες":"Races"} ({registrations.length})</h3>
-          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-            {registrations.slice(0,10).map(reg=>(
-              <div key={reg.id} style={{padding:"8px 12px",background:T.bg,borderRadius:"8px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{reg.races.name}</div>
-                  <div style={{color:T.textMid,fontSize:"11px"}}>📅 {reg.races.date} · 🏃 {reg.distance}</div>
-                </div>
-                {reg.bib_number&&<span style={{background:T.primary+"22",color:T.primary,padding:"3px 8px",borderRadius:"6px",fontSize:"11px",fontWeight:800,fontFamily:"monospace"}}>#{reg.bib_number}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Public Activities */}
-      {activities.length>0&&(
-        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px"}}>
-          <h3 style={{margin:"0 0 12px",fontSize:"15px",fontWeight:800,color:T.text}}>🏃 {lang==="el"?"Δραστηριότητες":"Activities"} ({activities.length})</h3>
-          <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
-            {activities.slice(0,5).map(act=>(
-              <div key={act.id} style={{padding:"12px",background:T.bg,borderRadius:"10px",border:`1px solid ${T.border}`}}>
-                <div style={{fontWeight:700,color:T.text,fontSize:"14px",marginBottom:"4px"}}>{act.name}</div>
-                <div style={{display:"flex",gap:"10px",fontSize:"12px",color:T.textMid,flexWrap:"wrap"}}>
-                  <span>📅 {act.date}</span>
-                  {act.distance_km&&<span>📏 {act.distance_km}km</span>}
-                  {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
-                </div>
-                {act.gpx_url&&<div style={{marginTop:"8px"}}><InlineGpxMap gpxUrl={act.gpx_url}/></div>}
-                <div style={{marginTop:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
-                  <KudosButton activityId={act.id} myProfileId={myUserId}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {registrations.length===0&&activities.length===0&&(
-        <div style={{textAlign:"center",padding:"40px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"14px"}}>{lang==="el"?"Δεν υπάρχει δραστηριότητα ακόμα":"No activity yet"}</div>
-      )}
-    </div>
-  </div>;
-}
-
 function ResetPasswordModal({onClose}){
   const {t,lang}=useLang();
   const [password,setPassword]=useState("");
@@ -6302,19 +6120,16 @@ function AppContent(){
   const [registrations,setRegistrations]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showResetPassword,setShowResetPassword]=useState(false);
-  const [publicAthleteId,setPublicAthleteId]=useState(null);
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
     const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       setSession(session);
+      // If user clicked password reset link in email, Supabase fires PASSWORD_RECOVERY event
       if(event==="PASSWORD_RECOVERY")setShowResetPassword(true);
     });
+    // Also check URL for reset=true (fallback)
     if(window.location.search.includes("reset=true")||window.location.hash.includes("type=recovery"))setShowResetPassword(true);
-    // Check for athlete profile URL: /?athlete=RM-XXXX
-    const params=new URLSearchParams(window.location.search);
-    const athleteId=params.get("athlete");
-    if(athleteId)setPublicAthleteId(athleteId);
     return()=>subscription?.unsubscribe();
   },[]);
 
@@ -6359,7 +6174,6 @@ function AppContent(){
   useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
 
   if(showResetPassword)return <ResetPasswordModal onClose={()=>setShowResetPassword(false)}/>;
-  if(publicAthleteId)return <PublicAthleteProfile athleteId={publicAthleteId} currentSession={session} onClose={()=>{setPublicAthleteId(null);window.history.replaceState({},"",window.location.pathname);}}/>;
   if(!session)return <><PublicHomePage/><Footer/></>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>
       {t.loading}</div>;
