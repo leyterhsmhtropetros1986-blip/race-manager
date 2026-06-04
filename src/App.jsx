@@ -2881,6 +2881,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   async function submit(){
     if(!form.first_name.trim()||!form.last_name.trim()){toast("Συμπληρώστε Όνομα και Επώνυμο!","warning");return;}
     if(!form.distance){toast(t.selectDistance,"warning");return;}
+    if(!form.dob||!form.dob.trim()){toast("🎂 Συμπληρώστε ημερομηνία γέννησης","warning");return;}
     if(!form.city||!form.city.trim()){toast("📍 Συμπληρώστε τόπο διαμονής","warning");return;}
     if(!form.nationality||!form.nationality.trim()){toast("🌍 Συμπληρώστε εθνικότητα","warning");return;}
     // Phone validation
@@ -2976,6 +2977,18 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
   }
 
   return <Modal title={`${t.regForRace} ${race.name}`} onClose={onClose} wide>
+    {profile?.athlete_id&&(
+      <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.accent}15 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"12px",padding:"12px 16px",marginBottom:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"10px",flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+          <div style={{fontSize:"22px"}}>🆔</div>
+          <div>
+            <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"2px"}}>Athlete ID</div>
+            <div style={{fontSize:"16px",fontWeight:900,fontFamily:"monospace",color:T.primary,letterSpacing:"0.05em"}}>{profile.athlete_id}</div>
+          </div>
+        </div>
+        <div style={{fontSize:"11px",color:T.textMid,textAlign:"right",maxWidth:"220px"}}>✅ {profile.full_name?profile.full_name:"Εγγεγραμμένος αθλητής"}</div>
+      </div>
+    )}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
       <In label="Όνομα *" value={form.first_name} onChange={e=>set("first_name",e.target.value)} placeholder="π.χ. Γιώργος"/>
       <In label="Επώνυμο *" value={form.last_name} onChange={e=>set("last_name",e.target.value)} placeholder="π.χ. Παπαδόπουλος"/>
@@ -2999,7 +3012,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       <In label="ΑΜΚΑ" value={form.amka} onChange={e=>set("amka",e.target.value)} placeholder="Προαιρετικό"/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
-      <DOBInput label={t.dob} value={form.dob} onChange={v=>set("dob",v)}/>
+      <DOBInput label={t.dob+" *"} value={form.dob} onChange={v=>set("dob",v)}/>
       <Sel label={t.gender} value={form.gender} onChange={e=>set("gender",e.target.value)}><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></Sel>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
