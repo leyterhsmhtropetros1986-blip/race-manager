@@ -4814,7 +4814,7 @@ function DocumentsDisplay({documents}){
   </div>;
 }
 
-function OrganizerRaces({races,setRaces,runners,registrations,session,profile}){
+function OrganizerRaces({races,setRaces,runners,registrations,session,profile,onRefresh}){
   const {t,lang}=useLang();
   const [showForm,setShowForm]=useState(false);
   const [importRace,setImportRace]=useState(null);
@@ -6568,8 +6568,8 @@ function AppContent(){
         ))}
       </div>
       <div style={{padding:"28px",maxWidth:"960px",margin:"0 auto"}}>
-        {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile}/>}
-        {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile}/>}
+        {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
+        {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
         {tab==="stats"&&<OrganizerStats races={races} registrations={registrations} session={session} profile={profile}/>}
         {tab==="crm"&&<CRMDashboard session={session} profile={profile} races={races}/>}
         {tab==="admin"&&isAdmin&&<AdminPanel/>}
