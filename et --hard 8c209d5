@@ -1,8 +1,0 @@
-[33md64d516[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Revert "Reapply "Commit 1/3: Public athlete profile pages (athlete=RM-XXXX) + Follow system + race history + public activities""
-[33m2d0626e[m Reapply "Commit 1/3: Public athlete profile pages (athlete=RM-XXXX) + Follow system + race history + public activities"
-[33m665e982[m Revert "Commit 1/3: Public athlete profile pages (athlete=RM-XXXX) + Follow system + race history + public activities"
-[33mc638dd4[m Commit 1/3: Public athlete profile pages (athlete=RM-XXXX) + Follow system + race history + public activities
-[33m8c209d5[m Fix Greek spelling in CRM hero: Διαχείρισε to Διαχειρίσου
-[33mb0b7a8b[m Add Finance module to CRM: auto-sync paid registrations + manual income/expense entries with race/type filters
-[33mc527287[m Add Kudos likes to activities + Tasks Lite module for CRM (add/done/reopen/delete with priority)
-[33m616d9c3[m Strava-style splits table per km: pace, elevation gain/loss with best/worst highlighting
