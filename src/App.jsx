@@ -6054,6 +6054,200 @@ function FinanceModule({organizerId,races,lang}){
   </div>;
 }
 
+function PublicAthleteView({athleteId,mySession,onBack}){
+  const {lang}=useLang();
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [followCount,setFollowCount]=useState(0);
+  const [iFollow,setIFollow]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const myId=mySession?.user?.id;
+
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        // Fetch profile by athlete_id - existing RLS allows this (select policy is `true`)
+        const {data:p,error:pErr}=await supabase.from("profiles").select("id,full_name,email,athlete_id,profile_public,bio,created_at").eq("athlete_id",athleteId).maybeSingle();
+        if(cancelled)return;
+        if(pErr||!p){setData({notFound:true});setLoading(false);return;}
+        if(p.profile_public===false&&p.id!==myId){setData({notFound:true});setLoading(false);return;}
+        
+        // Fetch runner (linked athlete record) - safe, no recursion
+        let runner=null;
+        try{
+          const {data:r}=await supabase.from("runners").select("id,first_name,last_name,city,club,avatar_url").eq("athlete_profile_id",p.id).limit(1).maybeSingle();
+          if(r)runner=r;
+        }catch(e){}
+        
+        // Fetch public activities - existing policy `select_all=true` allows
+        let activities=[];
+        try{
+          const {data:a}=await supabase.from("personal_activities").select("id,name,date,distance_km,duration_h,duration_m,duration_s,elevation_gain_m,gpx_url,activity_type").eq("profile_id",p.id).order("date",{ascending:false}).limit(10);
+          if(a)activities=a;
+        }catch(e){}
+        
+        // Fetch race history if runner exists
+        let races=[];
+        if(runner){
+          try{
+            const {data:regs}=await supabase.from("registrations").select("id,distance,bib_number,races(name,date,location)").eq("runner_id",runner.id);
+            if(regs)races=regs.filter(r=>r.races);
+          }catch(e){}
+        }
+        
+        // Fetch follow counts - athlete_follows table exists from yesterday's SQL
+        let followers=0,iAmFollowing=false;
+        try{
+          const {count}=await supabase.from("athlete_follows").select("id",{count:"exact",head:true}).eq("following_id",p.id);
+          followers=count||0;
+          if(myId&&myId!==p.id){
+            const {data:f}=await supabase.from("athlete_follows").select("id").eq("follower_id",myId).eq("following_id",p.id).maybeSingle();
+            iAmFollowing=!!f;
+          }
+        }catch(e){}
+        
+        if(!cancelled){
+          setData({profile:p,runner,activities,races});
+          setFollowCount(followers);
+          setIFollow(iAmFollowing);
+          setLoading(false);
+        }
+      }catch(e){
+        console.error("PublicAthleteView error:",e);
+        if(!cancelled){setData({notFound:true});setLoading(false);}
+      }
+    })();
+    return()=>{cancelled=true;};
+  },[athleteId]);
+
+  async function toggleFollow(){
+    if(!myId||!data?.profile||busy||myId===data.profile.id)return;
+    setBusy(true);
+    try{
+      if(iFollow){
+        await supabase.from("athlete_follows").delete().eq("follower_id",myId).eq("following_id",data.profile.id);
+        setIFollow(false);setFollowCount(c=>Math.max(0,c-1));
+      }else{
+        await supabase.from("athlete_follows").insert({follower_id:myId,following_id:data.profile.id});
+        setIFollow(true);setFollowCount(c=>c+1);
+      }
+    }catch(e){console.error(e);}
+    setBusy(false);
+  }
+
+  if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMid,fontFamily:"Inter,sans-serif"}}>⏳ {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
+  
+  if(!data||data.notFound)return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px",textAlign:"center"}}>
+    <div style={{fontSize:"64px",marginBottom:"16px"}}>🔒</div>
+    <h2 style={{color:T.text,margin:"0 0 8px"}}>{lang==="el"?"Δεν βρέθηκε":"Not found"}</h2>
+    <p style={{color:T.textMid,margin:"0 0 24px"}}>{lang==="el"?"Το προφίλ δεν υπάρχει ή είναι ιδιωτικό":"Profile doesn't exist or is private"}</p>
+    <button onClick={onBack} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"12px 24px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{lang==="el"?"← Επιστροφή":"← Back"}</button>
+  </div>;
+
+  const {profile:p,runner,activities,races}=data;
+  const isOwn=myId===p.id;
+  const displayName=runner?`${runner.first_name||""} ${runner.last_name||""}`.trim():p.full_name||"Athlete";
+  const totalKm=activities.reduce((s,a)=>s+parseFloat(a.distance_km||0),0);
+  const totalElev=activities.reduce((s,a)=>s+parseInt(a.elevation_gain_m||0),0);
+
+  return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",color:T.text}}>
+    <div style={{padding:"12px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:T.bgAlt,position:"sticky",top:0,zIndex:10}}>
+      <button onClick={onBack} style={{background:"none",border:`1px solid ${T.border}`,color:T.text,borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>← {lang==="el"?"Πίσω":"Back"}</button>
+      <div style={{fontWeight:800,fontSize:"14px",color:T.primary}}>🏃 racemanagement.gr</div>
+      <div style={{width:"60px"}}/>
+    </div>
+
+    <div style={{maxWidth:"800px",margin:"0 auto",padding:"20px"}}>
+      {/* Hero */}
+      <div style={{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"20px",padding:"28px 22px",color:"#fff",marginBottom:"18px",boxShadow:`0 10px 30px ${T.primary}33`,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-50px",right:"-50px",fontSize:"200px",opacity:0.08,lineHeight:1}}>🏃</div>
+        <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"center",gap:"18px",flexWrap:"wrap"}}>
+          {runner?.avatar_url?(
+            <img src={runner.avatar_url} alt="" data-no-invert="true" style={{width:"90px",height:"90px",borderRadius:"50%",objectFit:"cover",border:"4px solid rgba(255,255,255,0.4)",flexShrink:0}}/>
+          ):(
+            <div style={{width:"90px",height:"90px",borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"38px",border:"4px solid rgba(255,255,255,0.3)",flexShrink:0}}>👤</div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:"22px",fontWeight:900,marginBottom:"6px"}}>{displayName}</div>
+            <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap",marginBottom:"6px"}}>
+              <span style={{background:"rgba(255,255,255,0.25)",padding:"3px 10px",borderRadius:"8px",fontSize:"12px",fontWeight:800,fontFamily:"monospace"}}>{p.athlete_id}</span>
+              {runner?.city&&<span style={{fontSize:"12px",opacity:0.95}}>📍 {runner.city}</span>}
+              {runner?.club&&<span style={{fontSize:"12px",opacity:0.95}}>👥 {runner.club}</span>}
+            </div>
+            {p.bio&&<div style={{fontSize:"12px",opacity:0.9,lineHeight:1.5,maxWidth:"400px"}}>"{p.bio}"</div>}
+          </div>
+          {!isOwn&&myId&&(
+            <button onClick={toggleFollow} disabled={busy} style={{background:iFollow?"rgba(255,255,255,0.2)":"#fff",color:iFollow?"#fff":T.primary,border:iFollow?"2px solid rgba(255,255,255,0.4)":"2px solid #fff",borderRadius:"10px",padding:"9px 18px",fontSize:"13px",fontWeight:800,cursor:busy?"wait":"pointer",fontFamily:"inherit"}}>{busy?"...":(iFollow?"✓ "+(lang==="el"?"Ακολουθώ":"Following"):"➕ "+(lang==="el"?"Ακολούθα":"Follow"))}</button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))",gap:"10px",marginBottom:"18px"}}>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{races.length}</div>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>🏁 {lang==="el"?"Αγώνες":"Races"}</div>
+        </div>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{Math.round(totalKm)}</div>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>📏 km</div>
+        </div>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{totalElev}</div>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>⛰ m</div>
+        </div>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",textAlign:"center"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.danger,lineHeight:1}}>{followCount}</div>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginTop:"4px"}}>👥 Followers</div>
+        </div>
+      </div>
+
+      {/* Races */}
+      {races.length>0&&(
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"16px",marginBottom:"14px"}}>
+          <h3 style={{margin:"0 0 10px",fontSize:"14px",fontWeight:800}}>🏁 {lang==="el"?"Αγώνες":"Races"} ({races.length})</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            {races.slice(0,8).map(reg=>(
+              <div key={reg.id} style={{padding:"8px 12px",background:T.bg,borderRadius:"8px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:"13px"}}>{reg.races.name}</div>
+                  <div style={{color:T.textMid,fontSize:"11px"}}>📅 {reg.races.date} · {reg.distance}</div>
+                </div>
+                {reg.bib_number&&<span style={{background:T.primary+"22",color:T.primary,padding:"3px 8px",borderRadius:"6px",fontSize:"11px",fontWeight:800,fontFamily:"monospace"}}>#{reg.bib_number}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Activities */}
+      {activities.length>0&&(
+        <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"16px"}}>
+          <h3 style={{margin:"0 0 10px",fontSize:"14px",fontWeight:800}}>🏃 {lang==="el"?"Δραστηριότητες":"Activities"} ({activities.length})</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+            {activities.slice(0,5).map(act=>(
+              <div key={act.id} style={{padding:"12px",background:T.bg,borderRadius:"10px",border:`1px solid ${T.border}`}}>
+                <div style={{fontWeight:700,fontSize:"13px",marginBottom:"4px"}}>{act.name}</div>
+                <div style={{display:"flex",gap:"10px",fontSize:"11px",color:T.textMid,flexWrap:"wrap"}}>
+                  <span>📅 {act.date}</span>
+                  {act.distance_km&&<span>📏 {act.distance_km}km</span>}
+                  {act.elevation_gain_m&&<span>⛰ {act.elevation_gain_m}m</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {races.length===0&&activities.length===0&&(
+        <div style={{textAlign:"center",padding:"40px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"14px"}}>{lang==="el"?"Δεν υπάρχει δραστηριότητα ακόμα":"No activity yet"}</div>
+      )}
+    </div>
+    <Footer/>
+  </div>;
+}
+
 function ResetPasswordModal({onClose}){
   const {t,lang}=useLang();
   const [password,setPassword]=useState("");
@@ -6120,16 +6314,21 @@ function AppContent(){
   const [registrations,setRegistrations]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showResetPassword,setShowResetPassword]=useState(false);
+  const [viewAthleteId,setViewAthleteId]=useState(null);
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setSession(session));
     const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       setSession(session);
-      // If user clicked password reset link in email, Supabase fires PASSWORD_RECOVERY event
       if(event==="PASSWORD_RECOVERY")setShowResetPassword(true);
     });
-    // Also check URL for reset=true (fallback)
     if(window.location.search.includes("reset=true")||window.location.hash.includes("type=recovery"))setShowResetPassword(true);
+    // Detect /?athlete=RM-XXXX in URL for public profile view
+    try{
+      const sp=new URLSearchParams(window.location.search);
+      const aid=sp.get("athlete");
+      if(aid&&aid.startsWith("RM-"))setViewAthleteId(aid);
+    }catch(e){}
     return()=>subscription?.unsubscribe();
   },[]);
 
@@ -6175,6 +6374,7 @@ function AppContent(){
 
   if(showResetPassword)return <ResetPasswordModal onClose={()=>setShowResetPassword(false)}/>;
   if(!session)return <><PublicHomePage/><Footer/></>;
+  if(viewAthleteId)return <PublicAthleteView athleteId={viewAthleteId} mySession={session} onBack={()=>{setViewAthleteId(null);window.history.replaceState({},"",window.location.pathname);}}/>;
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,fontFamily:"Inter,sans-serif"}}>
       {t.loading}</div>;
 
