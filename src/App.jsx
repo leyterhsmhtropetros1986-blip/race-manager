@@ -3980,6 +3980,15 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   <span style={{background:statusBadge.bg,color:statusBadge.color,padding:"4px 10px",borderRadius:"999px",fontSize:"10px",fontWeight:800,letterSpacing:"0.05em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{statusBadge.label}</span>
                   {h.finish_time&&<div style={{background:T.text,color:"#fff",padding:"4px 10px",borderRadius:"6px",fontFamily:"monospace",fontWeight:700,fontSize:"13px"}}>⏱ {formatTime(h.finish_time)}</div>}
                   {h.position&&<div style={{color:T.warning,fontWeight:800,fontSize:"13px"}}>🏆 #{h.position}</div>}
+                  {!isFinished&&h.id&&(
+                    <button onClick={async()=>{
+                      if(!confirm(lang==="el"?`Είσαι σίγουρος ότι θες να ακυρώσεις την εγγραφή σου στο "${h.race.name}";`:`Cancel registration for "${h.race.name}"?`))return;
+                      const {error}=await supabase.from("registrations").delete().eq("id",h.id);
+                      if(error){toast("⚠ "+error.message,"error");return;}
+                      toast(lang==="el"?"🗑 Η εγγραφή ακυρώθηκε":"🗑 Registration cancelled","success");
+                      if(onRefresh)onRefresh();
+                    }} style={{background:T.danger+"15",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"4px 10px",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 {lang==="el"?"Ακύρωση":"Cancel"}</button>
+                  )}
                 </div>
               </div>
             </div>;
@@ -5252,6 +5261,13 @@ ${sections}
                           </div>
                         </div>
                       </div>
+                      <button onClick={async()=>{
+                        if(!confirm(lang==="el"?`Διαγραφή εγγραφής: ${r.first_name} ${r.last_name} (BIB #${reg.bib_number||"-"});`:`Delete registration: ${r.first_name} ${r.last_name}?`))return;
+                        const {error}=await supabase.from("registrations").delete().eq("id",reg.id);
+                        if(error){toast("⚠ "+error.message,"error");return;}
+                        toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");
+                        if(onRefresh)onRefresh();
+                      }} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"4px 9px",fontSize:"11px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑</button>
                     </div>;
                   })}
                 </div>
