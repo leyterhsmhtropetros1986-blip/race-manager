@@ -1347,6 +1347,15 @@ function LegalModal({page,onClose}){
       </div>
       <div style={{padding:"28px",overflowY:"auto",flex:1}}>
         {renderMarkdown(text)}
+        <div style={{marginTop:"32px",paddingTop:"20px",borderTop:`1px solid ${T.border}`,background:T.bg,borderRadius:"10px",padding:"16px"}}>
+          <div style={{fontSize:"11px",color:T.textMid,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"8px"}}>{lang==="el"?"📌 Νομικά Στοιχεία":"📌 Legal Info"}</div>
+          <div style={{fontSize:"12px",color:T.textMid,lineHeight:1.7}}>
+            <div><strong>{lang==="el"?"Νομικός Υπεύθυνος":"Legal Representative"}:</strong> {LEGAL_INFO.responsible}</div>
+            <div><strong>ΑΦΜ:</strong> {LEGAL_INFO.afm}</div>
+            <div><strong>{lang==="el"?"Διεύθυνση":"Address"}:</strong> {LEGAL_INFO.address}</div>
+            <div><strong>{lang==="el"?"Επικοινωνία":"Contact"}:</strong> <a href="mailto:info@racemanagement.gr" style={{color:T.primary,textDecoration:"none"}}>info@racemanagement.gr</a> · <a href="tel:+306936960328" style={{color:T.primary,textDecoration:"none"}}>693 6960328</a></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>;
@@ -1356,18 +1365,31 @@ function Footer(){
   const {lang}=useLang();
   const [legalPage,setLegalPage]=useState(null);
   return <>
-    <footer style={{borderTop:`1px solid ${T.border}`,background:T.bgAlt,padding:"24px 20px",marginTop:"40px",textAlign:"center"}}>
+    <footer style={{borderTop:`1px solid ${T.border}`,background:T.bgAlt,padding:"32px 20px 24px",marginTop:"40px",textAlign:"center"}}>
       <div style={{maxWidth:"960px",margin:"0 auto"}}>
+        {/* Brand */}
+        <div style={{marginBottom:"18px"}}>
+          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,letterSpacing:"-0.01em",marginBottom:"4px"}}>🏃 Race Management</div>
+          <div style={{fontSize:"13px",color:T.textMid,maxWidth:"460px",margin:"0 auto",lineHeight:1.5}}>{lang==="el"?"Η πλατφόρμα που απλοποιεί τη διοργάνωση αθλητικών εκδηλώσεων.":"The platform that simplifies sports event management."}</div>
+        </div>
+        
+        {/* Links */}
         <div style={{display:"flex",flexWrap:"wrap",gap:"14px 24px",justifyContent:"center",marginBottom:"14px"}}>
           <button onClick={()=>setLegalPage("privacy")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🛡 {lang==="el"?"Απόρρητο":"Privacy"}</button>
           <button onClick={()=>setLegalPage("terms")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📋 {lang==="el"?"Όροι Χρήσης":"Terms"}</button>
           <button onClick={()=>setLegalPage("cookies")} style={{background:"none",border:"none",color:T.textMid,fontSize:"13px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🍪 Cookies</button>
-          <a href={`mailto:${LEGAL_INFO.email}`} style={{color:T.textMid,fontSize:"13px",textDecoration:"none",fontWeight:600}}>✉️ {lang==="el"?"Επικοινωνία":"Contact"}</a>
+          <a href="mailto:info@racemanagement.gr" style={{color:T.textMid,fontSize:"13px",textDecoration:"none",fontWeight:600}}>✉️ {lang==="el"?"Επικοινωνία":"Contact"}</a>
         </div>
-        <div style={{color:T.textLight,fontSize:"11px",lineHeight:1.6}}>
-          © {new Date().getFullYear()} {LEGAL_INFO.responsible} · ΑΦΜ {LEGAL_INFO.afm} · {LEGAL_INFO.address}<br/>
-          📞 <a href="tel:+306936960328" style={{color:T.textMid,textDecoration:"none"}}>693 6960328</a> · ✉️ <a href={`mailto:${LEGAL_INFO.email}`} style={{color:T.textMid,textDecoration:"none"}}>{LEGAL_INFO.email}</a><br/>
-          racemanagement.gr · {lang==="el"?"Πλατφόρμα Διαχείρισης Αγώνων":"Race Management Platform"}
+        
+        {/* Primary contact */}
+        <div style={{marginBottom:"18px"}}>
+          <a href="mailto:info@racemanagement.gr" style={{color:T.primary,fontSize:"14px",textDecoration:"none",fontWeight:700}}>📧 info@racemanagement.gr</a>
+        </div>
+        
+        {/* Divider */}
+        <div style={{borderTop:`1px solid ${T.border}`,paddingTop:"16px",marginTop:"4px"}}>
+          {/* Copyright */}
+          <div style={{color:T.textMid,fontSize:"12px",fontWeight:600}}>© {new Date().getFullYear()} Race Management. {lang==="el"?"Με την επιφύλαξη παντός δικαιώματος.":"All Rights Reserved."}</div>
         </div>
       </div>
     </footer>
