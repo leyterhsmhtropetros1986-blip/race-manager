@@ -3583,6 +3583,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       </div>
     )}
     
+    {profile?.athlete_id&&<PublicProfileShareCard profile={profile}/>}
+    
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))",gap:"8px",marginBottom:"12px"}}>
       <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"12px 10px",textAlign:"center",position:"relative",overflow:"hidden"}}>
         <div style={{fontSize:"20px",marginBottom:"2px"}}>🏃</div>
@@ -6051,6 +6053,92 @@ function FinanceModule({organizerId,races,lang}){
         </div>
       )}
     </div>
+  </div>;
+}
+
+function PublicProfileShareCard({profile}){
+  const {lang}=useLang();
+  const [showShare,setShowShare]=useState(false);
+  const [copied,setCopied]=useState(false);
+  const [isPublic,setIsPublic]=useState(profile?.profile_public!==false);
+  const [busy,setBusy]=useState(false);
+  const publicUrl=`${window.location.origin}/?athlete=${profile.athlete_id}`;
+  
+  async function togglePublic(){
+    if(busy)return;
+    setBusy(true);
+    const newValue=!isPublic;
+    const {error}=await supabase.from("profiles").update({profile_public:newValue}).eq("id",profile.id);
+    if(!error){
+      setIsPublic(newValue);
+      toast(newValue?(lang==="el"?"✅ Profile δημόσιο":"✅ Profile is public"):(lang==="el"?"🔒 Profile ιδιωτικό":"🔒 Profile is private"),"success");
+    }else{
+      toast("⚠ "+error.message,"error");
+    }
+    setBusy(false);
+  }
+  
+  async function copyLink(){
+    try{
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(()=>setCopied(false),2000);
+      toast(lang==="el"?"📋 Αντιγράφηκε!":"📋 Copied!","success");
+    }catch(e){
+      toast("⚠ "+e.message,"error");
+    }
+  }
+  
+  function shareViaWhatsApp(){
+    const text=encodeURIComponent((lang==="el"?"Δες το profile μου στο racemanagement.gr:\n":"Check my profile on racemanagement.gr:\n")+publicUrl);
+    window.open(`https://wa.me/?text=${text}`,"_blank");
+  }
+  
+  function shareViaViber(){
+    const text=encodeURIComponent((lang==="el"?"Δες το profile μου στο racemanagement.gr: ":"Check my profile on racemanagement.gr: ")+publicUrl);
+    window.open(`viber://forward?text=${text}`,"_blank");
+  }
+  
+  function viewMyProfile(){
+    window.open(publicUrl,"_blank");
+  }
+  
+  return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"14px 16px",marginBottom:"12px"}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"10px",flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:"10px",flex:1,minWidth:0}}>
+        <div style={{fontSize:"20px"}}>{isPublic?"🌍":"🔒"}</div>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:"13px",fontWeight:700,color:T.text}}>{isPublic?(lang==="el"?"Δημόσιο Profile":"Public Profile"):(lang==="el"?"Ιδιωτικό Profile":"Private Profile")}</div>
+          <div style={{fontSize:"11px",color:T.textMid}}>{isPublic?(lang==="el"?"Άλλοι μπορούν να σε δουν":"Others can see you"):(lang==="el"?"Μόνο εσύ το βλέπεις":"Only you see it")}</div>
+        </div>
+      </div>
+      <button onClick={()=>setShowShare(!showShare)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{showShare?"✕":"🔗 "+(lang==="el"?"Μοιράσου":"Share")}</button>
+    </div>
+    
+    {showShare&&(
+      <div style={{marginTop:"12px",paddingTop:"12px",borderTop:`1px solid ${T.border}`}}>
+        {/* Privacy toggle */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",marginBottom:"10px"}}>
+          <div style={{fontSize:"12px",color:T.textMid}}>{lang==="el"?"Δημόσιο για όλους":"Public to everyone"}</div>
+          <button onClick={togglePublic} disabled={busy} style={{background:isPublic?T.accent:T.border,border:"none",borderRadius:"20px",width:"44px",height:"24px",cursor:busy?"wait":"pointer",position:"relative",transition:"background 0.2s",padding:0}}>
+            <div style={{position:"absolute",top:"2px",left:isPublic?"22px":"2px",width:"20px",height:"20px",borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+          </button>
+        </div>
+        
+        {isPublic&&(<>
+          {/* Public URL */}
+          <div style={{background:T.bg,border:`1px dashed ${T.border}`,borderRadius:"8px",padding:"8px 12px",fontSize:"11px",fontFamily:"monospace",color:T.textMid,marginBottom:"10px",wordBreak:"break-all"}}>{publicUrl}</div>
+          
+          {/* Share buttons */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(110px, 1fr))",gap:"6px"}}>
+            <button onClick={viewMyProfile} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>👁 {lang==="el"?"Δες":"View"}</button>
+            <button onClick={copyLink} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{copied?"✓ "+(lang==="el"?"OK":"OK"):"📋 "+(lang==="el"?"Copy":"Copy")}</button>
+            <button onClick={shareViaWhatsApp} style={{background:"#25D366",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💬 WhatsApp</button>
+            <button onClick={shareViaViber} style={{background:"#7360F2",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💜 Viber</button>
+          </div>
+        </>)}
+      </div>
+    )}
   </div>;
 }
 
