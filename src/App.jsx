@@ -5726,11 +5726,13 @@ function CRMDashboard({session,profile,races}){
   const [contactSort,setContactSort]=useState("recent");
   async function fetchCRM(){
     setLoading(true);
+    const myId=profile?.id;
+    if(!myId){setLoading(false);return;}
     const [c,s,v,t]=await Promise.all([
-      supabase.from("crm_contacts").select("*").order("last_race_date",{ascending:false,nullsFirst:false}),
-      supabase.from("crm_sponsors").select("*").order("created_at",{ascending:false}),
-      supabase.from("crm_volunteers").select("*").order("created_at",{ascending:false}),
-      supabase.from("crm_tasks").select("*").order("due_date",{ascending:true,nullsFirst:false})
+      supabase.from("crm_contacts").select("*").eq("organizer_id",myId).order("last_race_date",{ascending:false,nullsFirst:false}),
+      supabase.from("crm_sponsors").select("*").eq("organizer_id",myId).order("created_at",{ascending:false}),
+      supabase.from("crm_volunteers").select("*").eq("organizer_id",myId).order("created_at",{ascending:false}),
+      supabase.from("crm_tasks").select("*").eq("organizer_id",myId).order("due_date",{ascending:true,nullsFirst:false})
     ]);
     if(c.data)setContacts(c.data);
     if(s.data)setSponsors(s.data);
@@ -6475,8 +6477,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
 
 function RaceForecast({races,registrations,session,profile}){
   const {lang}=useLang();
-  const isAdmin=profile?.role==="admin";
-  const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
+  const myRaces=races.filter(r=>r.user_id===session?.user?.id);
   const [selectedRaceId,setSelectedRaceId]=useState(myRaces[0]?.id||null);
   const [forecast,setForecast]=useState(null);
   const [loading,setLoading]=useState(false);
