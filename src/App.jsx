@@ -3824,7 +3824,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
-                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
+                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>
                 <div style={{marginTop:"10px",display:"flex",alignItems:"center",gap:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
                   <KudosButton activityId={act.id} myProfileId={myProfileId}/>
                 </div>
@@ -5331,6 +5331,7 @@ ${sections}
 function OrganizerRegistrations({races,runners,registrations,session,profile,onRefresh}){
   const {t,lang}=useLang();
   const [filterRace,setFilterRace]=useState("all");
+  const [searchQuery,setSearchQuery]=useState("");
   async function togglePayment(reg){
     const newStatus=reg.payment_status==="paid"?"pending":"paid";
     const {error}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
@@ -5348,11 +5349,22 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   const myRaceIds=myRaces.map(r=>r.id);
-  const filtered=registrations.filter(r=>myRaceIds.includes(r.race_id)).filter(r=>filterRace==="all"||r.race_id===filterRace);
+  const q=searchQuery.trim().toLowerCase();
+  const filtered=registrations.filter(r=>myRaceIds.includes(r.race_id)).filter(r=>filterRace==="all"||r.race_id===filterRace).filter(r=>{
+    if(!q)return true;
+    const runner=runners.find(rn=>rn.id===r.runner_id);
+    if(!runner)return false;
+    const hay=`${runner.first_name||""} ${runner.last_name||""} ${runner.email||""} ${runner.phone||""} ${r.bib_number||""}`.toLowerCase();
+    return hay.includes(q);
+  });
   const totalRevenue=filtered.reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
   return <div>
     <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.regsTitle} ({filtered.length}){totalRevenue>0&&<span style={{color:T.accent,fontSize:"15px",marginLeft:"12px"}}>💰 {totalRevenue.toFixed(2)}€</span>}</h2>
-    <Sel value={filterRace} onChange={e=>setFilterRace(e.target.value)}><option value="all">{t.allRaces}</option>{myRaces.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel>
+    <div style={{display:"flex",gap:"10px",marginBottom:"14px",flexWrap:"wrap"}}>
+      <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={lang==="el"?"🔍 Αναζήτηση: όνομα, email, BIB...":"🔍 Search: name, email, BIB..."} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
+      <Sel value={filterRace} onChange={e=>setFilterRace(e.target.value)}><option value="all">{t.allRaces}</option>{myRaces.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel>
+      {searchQuery&&<button onClick={()=>setSearchQuery("")} style={{background:T.danger+"15",border:`1px solid ${T.danger}33`,color:T.danger,borderRadius:"10px",padding:"10px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✕ {lang==="el"?"Καθαρισμός":"Clear"}</button>}
+    </div>
     {filtered.length===0&&<EmptyState icon="📋" title={t.noRegsList} message="Όταν εγγραφούν αθλητές θα τους δεις εδώ"/>}
     <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
       {filtered.map(reg=>{
@@ -6893,6 +6905,41 @@ function AppContent(){
     }catch(e){}
     return()=>subscription?.unsubscribe();
   },[]);
+
+  // Auto-logout after 5 minutes of inactivity (only when logged in)
+  useEffect(()=>{
+    if(!session)return;
+    const IDLE_LIMIT=5*60*1000; // 5 minutes
+    const WARN_BEFORE=30*1000; // warn 30s before
+    let idleTimer=null;
+    let warnTimer=null;
+    let lastActivity=Date.now();
+    
+    function doLogout(){
+      toast(lang==="el"?"🔒 Αποσύνδεση λόγω αδράνειας (5')":"🔒 Logged out due to inactivity (5min)","warning");
+      setTimeout(()=>supabase.auth.signOut(),1500);
+    }
+    function doWarn(){
+      toast(lang==="el"?"⚠ Αποσύνδεση σε 30 δευτερόλεπτα...":"⚠ Logging out in 30 seconds...","warning");
+    }
+    function resetTimer(){
+      lastActivity=Date.now();
+      if(idleTimer)clearTimeout(idleTimer);
+      if(warnTimer)clearTimeout(warnTimer);
+      warnTimer=setTimeout(doWarn,IDLE_LIMIT-WARN_BEFORE);
+      idleTimer=setTimeout(doLogout,IDLE_LIMIT);
+    }
+    
+    const events=["mousedown","keydown","scroll","touchstart"];
+    events.forEach(e=>window.addEventListener(e,resetTimer,{passive:true}));
+    resetTimer();
+    
+    return()=>{
+      if(idleTimer)clearTimeout(idleTimer);
+      if(warnTimer)clearTimeout(warnTimer);
+      events.forEach(e=>window.removeEventListener(e,resetTimer));
+    };
+  },[session,lang]);
 
   // Auto-logout after 30 minutes of inactivity
   useEffect(()=>{
