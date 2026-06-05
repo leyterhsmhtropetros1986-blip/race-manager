@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+// Cache-bust: 2026-06-05T13:00 — force Vercel rebuild for privacy fixes
 
 // Global keyframe injection for skeleton animation
 if (typeof document !== "undefined" && !document.getElementById("rm-global-styles")) {
