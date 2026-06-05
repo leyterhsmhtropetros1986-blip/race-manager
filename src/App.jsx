@@ -5709,7 +5709,7 @@ function CRMDashboard({session,profile,races}){
   const [volunteers,setVolunteers]=useState([]);
   const [tasks,setTasks]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [activeView,setActiveView]=useState("finance");
+  const [activeView,setActiveView]=useState("contacts");
   const [search,setSearch]=useState("");
   const [contactSort,setContactSort]=useState("recent");
   async function fetchCRM(){
@@ -5774,12 +5774,10 @@ function CRMDashboard({session,profile,races}){
     </div>
     {/* View tabs */}
     <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
-      {[{id:"finance",label:"💰 "+(lang==="el"?"Οικονομικά":"Finance")},{id:"contacts",label:"👥 "+(lang==="el"?"Αθλητές":"Athletes")},{id:"sponsors",label:"🤝 "+(lang==="el"?"Χορηγοί":"Sponsors")},{id:"volunteers",label:"🙋 "+(lang==="el"?"Εθελοντές":"Volunteers")},{id:"tasks",label:"📋 Tasks"}].map(v=>(
+      {[{id:"contacts",label:"👥 "+(lang==="el"?"Αθλητές":"Athletes")},{id:"sponsors",label:"🤝 "+(lang==="el"?"Χορηγοί":"Sponsors")},{id:"volunteers",label:"🙋 "+(lang==="el"?"Εθελοντές":"Volunteers")},{id:"tasks",label:"📋 Tasks"}].map(v=>(
         <button key={v.id} onClick={()=>setActiveView(v.id)} style={{background:activeView===v.id?T.primary:T.bgAlt,color:activeView===v.id?"#fff":T.textMid,border:`1px solid ${activeView===v.id?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit"}}>{v.label}</button>
       ))}
     </div>
-    {/* FINANCE MODULE */}
-    {activeView==="finance"&&<FinanceModule organizerId={profile?.id} races={races} lang={lang}/>}
     {/* CONTACTS LIST */}
     {activeView==="contacts"&&(()=>{
       const sortedContacts=[...filteredContacts].sort((a,b)=>{
@@ -6533,6 +6531,8 @@ function RaceForecast({races,registrations,session,profile}){
           avg_registration_fee:data.avg_registration_fee||0,
           expected_sponsorships:data.expected_sponsorships||0,
           expected_other_revenue:data.expected_other_revenue||0,
+          actual_sponsorships:data.actual_sponsorships||0,
+          actual_other_revenue:data.actual_other_revenue||0,
           notes:data.notes||""
         });
       }else{
@@ -6543,6 +6543,8 @@ function RaceForecast({races,registrations,session,profile}){
           avg_registration_fee:0,
           expected_sponsorships:0,
           expected_other_revenue:0,
+          actual_sponsorships:0,
+          actual_other_revenue:0,
           expense_items:[],
           notes:""
         });
@@ -6551,6 +6553,8 @@ function RaceForecast({races,registrations,session,profile}){
           avg_registration_fee:0,
           expected_sponsorships:0,
           expected_other_revenue:0,
+          actual_sponsorships:0,
+          actual_other_revenue:0,
           notes:""
         });
       }
@@ -6598,20 +6602,17 @@ function RaceForecast({races,registrations,session,profile}){
   const totalExpenses=(forecast?.expense_items||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
   const profit=totalRevenue-totalExpenses;
   
-  // Actuals — Combined: registrations + CRM transactions
+  // Actuals — Combined: auto-synced registrations + manual entry fields
   const actualRegs=registrations.filter(r=>r.race_id===selectedRaceId);
   const actualRegRevenue=actualRegs.filter(r=>r.payment_status==="paid").reduce((s,r)=>s+(parseFloat(r.price_paid)||0),0);
   
-  // Actuals from CRM Transactions
-  const actualSponsorships=actualTxs.filter(t=>t.type==="sponsorship"&&t.status==="completed").reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-  const actualOther=actualTxs.filter(t=>(t.type==="other")&&t.status==="completed").reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-  // Auto-synced registrations may already be in CRM as type='registration' — use registration table for accuracy
+  // Manual actual values (from forecast table fields)
+  const actualSponsorships=parseFloat(editing.actual_sponsorships)||0;
+  const actualOther=parseFloat(editing.actual_other_revenue)||0;
   const actualRevenue=actualRegRevenue+actualSponsorships+actualOther;
   
-  // Actual Expenses
-  const actualExpenses=Math.abs(actualTxs.filter(t=>t.type==="expense"&&t.status==="completed").reduce((s,t)=>s+(parseFloat(t.amount)||0),0));
-  const actualRefunds=Math.abs(actualTxs.filter(t=>t.type==="refund"&&t.status==="completed").reduce((s,t)=>s+(parseFloat(t.amount)||0),0));
-  const actualTotalExpenses=actualExpenses+actualRefunds;
+  // Actual Expenses — from each expense item's actual_amount
+  const actualTotalExpenses=(forecast?.expense_items||[]).reduce((s,e)=>s+(parseFloat(e.actual_amount)||0),0);
   
   const actualProfit=actualRevenue-actualTotalExpenses;
   
@@ -6675,7 +6676,7 @@ function RaceForecast({races,registrations,session,profile}){
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Sponsorships":"Sponsorships"}</div>
           <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
             <input type="number" step="0.01" value={editing.expected_sponsorships} onChange={e=>setEditing({...editing,expected_sponsorships:e.target.value})} onBlur={()=>saveForecast({expected_sponsorships:parseFloat(editing.expected_sponsorships)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-            <div style={{fontSize:"15px",fontWeight:700,color:actualSponsorships>0?T.text:T.textLight,fontFamily:"monospace",minWidth:"90px",textAlign:"right"}}>{actualSponsorships.toFixed(2)}€</div>
+            <input type="number" step="0.01" value={editing.actual_sponsorships} onChange={e=>setEditing({...editing,actual_sponsorships:e.target.value})} onBlur={()=>saveForecast({actual_sponsorships:parseFloat(editing.actual_sponsorships)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
           </div>
         </div>
 
@@ -6684,7 +6685,7 @@ function RaceForecast({races,registrations,session,profile}){
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Άλλα Έσοδα":"Other Revenue"}</div>
           <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
             <input type="number" step="0.01" value={editing.expected_other_revenue} onChange={e=>setEditing({...editing,expected_other_revenue:e.target.value})} onBlur={()=>saveForecast({expected_other_revenue:parseFloat(editing.expected_other_revenue)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-            <div style={{fontSize:"15px",fontWeight:700,color:actualOther>0?T.text:T.textLight,fontFamily:"monospace",minWidth:"90px",textAlign:"right"}}>{actualOther.toFixed(2)}€</div>
+            <input type="number" step="0.01" value={editing.actual_other_revenue} onChange={e=>setEditing({...editing,actual_other_revenue:e.target.value})} onBlur={()=>saveForecast({actual_other_revenue:parseFloat(editing.actual_other_revenue)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
           </div>
         </div>
 
@@ -6721,7 +6722,7 @@ function RaceForecast({races,registrations,session,profile}){
             <input value={exp.category} onChange={e=>updateExpense(exp.id,"category",e.target.value)} style={{flex:1,padding:"6px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}/>
             <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
               <input type="number" step="0.01" value={exp.amount} onChange={e=>updateExpense(exp.id,"amount",e.target.value)} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.warning,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
-              <div style={{minWidth:"90px",textAlign:"right",fontSize:"13px",color:T.textLight,fontFamily:"monospace"}}>—</div>
+              <input type="number" step="0.01" value={exp.actual_amount||""} onChange={e=>updateExpense(exp.id,"actual_amount",e.target.value)} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
             </div>
             <button onClick={()=>deleteExpense(exp.id)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"4px 8px",fontSize:"12px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
           </div>
@@ -6732,11 +6733,6 @@ function RaceForecast({races,registrations,session,profile}){
           <input placeholder={lang==="el"?"π.χ. Μετάλλια":"e.g. Medals"} value={newExpense.category} onChange={e=>setNewExpense({...newExpense,category:e.target.value})} style={{flex:1,padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"13px",fontFamily:"inherit"}}/>
           <input type="number" step="0.01" placeholder="0.00" value={newExpense.amount} onChange={e=>setNewExpense({...newExpense,amount:e.target.value})} style={{width:"100px",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"13px",textAlign:"right",fontFamily:"inherit"}}/>
           <button onClick={addExpense} disabled={!newExpense.category.trim()||!newExpense.amount} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"6px",padding:"7px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!newExpense.category.trim()||!newExpense.amount)?0.5:1}}>+ {lang==="el"?"Νέο":"Add"}</button>
-        </div>
-
-        {/* Hint about Actual */}
-        <div style={{marginTop:"10px",padding:"8px 12px",background:`${T.primary}08`,borderRadius:"6px",fontSize:"11px",color:T.textMid,lineHeight:1.5}}>
-          💡 {lang==="el"?"Πραγματικά έξοδα καταχωρούνται μέσω":"Actual expenses logged via"} <strong style={{color:T.primary}}>🏢 CRM → 💰 {lang==="el"?"Συναλλαγές":"Transactions"}</strong> ({lang==="el"?"τύπος Έξοδο, συσχετισμένο με αυτόν τον αγώνα":"type Expense, linked to this race"})
         </div>
 
         {/* Row: TOTAL EXPENSES */}
@@ -6801,67 +6797,6 @@ function RaceForecast({races,registrations,session,profile}){
             <div style={{height:"100%",background:T.accent,width:`${Math.min(100,revProgress)}%`,transition:"width 0.3s"}}/>
           </div>
         </div>
-      </div>
-
-      {/* ============ TRANSACTIONS - Add & List ============ */}
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px",flexWrap:"wrap",gap:"8px"}}>
-          <h3 style={{margin:0,fontSize:"14px",fontWeight:800,color:T.text}}>💰 {lang==="el"?"Πραγματικές Συναλλαγές":"Actual Transactions"} ({actualTxs.length})</h3>
-          <button onClick={()=>setShowAddTx(!showAddTx)} style={{background:showAddTx?T.danger+"22":T.primary,color:showAddTx?T.danger:"#fff",border:showAddTx?`1px solid ${T.danger}44`:"none",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{showAddTx?"✕ "+(lang==="el"?"Άκυρο":"Cancel"):"+ "+(lang==="el"?"Νέα Συναλλαγή":"New Transaction")}</button>
-        </div>
-
-        {/* Add Transaction Form */}
-        {showAddTx&&(
-          <div style={{background:T.bg,border:`1px dashed ${T.primary}44`,borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"10px"}}>
-              <div>
-                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Τύπος":"Type"}</label>
-                <select value={txForm.type} onChange={e=>setTxForm({...txForm,type:e.target.value})} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit"}}>
-                  <option value="sponsorship">🤝 Sponsorship</option>
-                  <option value="other">💵 {lang==="el"?"Άλλο Έσοδο":"Other Income"}</option>
-                  <option value="expense">📉 {lang==="el"?"Έξοδο":"Expense"}</option>
-                  <option value="refund">↩️ {lang==="el"?"Επιστροφή":"Refund"}</option>
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Ποσό (€)":"Amount (€)"}</label>
-                <input type="number" step="0.01" value={txForm.amount} onChange={e=>setTxForm({...txForm,amount:e.target.value})} placeholder="0.00" style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
-              </div>
-            </div>
-            <div style={{marginBottom:"10px"}}>
-              <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Περιγραφή":"Description"}</label>
-              <input value={txForm.description} onChange={e=>setTxForm({...txForm,description:e.target.value})} placeholder={lang==="el"?"π.χ. Χορηγία από εταιρεία ΧΨΖ":"e.g. Sponsor from XYZ Company"} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
-            </div>
-            <div style={{display:"flex",gap:"10px",alignItems:"flex-end"}}>
-              <div style={{flex:1}}>
-                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Ημερομηνία":"Date"}</label>
-                <input type="date" value={txForm.date} onChange={e=>setTxForm({...txForm,date:e.target.value})} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
-              </div>
-              <button onClick={addTransaction} disabled={txBusy||!txForm.amount||!txForm.description.trim()} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:txBusy||!txForm.amount||!txForm.description.trim()?"not-allowed":"pointer",fontFamily:"inherit",opacity:txBusy||!txForm.amount||!txForm.description.trim()?0.5:1,height:"36px"}}>{txBusy?"...":(lang==="el"?"💾 Αποθήκευση":"💾 Save")}</button>
-            </div>
-          </div>
-        )}
-
-        {/* Transactions List */}
-        {actualTxs.length===0?(
-          <div style={{textAlign:"center",padding:"20px",color:T.textLight,fontSize:"12px",background:T.bg,borderRadius:"8px"}}>{lang==="el"?"Δεν υπάρχουν συναλλαγές για αυτόν τον αγώνα":"No transactions for this race"}</div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-            {actualTxs.sort((a,b)=>(b.transaction_date||"").localeCompare(a.transaction_date||"")).map(tx=>{
-              const typeIcons={sponsorship:"🤝",registration:"🏃",other:"💵",expense:"📉",refund:"↩️"};
-              const isIncome=tx.amount>0;
-              return <div key={tx.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
-                <span style={{fontSize:"18px"}}>{typeIcons[tx.type]||"💰"}</span>
-                <div style={{flex:1,minWidth:"180px"}}>
-                  <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{tx.description}</div>
-                  <div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>📅 {tx.transaction_date} · {tx.source==="auto"?(lang==="el"?"αυτόματο":"auto"):"manual"}</div>
-                </div>
-                <div style={{fontSize:"15px",fontWeight:800,fontFamily:"monospace",color:isIncome?T.accent:T.warning,minWidth:"90px",textAlign:"right"}}>{isIncome?"+":""}{parseFloat(tx.amount).toFixed(2)}€</div>
-                {tx.source==="manual"&&<button onClick={()=>deleteTx(tx.id)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"3px 8px",fontSize:"11px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
-              </div>;
-            })}
-          </div>
-        )}
       </div>
 
       {/* Notes */}
