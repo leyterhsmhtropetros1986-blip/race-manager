@@ -6474,8 +6474,48 @@ function RaceForecast({races,registrations,session,profile}){
   const [editing,setEditing]=useState({});
   const [newExpense,setNewExpense]=useState({category:"",amount:""});
   const [actualTxs,setActualTxs]=useState([]);
+  const [showAddTx,setShowAddTx]=useState(false);
+  const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
+  const [txBusy,setTxBusy]=useState(false);
 
   const selectedRace=myRaces.find(r=>r.id===selectedRaceId);
+  
+  async function refreshTxs(){
+    if(!selectedRaceId)return;
+    const {data:txs}=await supabase.from("crm_transactions").select("*").eq("race_id",selectedRaceId);
+    setActualTxs(txs||[]);
+  }
+  
+  async function addTransaction(){
+    const amt=parseFloat(txForm.amount);
+    if(!amt||amt<=0||!txForm.description.trim()){toast(lang==="el"?"⚠ Συμπληρώστε ποσό και περιγραφή":"⚠ Fill amount and description","warning");return;}
+    setTxBusy(true);
+    const finalAmount=txForm.type==="expense"||txForm.type==="refund"?-Math.abs(amt):Math.abs(amt);
+    const {error}=await supabase.from("crm_transactions").insert({
+      organizer_id:profile?.id,
+      race_id:selectedRaceId,
+      type:txForm.type,
+      amount:finalAmount,
+      description:txForm.description.trim(),
+      source:"manual",
+      status:"completed",
+      transaction_date:txForm.date
+    });
+    setTxBusy(false);
+    if(error){toast("⚠ "+error.message,"error");return;}
+    setTxForm({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
+    setShowAddTx(false);
+    await refreshTxs();
+    toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
+  }
+  
+  async function deleteTx(id){
+    if(!confirm(lang==="el"?"Διαγραφή συναλλαγής;":"Delete transaction?"))return;
+    const {error}=await supabase.from("crm_transactions").delete().eq("id",id);
+    if(error){toast("⚠ "+error.message,"error");return;}
+    await refreshTxs();
+    toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");
+  }
 
   useEffect(()=>{
     if(!selectedRaceId)return;
@@ -6763,6 +6803,67 @@ function RaceForecast({races,registrations,session,profile}){
         </div>
       </div>
 
+      {/* ============ TRANSACTIONS - Add & List ============ */}
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px",flexWrap:"wrap",gap:"8px"}}>
+          <h3 style={{margin:0,fontSize:"14px",fontWeight:800,color:T.text}}>💰 {lang==="el"?"Πραγματικές Συναλλαγές":"Actual Transactions"} ({actualTxs.length})</h3>
+          <button onClick={()=>setShowAddTx(!showAddTx)} style={{background:showAddTx?T.danger+"22":T.primary,color:showAddTx?T.danger:"#fff",border:showAddTx?`1px solid ${T.danger}44`:"none",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{showAddTx?"✕ "+(lang==="el"?"Άκυρο":"Cancel"):"+ "+(lang==="el"?"Νέα Συναλλαγή":"New Transaction")}</button>
+        </div>
+
+        {/* Add Transaction Form */}
+        {showAddTx&&(
+          <div style={{background:T.bg,border:`1px dashed ${T.primary}44`,borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"10px"}}>
+              <div>
+                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Τύπος":"Type"}</label>
+                <select value={txForm.type} onChange={e=>setTxForm({...txForm,type:e.target.value})} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit"}}>
+                  <option value="sponsorship">🤝 Sponsorship</option>
+                  <option value="other">💵 {lang==="el"?"Άλλο Έσοδο":"Other Income"}</option>
+                  <option value="expense">📉 {lang==="el"?"Έξοδο":"Expense"}</option>
+                  <option value="refund">↩️ {lang==="el"?"Επιστροφή":"Refund"}</option>
+                </select>
+              </div>
+              <div>
+                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Ποσό (€)":"Amount (€)"}</label>
+                <input type="number" step="0.01" value={txForm.amount} onChange={e=>setTxForm({...txForm,amount:e.target.value})} placeholder="0.00" style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:"10px"}}>
+              <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Περιγραφή":"Description"}</label>
+              <input value={txForm.description} onChange={e=>setTxForm({...txForm,description:e.target.value})} placeholder={lang==="el"?"π.χ. Χορηγία από εταιρεία ΧΨΖ":"e.g. Sponsor from XYZ Company"} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"flex",gap:"10px",alignItems:"flex-end"}}>
+              <div style={{flex:1}}>
+                <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Ημερομηνία":"Date"}</label>
+                <input type="date" value={txForm.date} onChange={e=>setTxForm({...txForm,date:e.target.value})} style={{width:"100%",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+              <button onClick={addTransaction} disabled={txBusy||!txForm.amount||!txForm.description.trim()} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 18px",fontSize:"13px",fontWeight:700,cursor:txBusy||!txForm.amount||!txForm.description.trim()?"not-allowed":"pointer",fontFamily:"inherit",opacity:txBusy||!txForm.amount||!txForm.description.trim()?0.5:1,height:"36px"}}>{txBusy?"...":(lang==="el"?"💾 Αποθήκευση":"💾 Save")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Transactions List */}
+        {actualTxs.length===0?(
+          <div style={{textAlign:"center",padding:"20px",color:T.textLight,fontSize:"12px",background:T.bg,borderRadius:"8px"}}>{lang==="el"?"Δεν υπάρχουν συναλλαγές για αυτόν τον αγώνα":"No transactions for this race"}</div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            {actualTxs.sort((a,b)=>(b.transaction_date||"").localeCompare(a.transaction_date||"")).map(tx=>{
+              const typeIcons={sponsorship:"🤝",registration:"🏃",other:"💵",expense:"📉",refund:"↩️"};
+              const isIncome=tx.amount>0;
+              return <div key={tx.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+                <span style={{fontSize:"18px"}}>{typeIcons[tx.type]||"💰"}</span>
+                <div style={{flex:1,minWidth:"180px"}}>
+                  <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{tx.description}</div>
+                  <div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>📅 {tx.transaction_date} · {tx.source==="auto"?(lang==="el"?"αυτόματο":"auto"):"manual"}</div>
+                </div>
+                <div style={{fontSize:"15px",fontWeight:800,fontFamily:"monospace",color:isIncome?T.accent:T.warning,minWidth:"90px",textAlign:"right"}}>{isIncome?"+":""}{parseFloat(tx.amount).toFixed(2)}€</div>
+                {tx.source==="manual"&&<button onClick={()=>deleteTx(tx.id)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"3px 8px",fontSize:"11px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+              </div>;
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Notes */}
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px"}}>
         <h3 style={{margin:"0 0 10px",fontSize:"14px",fontWeight:800,color:T.text}}>📝 {lang==="el"?"Σημειώσεις":"Notes"}</h3>
@@ -6959,7 +7060,7 @@ function AppContent(){
 
     {isOrganizer&&(<>
       <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt,flexWrap:"wrap"}}>
-        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},{id:"forecast",label:"💰 Forecast"},{id:"crm",label:"🏢 CRM"},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
+        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},{id:"forecast",label:"💰 Forecast / Actual"},{id:"crm",label:"🏢 CRM"},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
           <button key={tb.id} onClick={()=>setTab(tb.id)} style={{background:tab===tb.id?T.primary:"none",color:tab===tb.id?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"13px",fontWeight:tab===tb.id?700:500,fontFamily:"inherit"}}>{tb.label}</button>
         ))}
       </div>
