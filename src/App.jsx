@@ -5841,7 +5841,7 @@ function CRMDashboard({session,profile,races}){
     {/* TASKS MODULE - simplified */}
     {activeView==="tasks"&&(()=>{
       const [newTitle,priorityValue]=["",""];
-      return <TasksModule tasks={tasks} onRefresh={fetchCRM} myProfileId={profile?.id} lang={lang}/>;
+      return <TasksModule tasks={tasks} onRefresh={fetchCRM} myProfileId={profile?.id} lang={lang} races={races}/>;
     })()}
     {/* SPONSORS / VOLUNTEERS - placeholders for next phases */}
     {(activeView==="sponsors"||activeView==="volunteers")&&(
@@ -5854,24 +5854,28 @@ function CRMDashboard({session,profile,races}){
   </div>;
 }
 
-function TasksModule({tasks,onRefresh,myProfileId,lang}){
+function TasksModule({tasks,onRefresh,myProfileId,lang,races}){
   const [newTitle,setNewTitle]=useState("");
   const [newPriority,setNewPriority]=useState("medium");
+  const [newRaceId,setNewRaceId]=useState("");
   const [adding,setAdding]=useState(false);
   const [busyId,setBusyId]=useState(null);
   async function addTask(){
     if(!newTitle.trim()||!myProfileId)return;
     setAdding(true);
-    const {error}=await supabase.from("crm_tasks").insert({
+    const insertData={
       organizer_id:myProfileId,
       title:newTitle.trim(),
       priority:newPriority,
       status:"todo"
-    });
+    };
+    if(newRaceId)insertData.race_id=newRaceId;
+    const {error}=await supabase.from("crm_tasks").insert(insertData);
     setAdding(false);
     if(!error){
       setNewTitle("");
       setNewPriority("medium");
+      // Keep newRaceId for batch entry of multiple tasks for same race
       if(onRefresh)onRefresh();
       toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
     }else{
@@ -5901,54 +5905,117 @@ function TasksModule({tasks,onRefresh,myProfileId,lang}){
   const doneTasks=tasks.filter(t=>t.status==="done");
   const priorityColors={urgent:T.danger,high:T.warning,medium:T.primary,low:T.textMid};
   const priorityLabels={urgent:lang==="el"?"🔴 Επείγον":"🔴 Urgent",high:lang==="el"?"🟠 Υψηλή":"🟠 High",medium:lang==="el"?"🔵 Μέτρια":"🔵 Medium",low:lang==="el"?"⚪ Χαμηλή":"⚪ Low"};
+  
+  // Group todoTasks by race_id
+  const groupedTodo={};
+  const noRaceTodo=[];
+  todoTasks.forEach(t=>{
+    if(t.race_id){
+      if(!groupedTodo[t.race_id])groupedTodo[t.race_id]=[];
+      groupedTodo[t.race_id].push(t);
+    }else{
+      noRaceTodo.push(t);
+    }
+  });
+  const racesList=races||[];
+  
   return <div>
     {/* Add new task */}
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"14px",marginBottom:"16px"}}>
       <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800}}>➕ {lang==="el"?"Νέα Εργασία":"New Task"}</h3>
-      <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"8px"}}>
         <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();}} placeholder={lang==="el"?"π.χ. Αγορά μεταλλίων":"e.g. Buy medals"} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
-        <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} style={{padding:"10px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+        <button onClick={addTask} disabled={adding||!newTitle.trim()} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 18px",fontSize:"13px",fontWeight:700,cursor:adding||!newTitle.trim()?"not-allowed":"pointer",fontFamily:"inherit",opacity:adding||!newTitle.trim()?0.5:1}}>{adding?"...":(lang==="el"?"➕ Προσθήκη":"➕ Add")}</button>
+      </div>
+      <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+        <select value={newRaceId} onChange={e=>setNewRaceId(e.target.value)} style={{flex:1,minWidth:"180px",padding:"8px 12px",fontSize:"12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
+          <option value="">📌 {lang==="el"?"Γενική (χωρίς αγώνα)":"General (no race)"}</option>
+          {racesList.map(r=><option key={r.id} value={r.id}>🏁 {r.name}</option>)}
+        </select>
+        <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} style={{padding:"8px 12px",fontSize:"12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
           <option value="low">⚪ {lang==="el"?"Χαμηλή":"Low"}</option>
           <option value="medium">🔵 {lang==="el"?"Μέτρια":"Medium"}</option>
           <option value="high">🟠 {lang==="el"?"Υψηλή":"High"}</option>
           <option value="urgent">🔴 {lang==="el"?"Επείγον":"Urgent"}</option>
         </select>
-        <button onClick={addTask} disabled={adding||!newTitle.trim()} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 18px",fontSize:"13px",fontWeight:700,cursor:adding||!newTitle.trim()?"not-allowed":"pointer",fontFamily:"inherit",opacity:adding||!newTitle.trim()?0.5:1}}>{adding?"...":(lang==="el"?"➕ Προσθήκη":"➕ Add")}</button>
       </div>
     </div>
-    {/* TODO list */}
-    <div style={{marginBottom:"20px"}}>
-      <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800,display:"flex",alignItems:"center",gap:"6px"}}>📋 {lang==="el"?`Σε εκκρεμότητα (${todoTasks.length})`:`To Do (${todoTasks.length})`}</h3>
-      {todoTasks.length===0?(
-        <div style={{textAlign:"center",padding:"30px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"10px"}}>🎉 {lang==="el"?"Καμία εκκρεμότητα!":"No pending tasks!"}</div>
-      ):(
-        <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-          {todoTasks.map(task=>(
-            <div key={task.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
-              <button onClick={()=>markDone(task.id)} disabled={busyId===task.id} style={{background:"transparent",border:`2px solid ${T.border}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit"}} title={lang==="el"?"Ολοκλήρωση":"Complete"}></button>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{task.title}</div>
-                {task.description&&<div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>{task.description}</div>}
-              </div>
-              <span style={{background:priorityColors[task.priority]+"22",color:priorityColors[task.priority],padding:"3px 9px",borderRadius:"6px",fontSize:"10px",fontWeight:700,whiteSpace:"nowrap"}}>{priorityLabels[task.priority]}</span>
-              <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit"}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑</button>
+    
+    {/* Total counter */}
+    {todoTasks.length>0&&(
+      <div style={{padding:"8px 14px",background:`${T.primary}10`,borderRadius:"8px",fontSize:"12px",color:T.textMid,marginBottom:"12px",display:"flex",justifyContent:"space-between"}}>
+        <span>📋 {lang==="el"?`Σύνολο εκκρεμοτήτων: ${todoTasks.length}`:`Total pending: ${todoTasks.length}`}</span>
+        <span>✅ {lang==="el"?`Ολοκληρωμένες: ${doneTasks.length}`:`Done: ${doneTasks.length}`}</span>
+      </div>
+    )}
+    
+    {/* Grouped TODO list - by race */}
+    {todoTasks.length===0?(
+      <div style={{textAlign:"center",padding:"30px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"10px",marginBottom:"20px"}}>🎉 {lang==="el"?"Καμία εκκρεμότητα!":"No pending tasks!"}</div>
+    ):(
+      <div style={{display:"flex",flexDirection:"column",gap:"14px",marginBottom:"20px"}}>
+        {/* Race groups */}
+        {Object.entries(groupedTodo).map(([raceId,raceTasks])=>{
+          const race=racesList.find(r=>r.id===raceId);
+          if(!race)return null;
+          return <div key={raceId}>
+            <h3 style={{margin:"0 0 8px",fontSize:"12px",color:T.primary,fontWeight:800,display:"flex",alignItems:"center",gap:"8px",letterSpacing:"0.05em"}}>
+              🏁 {race.name} <span style={{background:T.primary+"22",color:T.primary,padding:"2px 8px",borderRadius:"99px",fontSize:"10px",fontWeight:700}}>{raceTasks.length}</span>
+              <span style={{color:T.textLight,fontWeight:500,fontSize:"11px",marginLeft:"4px"}}>· {race.date}</span>
+            </h3>
+            <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+              {raceTasks.map(task=>(
+                <div key={task.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
+                  <button onClick={()=>markDone(task.id)} disabled={busyId===task.id} style={{background:"transparent",border:`2px solid ${T.border}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit"}} title={lang==="el"?"Ολοκλήρωση":"Complete"}></button>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{task.title}</div>
+                    {task.description&&<div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>{task.description}</div>}
+                  </div>
+                  <span style={{background:priorityColors[task.priority]+"22",color:priorityColors[task.priority],padding:"3px 9px",borderRadius:"6px",fontSize:"10px",fontWeight:700,whiteSpace:"nowrap"}}>{priorityLabels[task.priority]}</span>
+                  <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit"}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑</button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>;
+        })}
+        
+        {/* General tasks (no race) */}
+        {noRaceTodo.length>0&&(
+          <div>
+            <h3 style={{margin:"0 0 8px",fontSize:"12px",color:T.textMid,fontWeight:800,display:"flex",alignItems:"center",gap:"8px",letterSpacing:"0.05em"}}>
+              📌 {lang==="el"?"Γενικές":"General"} <span style={{background:T.textMid+"22",color:T.textMid,padding:"2px 8px",borderRadius:"99px",fontSize:"10px",fontWeight:700}}>{noRaceTodo.length}</span>
+            </h3>
+            <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+              {noRaceTodo.map(task=>(
+                <div key={task.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
+                  <button onClick={()=>markDone(task.id)} disabled={busyId===task.id} style={{background:"transparent",border:`2px solid ${T.border}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit"}} title={lang==="el"?"Ολοκλήρωση":"Complete"}></button>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.text,fontWeight:600,fontSize:"13px"}}>{task.title}</div>
+                    {task.description&&<div style={{color:T.textMid,fontSize:"11px",marginTop:"2px"}}>{task.description}</div>}
+                  </div>
+                  <span style={{background:priorityColors[task.priority]+"22",color:priorityColors[task.priority],padding:"3px 9px",borderRadius:"6px",fontSize:"10px",fontWeight:700,whiteSpace:"nowrap"}}>{priorityLabels[task.priority]}</span>
+                  <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit"}} title={lang==="el"?"Διαγραφή":"Delete"}>🗑</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    
     {/* DONE list */}
     {doneTasks.length>0&&(
       <div>
         <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.textMid,fontWeight:800}}>✅ {lang==="el"?`Ολοκληρωμένες (${doneTasks.length})`:`Done (${doneTasks.length})`}</h3>
         <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-          {doneTasks.slice(0,10).map(task=>(
-            <div key={task.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",alignItems:"center",gap:"10px",opacity:0.6}}>
+          {doneTasks.slice(0,10).map(task=>{
+            const race=racesList.find(r=>r.id===task.race_id);
+            return <div key={task.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 12px",display:"flex",alignItems:"center",gap:"10px",opacity:0.6}}>
               <button onClick={()=>reopen(task.id)} style={{background:T.accent,border:`2px solid ${T.accent}`,borderRadius:"50%",width:"22px",height:"22px",cursor:"pointer",flexShrink:0,padding:0,fontFamily:"inherit",color:"#fff",fontSize:"12px",fontWeight:900}} title={lang==="el"?"Αναίρεση":"Reopen"}>✓</button>
-              <div style={{flex:1,minWidth:0,color:T.textMid,fontSize:"12px",textDecoration:"line-through"}}>{task.title}</div>
+              <div style={{flex:1,minWidth:0,color:T.textMid,fontSize:"12px",textDecoration:"line-through"}}>{task.title}{race&&<span style={{marginLeft:"8px",fontSize:"10px",color:T.textLight}}>🏁 {race.name}</span>}</div>
               <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"12px",padding:"4px",fontFamily:"inherit"}}>🗑</button>
-            </div>
-          ))}
+            </div>;
+          })}
         </div>
       </div>
     )}
