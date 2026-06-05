@@ -6396,6 +6396,231 @@ function PublicAthleteView({athleteId,mySession,onBack}){
   </div>;
 }
 
+function RaceForecast({races,registrations,session,profile}){
+  const {lang}=useLang();
+  const isAdmin=profile?.role==="admin";
+  const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
+  const [selectedRaceId,setSelectedRaceId]=useState(myRaces[0]?.id||null);
+  const [forecast,setForecast]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [editing,setEditing]=useState({});
+  const [newExpense,setNewExpense]=useState({category:"",amount:""});
+
+  const selectedRace=myRaces.find(r=>r.id===selectedRaceId);
+
+  useEffect(()=>{
+    if(!selectedRaceId)return;
+    setLoading(true);
+    (async()=>{
+      const {data}=await supabase.from("race_forecast").select("*").eq("race_id",selectedRaceId).maybeSingle();
+      if(data){
+        setForecast(data);
+        setEditing({
+          expected_registrations:data.expected_registrations||0,
+          avg_registration_fee:data.avg_registration_fee||0,
+          expected_sponsorships:data.expected_sponsorships||0,
+          expected_other_revenue:data.expected_other_revenue||0,
+          notes:data.notes||""
+        });
+      }else{
+        // Initialize empty
+        setForecast({
+          race_id:selectedRaceId,
+          expected_registrations:0,
+          avg_registration_fee:0,
+          expected_sponsorships:0,
+          expected_other_revenue:0,
+          expense_items:[],
+          notes:""
+        });
+        setEditing({
+          expected_registrations:0,
+          avg_registration_fee:0,
+          expected_sponsorships:0,
+          expected_other_revenue:0,
+          notes:""
+        });
+      }
+      setLoading(false);
+    })();
+  },[selectedRaceId]);
+
+  async function saveForecast(updates){
+    if(!selectedRaceId)return;
+    setSaving(true);
+    const newData={...forecast,...updates};
+    if(forecast?.id){
+      const {error}=await supabase.from("race_forecast").update(updates).eq("id",forecast.id);
+      if(error){toast("⚠ "+error.message,"error");setSaving(false);return;}
+    }else{
+      const {data,error}=await supabase.from("race_forecast").insert({race_id:selectedRaceId,...updates}).select().single();
+      if(error){toast("⚠ "+error.message,"error");setSaving(false);return;}
+      newData.id=data.id;
+    }
+    setForecast(newData);
+    setSaving(false);
+    toast(lang==="el"?"✅ Αποθηκεύτηκε":"✅ Saved","success");
+  }
+
+  async function addExpense(){
+    if(!newExpense.category.trim()||!newExpense.amount)return;
+    const updated=[...(forecast?.expense_items||[]),{category:newExpense.category,amount:parseFloat(newExpense.amount)||0,id:Date.now()}];
+    await saveForecast({expense_items:updated});
+    setNewExpense({category:"",amount:""});
+  }
+
+  async function deleteExpense(id){
+    const updated=(forecast?.expense_items||[]).filter(e=>e.id!==id);
+    await saveForecast({expense_items:updated});
+  }
+
+  async function updateExpense(id,field,value){
+    const updated=(forecast?.expense_items||[]).map(e=>e.id===id?{...e,[field]:field==="amount"?parseFloat(value)||0:value}:e);
+    await saveForecast({expense_items:updated});
+  }
+
+  // Calculations
+  const registrationRevenue=(parseFloat(editing.expected_registrations)||0)*(parseFloat(editing.avg_registration_fee)||0);
+  const totalRevenue=registrationRevenue+(parseFloat(editing.expected_sponsorships)||0)+(parseFloat(editing.expected_other_revenue)||0);
+  const totalExpenses=(forecast?.expense_items||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const profit=totalRevenue-totalExpenses;
+  
+  // Actuals
+  const actualRegs=registrations.filter(r=>r.race_id===selectedRaceId);
+  const actualRevenue=actualRegs.reduce((s,r)=>s+(parseFloat(r.price_paid)||0),0);
+  const regProgress=editing.expected_registrations>0?Math.round((actualRegs.length/editing.expected_registrations)*100):0;
+  const revProgress=totalRevenue>0?Math.round((actualRevenue/totalRevenue)*100):0;
+
+  if(myRaces.length===0)return <EmptyState icon="💰" title={lang==="el"?"Δεν έχεις αγώνες":"No races yet"} message={lang==="el"?"Δημιούργησε έναν αγώνα για να δεις forecast":"Create a race first"}/>;
+
+  return <div>
+    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"22px",fontWeight:800}}>💰 {lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
+    
+    {/* Race Selector */}
+    <div style={{marginBottom:"20px"}}>
+      <Sel value={selectedRaceId||""} onChange={e=>setSelectedRaceId(e.target.value)}>
+        {myRaces.map(r=><option key={r.id} value={r.id}>{r.name} · {r.date}</option>)}
+      </Sel>
+    </div>
+
+    {loading&&<div style={{textAlign:"center",padding:"40px",color:T.textMid}}>⏳ {lang==="el"?"Φόρτωση...":"Loading..."}</div>}
+
+    {!loading&&selectedRace&&(<>
+      {/* Race Info */}
+      <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.accent}15 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px 20px",marginBottom:"20px"}}>
+        <div style={{fontSize:"18px",fontWeight:800,color:T.text}}>🏃 {selectedRace.name}</div>
+        <div style={{fontSize:"13px",color:T.textMid,marginTop:"4px"}}>📅 {selectedRace.date} · 📍 {selectedRace.location||"—"}</div>
+      </div>
+
+      {/* P&L Summary Cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:"12px",marginBottom:"24px"}}>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.accent}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"11px",color:T.textMid,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>📊 {lang==="el"?"Έσοδα Πρόβλεψη":"Forecast Revenue"}</div>
+          <div style={{fontSize:"24px",fontWeight:900,color:T.accent,marginTop:"6px"}}>{totalRevenue.toFixed(2)}€</div>
+        </div>
+        <div style={{background:T.bgAlt,border:`1px solid ${T.warning}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"11px",color:T.textMid,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>💸 {lang==="el"?"Έξοδα Πρόβλεψη":"Forecast Expenses"}</div>
+          <div style={{fontSize:"24px",fontWeight:900,color:T.warning,marginTop:"6px"}}>{totalExpenses.toFixed(2)}€</div>
+        </div>
+        <div style={{background:T.bgAlt,border:`1px solid ${profit>=0?T.accent:T.danger}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"11px",color:T.textMid,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>📈 {lang==="el"?"Κέρδος Πρόβλεψη":"Forecast Profit"}</div>
+          <div style={{fontSize:"24px",fontWeight:900,color:profit>=0?T.accent:T.danger,marginTop:"6px"}}>{profit.toFixed(2)}€</div>
+        </div>
+      </div>
+
+      {/* Revenue Section */}
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
+        <h3 style={{margin:"0 0 14px",fontSize:"15px",fontWeight:800,color:T.text}}>💰 {lang==="el"?"Έσοδα Προβλεπόμενα":"Expected Revenue"}</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"12px"}}>
+          <div>
+            <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Αναμενόμενες Εγγραφές":"Expected Registrations"}</label>
+            <input type="number" value={editing.expected_registrations} onChange={e=>setEditing({...editing,expected_registrations:e.target.value})} onBlur={()=>saveForecast({expected_registrations:parseInt(editing.expected_registrations)||0})} style={{width:"100%",padding:"8px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit"}}/>
+          </div>
+          <div>
+            <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Μέση Τιμή Εγγραφής (€)":"Avg Registration Fee (€)"}</label>
+            <input type="number" step="0.01" value={editing.avg_registration_fee} onChange={e=>setEditing({...editing,avg_registration_fee:e.target.value})} onBlur={()=>saveForecast({avg_registration_fee:parseFloat(editing.avg_registration_fee)||0})} style={{width:"100%",padding:"8px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit"}}/>
+          </div>
+        </div>
+        <div style={{padding:"8px 12px",background:T.bg,borderRadius:"8px",fontSize:"13px",color:T.textMid,marginBottom:"12px"}}>
+          {editing.expected_registrations||0} × {parseFloat(editing.avg_registration_fee||0).toFixed(2)}€ = <strong style={{color:T.accent}}>{registrationRevenue.toFixed(2)}€</strong>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+          <div>
+            <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Sponsorships (€)":"Sponsorships (€)"}</label>
+            <input type="number" step="0.01" value={editing.expected_sponsorships} onChange={e=>setEditing({...editing,expected_sponsorships:e.target.value})} onBlur={()=>saveForecast({expected_sponsorships:parseFloat(editing.expected_sponsorships)||0})} style={{width:"100%",padding:"8px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit"}}/>
+          </div>
+          <div>
+            <label style={{fontSize:"11px",color:T.textMid,fontWeight:700,display:"block",marginBottom:"4px"}}>{lang==="el"?"Άλλα Έσοδα (€)":"Other Revenue (€)"}</label>
+            <input type="number" step="0.01" value={editing.expected_other_revenue} onChange={e=>setEditing({...editing,expected_other_revenue:e.target.value})} onBlur={()=>saveForecast({expected_other_revenue:parseFloat(editing.expected_other_revenue)||0})} style={{width:"100%",padding:"8px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit"}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Expenses Section */}
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
+        <h3 style={{margin:"0 0 14px",fontSize:"15px",fontWeight:800,color:T.text}}>💸 {lang==="el"?"Έξοδα Προβλεπόμενα":"Expected Expenses"}</h3>
+        
+        <div style={{display:"flex",flexDirection:"column",gap:"8px",marginBottom:"12px"}}>
+          {(forecast?.expense_items||[]).length===0&&(
+            <div style={{padding:"20px",textAlign:"center",color:T.textLight,fontSize:"13px",background:T.bg,borderRadius:"8px"}}>{lang==="el"?"Δεν υπάρχουν έξοδα ακόμα":"No expenses yet"}</div>
+          )}
+          {(forecast?.expense_items||[]).map(exp=>(
+            <div key={exp.id} style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 12px",background:T.bg,borderRadius:"8px"}}>
+              <input value={exp.category} onChange={e=>updateExpense(exp.id,"category",e.target.value)} style={{flex:1,padding:"6px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",fontFamily:"inherit"}}/>
+              <input type="number" step="0.01" value={exp.amount} onChange={e=>updateExpense(exp.id,"amount",e.target.value)} style={{width:"120px",padding:"6px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontSize:"13px",textAlign:"right",fontFamily:"inherit"}}/>
+              <span style={{color:T.textMid,fontSize:"12px"}}>€</span>
+              <button onClick={()=>deleteExpense(exp.id)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"4px 8px",fontSize:"12px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:"8px",alignItems:"center",padding:"10px",background:`${T.primary}08`,borderRadius:"8px",border:`1px dashed ${T.primary}44`}}>
+          <input placeholder={lang==="el"?"π.χ. Μετάλλια":"e.g. Medals"} value={newExpense.category} onChange={e=>setNewExpense({...newExpense,category:e.target.value})} style={{flex:1,padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"13px",fontFamily:"inherit"}}/>
+          <input type="number" step="0.01" placeholder="0.00" value={newExpense.amount} onChange={e=>setNewExpense({...newExpense,amount:e.target.value})} style={{width:"100px",padding:"7px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"13px",textAlign:"right",fontFamily:"inherit"}}/>
+          <button onClick={addExpense} disabled={!newExpense.category.trim()||!newExpense.amount} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"6px",padding:"7px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!newExpense.category.trim()||!newExpense.amount)?0.5:1}}>+ {lang==="el"?"Προσθήκη":"Add"}</button>
+        </div>
+        
+        <div style={{marginTop:"12px",padding:"10px 14px",background:T.bg,borderRadius:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:"13px",color:T.textMid,fontWeight:700}}>{lang==="el"?"Σύνολο Εξόδων":"Total Expenses"}</span>
+          <span style={{fontSize:"18px",fontWeight:900,color:T.warning}}>{totalExpenses.toFixed(2)}€</span>
+        </div>
+      </div>
+
+      {/* Actual vs Forecast */}
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
+        <h3 style={{margin:"0 0 14px",fontSize:"15px",fontWeight:800,color:T.text}}>📊 {lang==="el"?"Πραγματικά vs Πρόβλεψη":"Actual vs Forecast"}</h3>
+        <div style={{marginBottom:"12px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"12px"}}>
+            <span style={{color:T.textMid}}>{lang==="el"?"Εγγραφές":"Registrations"}</span>
+            <span style={{color:T.text,fontWeight:700}}>{actualRegs.length} / {editing.expected_registrations||0} ({regProgress}%)</span>
+          </div>
+          <div style={{height:"8px",background:T.bg,borderRadius:"4px",overflow:"hidden"}}>
+            <div style={{height:"100%",background:T.primary,width:`${Math.min(100,regProgress)}%`,transition:"width 0.3s"}}/>
+          </div>
+        </div>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"12px"}}>
+            <span style={{color:T.textMid}}>{lang==="el"?"Έσοδα":"Revenue"}</span>
+            <span style={{color:T.text,fontWeight:700}}>{actualRevenue.toFixed(2)}€ / {totalRevenue.toFixed(2)}€ ({revProgress}%)</span>
+          </div>
+          <div style={{height:"8px",background:T.bg,borderRadius:"4px",overflow:"hidden"}}>
+            <div style={{height:"100%",background:T.accent,width:`${Math.min(100,revProgress)}%`,transition:"width 0.3s"}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"18px"}}>
+        <h3 style={{margin:"0 0 10px",fontSize:"15px",fontWeight:800,color:T.text}}>📝 {lang==="el"?"Σημειώσεις":"Notes"}</h3>
+        <textarea value={editing.notes||""} onChange={e=>setEditing({...editing,notes:e.target.value})} onBlur={()=>saveForecast({notes:editing.notes})} placeholder={lang==="el"?"Σημειώσεις, στόχοι, σχόλια...":"Notes, goals, comments..."} style={{width:"100%",minHeight:"80px",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"13px",fontFamily:"inherit",resize:"vertical"}}/>
+      </div>
+
+      {saving&&<div style={{textAlign:"center",padding:"10px",color:T.textMid,fontSize:"12px",marginTop:"12px"}}>💾 {lang==="el"?"Αποθήκευση...":"Saving..."}</div>}
+    </>)}
+  </div>;
+}
+
 function ResetPasswordModal({onClose}){
   const {t,lang}=useLang();
   const [password,setPassword]=useState("");
@@ -6581,7 +6806,7 @@ function AppContent(){
 
     {isOrganizer&&(<>
       <div style={{display:"flex",gap:"4px",padding:"12px 24px",borderBottom:`1px solid ${T.border}`,background:T.bgAlt,flexWrap:"wrap"}}>
-        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},{id:"crm",label:"🏢 CRM"},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
+        {[{id:"races",label:t.tabRaces},{id:"regs",label:t.tabRegs},{id:"stats",label:t.statsTab},{id:"forecast",label:"💰 Forecast"},{id:"crm",label:"🏢 CRM"},...(isAdmin?[{id:"admin",label:t.tabAdmin}]:[])].map(tb=>(
           <button key={tb.id} onClick={()=>setTab(tb.id)} style={{background:tab===tb.id?T.primary:"none",color:tab===tb.id?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontSize:"13px",fontWeight:tab===tb.id?700:500,fontFamily:"inherit"}}>{tb.label}</button>
         ))}
       </div>
@@ -6589,6 +6814,7 @@ function AppContent(){
         {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
         {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
         {tab==="stats"&&<OrganizerStats races={races} registrations={registrations} session={session} profile={profile}/>}
+        {tab==="forecast"&&<RaceForecast races={races} registrations={registrations} session={session} profile={profile}/>}
         {tab==="crm"&&<CRMDashboard session={session} profile={profile} races={races}/>}
         {tab==="admin"&&isAdmin&&<AdminPanel/>}
       </div>
