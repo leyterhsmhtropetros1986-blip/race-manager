@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+// Cache-bust: 2026-06-05T13:00 — force Vercel rebuild for privacy fixes
 
 // Global keyframe injection for skeleton animation
 if (typeof document !== "undefined" && !document.getElementById("rm-global-styles")) {
@@ -6946,33 +6947,6 @@ function AppContent(){
       events.forEach(e=>window.removeEventListener(e,resetTimer));
     };
   },[session,lang]);
-
-  // Auto-logout after 30 minutes of inactivity
-  useEffect(()=>{
-    if(!session)return;
-    const INACTIVITY_TIMEOUT=30*60*1000; // 30 minutes
-    const WARNING_BEFORE=5*60*1000; // 5 min warning
-    let logoutTimer,warningTimer;
-    function resetTimers(){
-      clearTimeout(logoutTimer);
-      clearTimeout(warningTimer);
-      warningTimer=setTimeout(()=>{
-        toast("⏰ Θα αποσυνδεθείτε σε 5 λεπτά λόγω αδράνειας","warning");
-      },INACTIVITY_TIMEOUT-WARNING_BEFORE);
-      logoutTimer=setTimeout(()=>{
-        toast("👋 Αποσυνδεθήκατε λόγω αδράνειας","info");
-        supabase.auth.signOut();
-      },INACTIVITY_TIMEOUT);
-    }
-    const events=["mousedown","keydown","scroll","touchstart","click"];
-    events.forEach(e=>window.addEventListener(e,resetTimers,{passive:true}));
-    resetTimers();
-    return ()=>{
-      clearTimeout(logoutTimer);
-      clearTimeout(warningTimer);
-      events.forEach(e=>window.removeEventListener(e,resetTimers));
-    };
-  },[session]);
 
   async function fetchAll(){
     if(!session)return;
