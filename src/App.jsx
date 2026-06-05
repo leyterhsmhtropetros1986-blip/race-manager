@@ -6477,7 +6477,9 @@ function PublicAthleteView({athleteId,mySession,onBack}){
 
 function RaceForecast({races,registrations,session,profile}){
   const {lang}=useLang();
-  const myRaces=races.filter(r=>r.user_id===session?.user?.id);
+  const myUserId=session?.user?.id;
+  const myProfileId=profile?.id;
+  const myRaces=races.filter(r=>r.user_id===myUserId||r.user_id===myProfileId);
   const [selectedRaceId,setSelectedRaceId]=useState(myRaces[0]?.id||null);
   const [forecast,setForecast]=useState(null);
   const [loading,setLoading]=useState(false);
@@ -6530,6 +6532,9 @@ function RaceForecast({races,registrations,session,profile}){
 
   useEffect(()=>{
     if(!selectedRaceId)return;
+    // GUARD: only load forecast for races user owns
+    const ownsRace=myRaces.some(r=>r.id===selectedRaceId);
+    if(!ownsRace){setSelectedRaceId(myRaces[0]?.id||null);return;}
     setLoading(true);
     (async()=>{
       // Fetch forecast
