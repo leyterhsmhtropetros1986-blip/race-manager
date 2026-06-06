@@ -5572,8 +5572,7 @@ function AdminPanel(){
           phone:manualForm.phone||null,
           dob:manualForm.dob||null,
           gender:manualForm.gender||"male",
-          city:manualForm.city||null,
-          amka:manualForm.amka||null
+          city:manualForm.city||null
         }]).select("id").single();
         if(runErr)throw runErr;
         runnerId=newRun.id;
@@ -5848,15 +5847,9 @@ function AdminPanel(){
         </div>
       </div>
       
-      <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:"12px",marginBottom:"16px"}}>
-        <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>ΑΜΚΑ</label>
-          <input value={manualForm.amka} onChange={e=>setManualForm({...manualForm,amka:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
-        </div>
-        <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Σημειώσεις":"Notes"}</label>
-          <input value={manualForm.notes} onChange={e=>setManualForm({...manualForm,notes:e.target.value})} placeholder={lang==="el"?"π.χ. πληρώθηκε με μετρητά":"e.g. paid cash"} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
-        </div>
+      <div style={{marginBottom:"16px"}}>
+        <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Σημειώσεις":"Notes"}</label>
+        <input value={manualForm.notes} onChange={e=>setManualForm({...manualForm,notes:e.target.value})} placeholder={lang==="el"?"π.χ. πληρώθηκε με μετρητά":"e.g. paid cash"} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
       </div>
       
       <div style={{marginBottom:"16px"}}>
