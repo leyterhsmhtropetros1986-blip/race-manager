@@ -6355,6 +6355,7 @@ function FinanceModule({organizerId,races,lang}){
 function PublicProfileShareCard({profile}){
   const {lang}=useLang();
   const [showShare,setShowShare]=useState(false);
+  const [showQR,setShowQR]=useState(false);
   const [copied,setCopied]=useState(false);
   const [isPublic,setIsPublic]=useState(profile?.profile_public!==false);
   const [busy,setBusy]=useState(false);
@@ -6431,7 +6432,17 @@ function PublicProfileShareCard({profile}){
             <button onClick={copyLink} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{copied?"✓ "+(lang==="el"?"OK":"OK"):"📋 "+(lang==="el"?"Copy":"Copy")}</button>
             <button onClick={shareViaWhatsApp} style={{background:"#25D366",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💬 WhatsApp</button>
             <button onClick={shareViaViber} style={{background:"#7360F2",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💜 Viber</button>
+            <button onClick={()=>setShowQR(!showQR)} style={{background:"#1a1a1a",color:"#fff",border:"none",borderRadius:"8px",padding:"9px 10px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📱 QR Code</button>
           </div>
+          
+          {showQR&&(
+            <div style={{marginTop:"14px",padding:"16px",background:"#fff",borderRadius:"12px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+              <div style={{fontSize:"13px",fontWeight:700,color:T.text,marginBottom:"10px"}}>📱 {lang==="el"?"Σκάναρε για να δεις το profile":"Scan to view profile"}</div>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(publicUrl)}&color=4a5dc7&bgcolor=ffffff&margin=10`} alt="QR Code" style={{display:"block",margin:"0 auto",borderRadius:"8px",maxWidth:"100%"}}/>
+              <div style={{fontSize:"11px",color:T.textMid,marginTop:"8px",fontFamily:"monospace",wordBreak:"break-all"}}>{publicUrl}</div>
+              <a href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(publicUrl)}&color=4a5dc7&bgcolor=ffffff&margin=20&format=png&download=1`} download={`qr-${profile.athlete_id||"athlete"}.png`} style={{display:"inline-block",marginTop:"10px",background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"12px",fontWeight:700,textDecoration:"none",fontFamily:"inherit"}}>⬇ {lang==="el"?"Κατέβασμα QR":"Download QR"}</a>
+            </div>
+          )}
         </>)}
       </div>
     )}
