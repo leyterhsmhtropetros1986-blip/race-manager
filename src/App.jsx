@@ -2465,6 +2465,8 @@ function PublicResultsPage({raceId,onBack}){
   const [runners,setRunners]=useState([]);
   const [loading,setLoading]=useState(true);
   const [filterDistance,setFilterDistance]=useState("all");
+  const [filterGender,setFilterGender]=useState("all");
+  const [filterCategory,setFilterCategory]=useState("all");
   const [isMobile,setIsMobile]=useState(typeof window!=="undefined"&&window.innerWidth<640);
   useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<640);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
@@ -2484,7 +2486,36 @@ function PublicResultsPage({raceId,onBack}){
   if(!race)return <div style={{minHeight:"100vh",background:T.bg,padding:"40px",fontFamily:"Inter,sans-serif",textAlign:"center"}}>—</div>;
 
   const distances=race.distance?race.distance.split(" | "):[];
-  const filtered=results.filter(r=>r.finish_time).filter(r=>filterDistance==="all"||r.distance===filterDistance).sort((a,b)=>{if(a.overall_rank&&b.overall_rank)return a.overall_rank-b.overall_rank;return timeToSeconds(a.finish_time)-timeToSeconds(b.finish_time);});
+  
+  function getAgeCategory(dob,raceDate){
+    if(!dob)return null;
+    const ageInYears=Math.floor((new Date(raceDate||Date.now())-new Date(dob))/(365.25*24*3600*1000));
+    if(ageInYears<20)return "U20";
+    if(ageInYears<30)return "20-29";
+    if(ageInYears<40)return "30-39";
+    if(ageInYears<50)return "40-49";
+    if(ageInYears<60)return "50-59";
+    return "60+";
+  }
+  
+  // Enrich results with runner info for filtering
+  const enriched=results.filter(r=>r.finish_time).map(r=>{
+    const runner=runners.find(x=>x.id===r.runner_id)||{};
+    return {...r,_gender:runner.gender,_category:getAgeCategory(runner.dob,race.date)};
+  });
+  
+  const allCategories=[...new Set(enriched.map(r=>r._category).filter(Boolean))].sort();
+  
+  const filtered=enriched
+    .filter(r=>filterDistance==="all"||r.distance===filterDistance)
+    .filter(r=>filterGender==="all"||r._gender===filterGender)
+    .filter(r=>filterCategory==="all"||r._category===filterCategory)
+    .sort((a,b)=>{
+      // When filtering by gender/category, recompute rank from time
+      if(filterGender!=="all"||filterCategory!=="all")return timeToSeconds(a.finish_time)-timeToSeconds(b.finish_time);
+      if(a.overall_rank&&b.overall_rank)return a.overall_rank-b.overall_rank;
+      return timeToSeconds(a.finish_time)-timeToSeconds(b.finish_time);
+    });
 
   return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"24px 16px"}}>
     <div style={{maxWidth:"960px",margin:"0 auto"}}>
@@ -2505,6 +2536,19 @@ function PublicResultsPage({raceId,onBack}){
           {distances.map(d=><button key={d} onClick={()=>setFilterDistance(d)} style={{background:filterDistance===d?T.primary:T.bgAlt,color:filterDistance===d?"#fff":T.textMid,border:`1px solid ${filterDistance===d?T.primary:T.border}`,borderRadius:"8px",padding:"8px 14px",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>🏃 {d}</button>)}
         </div>
       )}
+      
+      {/* Gender + Category filters */}
+      <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"16px",alignItems:"center"}}>
+        <button onClick={()=>setFilterGender("all")} style={{background:filterGender==="all"?T.accent:T.bgAlt,color:filterGender==="all"?"#fff":T.textMid,border:`1px solid ${filterGender==="all"?T.accent:T.border}`,borderRadius:"8px",padding:"7px 12px",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit"}}>👥 Όλοι</button>
+        <button onClick={()=>setFilterGender("male")} style={{background:filterGender==="male"?T.accent:T.bgAlt,color:filterGender==="male"?"#fff":T.textMid,border:`1px solid ${filterGender==="male"?T.accent:T.border}`,borderRadius:"8px",padding:"7px 12px",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit"}}>♂ Άνδρες</button>
+        <button onClick={()=>setFilterGender("female")} style={{background:filterGender==="female"?T.accent:T.bgAlt,color:filterGender==="female"?"#fff":T.textMid,border:`1px solid ${filterGender==="female"?T.accent:T.border}`,borderRadius:"8px",padding:"7px 12px",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit"}}>♀ Γυναίκες</button>
+        {allCategories.length>0&&(
+          <select value={filterCategory} onChange={e=>setFilterCategory(e.target.value)} style={{background:filterCategory==="all"?T.bgAlt:T.warning,color:filterCategory==="all"?T.textMid:"#fff",border:`1px solid ${filterCategory==="all"?T.border:T.warning}`,borderRadius:"8px",padding:"7px 12px",cursor:"pointer",fontSize:"12px",fontWeight:600,fontFamily:"inherit"}}>
+            <option value="all">🎯 Όλες κατηγορίες</option>
+            {allCategories.map(c=>(<option key={c} value={c}>🎯 {c}</option>))}
+          </select>
+        )}
+      </div>
       {filtered.length===0?(
         <div style={{textAlign:"center",color:T.textLight,padding:"60px",background:T.bgAlt,borderRadius:"12px",border:`1px solid ${T.border}`}}>{t.resultsNoData}</div>
       ):(
