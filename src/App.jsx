@@ -3825,7 +3825,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
-                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
+                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>
                 <div style={{marginTop:"10px",display:"flex",alignItems:"center",gap:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
                   <KudosButton activityId={act.id} myProfileId={myProfileId}/>
                 </div>
@@ -5722,7 +5722,7 @@ function CRMDashboard({session,profile,races}){
   const [volunteers,setVolunteers]=useState([]);
   const [tasks,setTasks]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [activeView,setActiveView]=useState("contacts");
+  const [activeView,setActiveView]=useState("tasks");
   const [search,setSearch]=useState("");
   const [contactSort,setContactSort]=useState("recent");
   async function fetchCRM(){
@@ -6664,9 +6664,9 @@ function RaceForecast({races,registrations,session,profile}){
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px",marginBottom:"16px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
           <h3 style={{margin:0,fontSize:"16px",fontWeight:800,color:T.accent,letterSpacing:"0.05em"}}>📊 {lang==="el"?"ΕΣΟΔΑ":"REVENUE"}</h3>
-          <div style={{display:"flex",gap:"60px",fontSize:"10px",color:T.textMid,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>
-            <span style={{minWidth:"90px",textAlign:"right"}}>{lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</span>
-            <span style={{minWidth:"90px",textAlign:"right"}}>{lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</span>
+          <div style={{display:"flex",gap:"20px",fontSize:"10px",color:T.textMid,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</span>
+            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</span>
           </div>
         </div>
         
@@ -6681,9 +6681,9 @@ function RaceForecast({races,registrations,session,profile}){
               <span>€</span>
             </div>
           </div>
-          <div style={{display:"flex",gap:"60px"}}>
-            <div style={{fontSize:"15px",fontWeight:700,color:T.accent,fontFamily:"monospace",minWidth:"90px",textAlign:"right"}}>{registrationRevenue.toFixed(2)}€</div>
-            <div style={{minWidth:"90px",textAlign:"right"}}>
+          <div style={{display:"flex",gap:"20px"}}>
+            <div style={{fontSize:"15px",fontWeight:700,color:T.accent,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{registrationRevenue.toFixed(2)}€</div>
+            <div style={{minWidth:"70px",textAlign:"right"}}>
               <div style={{fontSize:"15px",fontWeight:700,color:actualRegRevenue>0?T.text:T.textLight,fontFamily:"monospace"}}>{actualRegRevenue.toFixed(2)}€</div>
               <div style={{fontSize:"9px",color:T.textLight,marginTop:"2px"}}>{actualRegs.filter(r=>r.payment_status==="paid").length}/{actualRegs.length} {lang==="el"?"πληρ.":"paid"}</div>
             </div>
@@ -6693,7 +6693,7 @@ function RaceForecast({races,registrations,session,profile}){
         {/* Row: Sponsorships */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`,gap:"12px"}}>
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Sponsorships":"Sponsorships"}</div>
-          <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
+          <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
             <input type="number" step="0.01" value={editing.expected_sponsorships} onChange={e=>setEditing({...editing,expected_sponsorships:e.target.value})} onBlur={()=>saveForecast({expected_sponsorships:parseFloat(editing.expected_sponsorships)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
             <input type="number" step="0.01" value={editing.actual_sponsorships} onChange={e=>setEditing({...editing,actual_sponsorships:e.target.value})} onBlur={()=>saveForecast({actual_sponsorships:parseFloat(editing.actual_sponsorships)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
           </div>
@@ -6702,7 +6702,7 @@ function RaceForecast({races,registrations,session,profile}){
         {/* Row: Other Revenue */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`2px solid ${T.text}33`,gap:"12px"}}>
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Άλλα Έσοδα":"Other Revenue"}</div>
-          <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
+          <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
             <input type="number" step="0.01" value={editing.expected_other_revenue} onChange={e=>setEditing({...editing,expected_other_revenue:e.target.value})} onBlur={()=>saveForecast({expected_other_revenue:parseFloat(editing.expected_other_revenue)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
             <input type="number" step="0.01" value={editing.actual_other_revenue} onChange={e=>setEditing({...editing,actual_other_revenue:e.target.value})} onBlur={()=>saveForecast({actual_other_revenue:parseFloat(editing.actual_other_revenue)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
           </div>
@@ -6711,9 +6711,9 @@ function RaceForecast({races,registrations,session,profile}){
         {/* Row: TOTAL */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 4px",gap:"12px"}}>
           <div style={{color:T.text,fontSize:"15px",fontWeight:900,letterSpacing:"0.05em"}}>{lang==="el"?"ΣΥΝΟΛΟ":"TOTAL"}</div>
-          <div style={{display:"flex",gap:"60px"}}>
-            <div style={{fontSize:"20px",fontWeight:900,color:T.accent,fontFamily:"monospace",minWidth:"90px",textAlign:"right"}}>{totalRevenue.toFixed(2)}€</div>
-            <div style={{minWidth:"90px",textAlign:"right"}}>
+          <div style={{display:"flex",gap:"20px"}}>
+            <div style={{fontSize:"20px",fontWeight:900,color:T.accent,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{totalRevenue.toFixed(2)}€</div>
+            <div style={{minWidth:"70px",textAlign:"right"}}>
               <div style={{fontSize:"20px",fontWeight:900,color:T.text,fontFamily:"monospace"}}>{actualRevenue.toFixed(2)}€</div>
               {totalRevenue>0&&<div style={{fontSize:"10px",color:revProgress>=80?T.accent:revProgress>=40?T.warning:T.danger,fontWeight:700,marginTop:"2px"}}>{revProgress}%</div>}
             </div>
@@ -6725,9 +6725,9 @@ function RaceForecast({races,registrations,session,profile}){
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px",marginBottom:"16px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
           <h3 style={{margin:0,fontSize:"16px",fontWeight:800,color:T.warning,letterSpacing:"0.05em"}}>💸 {lang==="el"?"ΕΞΟΔΑ":"EXPENSES"}</h3>
-          <div style={{display:"flex",gap:"60px",fontSize:"10px",color:T.textMid,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>
-            <span style={{minWidth:"90px",textAlign:"right"}}>{lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</span>
-            <span style={{minWidth:"90px",textAlign:"right"}}>{lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</span>
+          <div style={{display:"flex",gap:"20px",fontSize:"10px",color:T.textMid,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</span>
+            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</span>
           </div>
         </div>
         
@@ -6739,7 +6739,7 @@ function RaceForecast({races,registrations,session,profile}){
         {(forecast?.expense_items||[]).map(exp=>(
           <div key={exp.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`,gap:"10px"}}>
             <input value={exp.category} onChange={e=>updateExpense(exp.id,"category",e.target.value)} style={{flex:1,padding:"6px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}/>
-            <div style={{display:"flex",gap:"60px",alignItems:"center"}}>
+            <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
               <input type="number" step="0.01" value={exp.amount} onChange={e=>updateExpense(exp.id,"amount",e.target.value)} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.warning,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
               <input type="number" step="0.01" value={exp.actual_amount||""} onChange={e=>updateExpense(exp.id,"actual_amount",e.target.value)} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
             </div>
@@ -6757,9 +6757,9 @@ function RaceForecast({races,registrations,session,profile}){
         {/* Row: TOTAL EXPENSES */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 4px",borderTop:`2px solid ${T.text}33`,marginTop:"8px"}}>
           <div style={{color:T.text,fontSize:"15px",fontWeight:900,letterSpacing:"0.05em"}}>{lang==="el"?"ΣΥΝΟΛΟ":"TOTAL"}</div>
-          <div style={{display:"flex",gap:"60px"}}>
-            <div style={{fontSize:"20px",fontWeight:900,color:T.warning,fontFamily:"monospace",minWidth:"90px",textAlign:"right"}}>{totalExpenses.toFixed(2)}€</div>
-            <div style={{minWidth:"90px",textAlign:"right"}}>
+          <div style={{display:"flex",gap:"20px"}}>
+            <div style={{fontSize:"20px",fontWeight:900,color:T.warning,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{totalExpenses.toFixed(2)}€</div>
+            <div style={{minWidth:"70px",textAlign:"right"}}>
               <div style={{fontSize:"20px",fontWeight:900,color:T.text,fontFamily:"monospace"}}>{actualTotalExpenses.toFixed(2)}€</div>
               {totalExpenses>0&&<div style={{fontSize:"10px",color:expProgress>100?T.danger:expProgress>=80?T.warning:T.accent,fontWeight:700,marginTop:"2px"}}>{expProgress}%</div>}
             </div>
