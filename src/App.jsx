@@ -6936,7 +6936,7 @@ ${expenseRows}
       if(userId){
         const fileName=`forecast-${selectedRace.name.replace(/[^a-z0-9]/gi,"_")}-${now.getTime()}.html`;
         const filePath=`${userId}/${fileName}`;
-        const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+        const blob=new Blob(["﻿"+html],{type:"text/html;charset=utf-8"});
         const {error:upErr}=await supabase.storage.from("pdf-archive").upload(filePath,blob,{contentType:"text/html",upsert:false});
         if(!upErr){
           await supabase.from("pdf_archive").insert([{
