@@ -6488,6 +6488,7 @@ function RaceForecast({races,registrations,session,profile}){
   const [editing,setEditing]=useState({});
   const [newExpense,setNewExpense]=useState({category:"",amount:""});
   const [actualTxs,setActualTxs]=useState([]);
+  const [viewMode,setViewMode]=useState("forecast");
   const [showAddTx,setShowAddTx]=useState(false);
   const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
   const [txBusy,setTxBusy]=useState(false);
@@ -6660,63 +6661,60 @@ function RaceForecast({races,registrations,session,profile}){
         <div style={{fontSize:"13px",color:T.textMid,marginTop:"4px"}}>📅 {selectedRace.date} · 📍 {selectedRace.location||"—"}</div>
       </div>
 
+      {/* ============ TABS: Forecast / Actual ============ */}
+      <div style={{display:"flex",gap:"6px",marginBottom:"16px",background:T.bgAlt,padding:"6px",borderRadius:"12px",border:`1px solid ${T.border}`}}>
+        <button onClick={()=>setViewMode("forecast")} style={{flex:1,background:viewMode==="forecast"?T.primary:"transparent",color:viewMode==="forecast"?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"10px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>📊 {lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</button>
+        <button onClick={()=>setViewMode("actual")} style={{flex:1,background:viewMode==="actual"?T.accent:"transparent",color:viewMode==="actual"?"#fff":T.textMid,border:"none",borderRadius:"8px",padding:"10px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>✅ {lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</button>
+      </div>
+
       {/* ============ ΕΣΟΔΑ - Forecast vs Actual ============ */}
       <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"14px",padding:"20px",marginBottom:"16px"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px"}}>
-          <h3 style={{margin:0,fontSize:"16px",fontWeight:800,color:T.accent,letterSpacing:"0.05em"}}>📊 {lang==="el"?"ΕΣΟΔΑ":"REVENUE"}</h3>
-          <div style={{display:"flex",gap:"20px",fontSize:"10px",color:T.textMid,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>
-            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΟΒΛΕΨΗ":"FORECAST"}</span>
-            <span style={{minWidth:"70px",textAlign:"right"}}>{lang==="el"?"ΠΡΑΓΜΑΤΙΚΟ":"ACTUAL"}</span>
-          </div>
-        </div>
+        <h3 style={{margin:"0 0 16px",fontSize:"16px",fontWeight:800,color:T.accent,letterSpacing:"0.05em"}}>📊 {lang==="el"?"ΕΣΟΔΑ":"REVENUE"}</h3>
         
         {/* Row: Registrations */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`,gap:"12px",flexWrap:"wrap"}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.text,fontSize:"14px",fontWeight:600,marginBottom:"6px"}}>{lang==="el"?"Εγγραφές":"Registrations"}</div>
-            <div style={{display:"flex",gap:"8px",alignItems:"center",fontSize:"12px",color:T.textMid}}>
-              <input type="number" value={editing.expected_registrations} onChange={e=>setEditing({...editing,expected_registrations:e.target.value})} onBlur={()=>saveForecast({expected_registrations:parseInt(editing.expected_registrations)||0})} style={{width:"70px",padding:"4px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"12px",fontFamily:"inherit",textAlign:"right"}}/>
-              <span>×</span>
-              <input type="number" step="0.01" value={editing.avg_registration_fee} onChange={e=>setEditing({...editing,avg_registration_fee:e.target.value})} onBlur={()=>saveForecast({avg_registration_fee:parseFloat(editing.avg_registration_fee)||0})} style={{width:"80px",padding:"4px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"12px",fontFamily:"inherit",textAlign:"right"}}/>
-              <span>€</span>
-            </div>
+            {viewMode==="forecast"?(
+              <div style={{display:"flex",gap:"8px",alignItems:"center",fontSize:"12px",color:T.textMid}}>
+                <input type="number" value={editing.expected_registrations} onChange={e=>setEditing({...editing,expected_registrations:e.target.value})} onBlur={()=>saveForecast({expected_registrations:parseInt(editing.expected_registrations)||0})} style={{width:"70px",padding:"4px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"12px",fontFamily:"inherit",textAlign:"right"}}/>
+                <span>×</span>
+                <input type="number" step="0.01" value={editing.avg_registration_fee} onChange={e=>setEditing({...editing,avg_registration_fee:e.target.value})} onBlur={()=>saveForecast({avg_registration_fee:parseFloat(editing.avg_registration_fee)||0})} style={{width:"80px",padding:"4px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"12px",fontFamily:"inherit",textAlign:"right"}}/>
+                <span>€</span>
+              </div>
+            ):(
+              <div style={{fontSize:"11px",color:T.textLight}}>{actualRegs.filter(r=>r.payment_status==="paid").length}/{actualRegs.length} {lang==="el"?"πληρωμένες":"paid"}</div>
+            )}
           </div>
-          <div style={{display:"flex",gap:"20px"}}>
-            <div style={{fontSize:"15px",fontWeight:700,color:T.accent,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{registrationRevenue.toFixed(2)}€</div>
-            <div style={{minWidth:"70px",textAlign:"right"}}>
-              <div style={{fontSize:"15px",fontWeight:700,color:actualRegRevenue>0?T.text:T.textLight,fontFamily:"monospace"}}>{actualRegRevenue.toFixed(2)}€</div>
-              <div style={{fontSize:"9px",color:T.textLight,marginTop:"2px"}}>{actualRegs.filter(r=>r.payment_status==="paid").length}/{actualRegs.length} {lang==="el"?"πληρ.":"paid"}</div>
-            </div>
-          </div>
+          <div style={{fontSize:"18px",fontWeight:700,color:viewMode==="forecast"?T.accent:T.text,fontFamily:"monospace",textAlign:"right"}}>{viewMode==="forecast"?registrationRevenue.toFixed(2):actualRegRevenue.toFixed(2)}€</div>
         </div>
 
         {/* Row: Sponsorships */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`,gap:"12px"}}>
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Sponsorships":"Sponsorships"}</div>
-          <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
-            <input type="number" step="0.01" value={editing.expected_sponsorships} onChange={e=>setEditing({...editing,expected_sponsorships:e.target.value})} onBlur={()=>saveForecast({expected_sponsorships:parseFloat(editing.expected_sponsorships)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-            <input type="number" step="0.01" value={editing.actual_sponsorships} onChange={e=>setEditing({...editing,actual_sponsorships:e.target.value})} onBlur={()=>saveForecast({actual_sponsorships:parseFloat(editing.actual_sponsorships)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-          </div>
+          {viewMode==="forecast"?(
+            <input type="number" step="0.01" value={editing.expected_sponsorships} onChange={e=>setEditing({...editing,expected_sponsorships:e.target.value})} onBlur={()=>saveForecast({expected_sponsorships:parseFloat(editing.expected_sponsorships)||0})} style={{width:"120px",padding:"8px 12px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"16px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
+          ):(
+            <input type="number" step="0.01" value={editing.actual_sponsorships} onChange={e=>setEditing({...editing,actual_sponsorships:e.target.value})} onBlur={()=>saveForecast({actual_sponsorships:parseFloat(editing.actual_sponsorships)||0})} placeholder="0.00" style={{width:"120px",padding:"8px 12px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"16px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
+          )}
         </div>
 
         {/* Row: Other Revenue */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`2px solid ${T.text}33`,gap:"12px"}}>
           <div style={{flex:1,color:T.text,fontSize:"14px",fontWeight:600}}>{lang==="el"?"Άλλα Έσοδα":"Other Revenue"}</div>
-          <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
-            <input type="number" step="0.01" value={editing.expected_other_revenue} onChange={e=>setEditing({...editing,expected_other_revenue:e.target.value})} onBlur={()=>saveForecast({expected_other_revenue:parseFloat(editing.expected_other_revenue)||0})} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-            <input type="number" step="0.01" value={editing.actual_other_revenue} onChange={e=>setEditing({...editing,actual_other_revenue:e.target.value})} onBlur={()=>saveForecast({actual_other_revenue:parseFloat(editing.actual_other_revenue)||0})} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
-          </div>
+          {viewMode==="forecast"?(
+            <input type="number" step="0.01" value={editing.expected_other_revenue} onChange={e=>setEditing({...editing,expected_other_revenue:e.target.value})} onBlur={()=>saveForecast({expected_other_revenue:parseFloat(editing.expected_other_revenue)||0})} style={{width:"120px",padding:"8px 12px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.accent,fontSize:"16px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
+          ):(
+            <input type="number" step="0.01" value={editing.actual_other_revenue} onChange={e=>setEditing({...editing,actual_other_revenue:e.target.value})} onBlur={()=>saveForecast({actual_other_revenue:parseFloat(editing.actual_other_revenue)||0})} placeholder="0.00" style={{width:"120px",padding:"8px 12px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"16px",fontWeight:700,fontFamily:"monospace",textAlign:"right"}}/>
+          )}
         </div>
 
         {/* Row: TOTAL */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 4px",gap:"12px"}}>
           <div style={{color:T.text,fontSize:"15px",fontWeight:900,letterSpacing:"0.05em"}}>{lang==="el"?"ΣΥΝΟΛΟ":"TOTAL"}</div>
-          <div style={{display:"flex",gap:"20px"}}>
-            <div style={{fontSize:"20px",fontWeight:900,color:T.accent,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{totalRevenue.toFixed(2)}€</div>
-            <div style={{minWidth:"70px",textAlign:"right"}}>
-              <div style={{fontSize:"20px",fontWeight:900,color:T.text,fontFamily:"monospace"}}>{actualRevenue.toFixed(2)}€</div>
-              {totalRevenue>0&&<div style={{fontSize:"10px",color:revProgress>=80?T.accent:revProgress>=40?T.warning:T.danger,fontWeight:700,marginTop:"2px"}}>{revProgress}%</div>}
-            </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:"24px",fontWeight:900,color:viewMode==="forecast"?T.accent:T.text,fontFamily:"monospace"}}>{viewMode==="forecast"?totalRevenue.toFixed(2):actualRevenue.toFixed(2)}€</div>
+            {viewMode==="actual"&&totalRevenue>0&&<div style={{fontSize:"11px",color:revProgress>=80?T.accent:revProgress>=40?T.warning:T.danger,fontWeight:700,marginTop:"2px"}}>{revProgress}% {lang==="el"?"της πρόβλεψης":"of forecast"}</div>}
           </div>
         </div>
       </div>
@@ -6739,10 +6737,11 @@ function RaceForecast({races,registrations,session,profile}){
         {(forecast?.expense_items||[]).map(exp=>(
           <div key={exp.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`,gap:"10px"}}>
             <input value={exp.category} onChange={e=>updateExpense(exp.id,"category",e.target.value)} style={{flex:1,padding:"6px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}/>
-            <div style={{display:"flex",gap:"20px",alignItems:"center"}}>
-              <input type="number" step="0.01" value={exp.amount} onChange={e=>updateExpense(exp.id,"amount",e.target.value)} style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.warning,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
-              <input type="number" step="0.01" value={exp.actual_amount||""} onChange={e=>updateExpense(exp.id,"actual_amount",e.target.value)} placeholder="0.00" style={{width:"90px",padding:"6px 8px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
-            </div>
+            {viewMode==="forecast"?(
+              <input type="number" step="0.01" value={exp.amount} onChange={e=>updateExpense(exp.id,"amount",e.target.value)} style={{width:"110px",padding:"8px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.warning,fontSize:"15px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
+            ):(
+              <input type="number" step="0.01" value={exp.actual_amount||""} onChange={e=>updateExpense(exp.id,"actual_amount",e.target.value)} placeholder="0.00" style={{width:"110px",padding:"8px 10px",borderRadius:"6px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"15px",fontWeight:700,textAlign:"right",fontFamily:"monospace"}}/>
+            )}
             <button onClick={()=>deleteExpense(exp.id)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"4px 8px",fontSize:"12px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
           </div>
         ))}
@@ -6757,12 +6756,9 @@ function RaceForecast({races,registrations,session,profile}){
         {/* Row: TOTAL EXPENSES */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 4px",borderTop:`2px solid ${T.text}33`,marginTop:"8px"}}>
           <div style={{color:T.text,fontSize:"15px",fontWeight:900,letterSpacing:"0.05em"}}>{lang==="el"?"ΣΥΝΟΛΟ":"TOTAL"}</div>
-          <div style={{display:"flex",gap:"20px"}}>
-            <div style={{fontSize:"20px",fontWeight:900,color:T.warning,fontFamily:"monospace",minWidth:"70px",textAlign:"right"}}>{totalExpenses.toFixed(2)}€</div>
-            <div style={{minWidth:"70px",textAlign:"right"}}>
-              <div style={{fontSize:"20px",fontWeight:900,color:T.text,fontFamily:"monospace"}}>{actualTotalExpenses.toFixed(2)}€</div>
-              {totalExpenses>0&&<div style={{fontSize:"10px",color:expProgress>100?T.danger:expProgress>=80?T.warning:T.accent,fontWeight:700,marginTop:"2px"}}>{expProgress}%</div>}
-            </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:"24px",fontWeight:900,color:viewMode==="forecast"?T.warning:T.text,fontFamily:"monospace"}}>{viewMode==="forecast"?totalExpenses.toFixed(2):actualTotalExpenses.toFixed(2)}€</div>
+            {viewMode==="actual"&&totalExpenses>0&&<div style={{fontSize:"11px",color:expProgress>100?T.danger:expProgress>=80?T.warning:T.accent,fontWeight:700,marginTop:"2px"}}>{expProgress}% {lang==="el"?"της πρόβλεψης":"of forecast"}</div>}
           </div>
         </div>
       </div>
