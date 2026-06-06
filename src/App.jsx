@@ -3825,7 +3825,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
-                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>
+                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
                 <div style={{marginTop:"10px",display:"flex",alignItems:"center",gap:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
                   <KudosButton activityId={act.id} myProfileId={myProfileId}/>
                 </div>
