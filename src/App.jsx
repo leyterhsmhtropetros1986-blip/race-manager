@@ -2467,7 +2467,6 @@ function PublicResultsPage({raceId,onBack}){
   const [filterDistance,setFilterDistance]=useState("all");
   const [filterGender,setFilterGender]=useState("all");
   const [filterCategory,setFilterCategory]=useState("all");
-  const [expandedReg,setExpandedReg]=useState(null);
   const [isMobile,setIsMobile]=useState(typeof window!=="undefined"&&window.innerWidth<640);
   useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<640);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
@@ -2560,31 +2559,13 @@ function PublicResultsPage({raceId,onBack}){
           {filtered.map((reg,i)=>{
             const r=runners.find(x=>x.id===reg.runner_id)||{};
             const rank=reg.overall_rank||(i+1);
-            const hasSplits=Array.isArray(reg.splits)&&reg.splits.length>0;
-            const isExpanded=expandedReg===reg.id;
-            return <div key={reg.id}>
-              <div onClick={()=>hasSplits&&setExpandedReg(isExpanded?null:reg.id)} style={{display:"grid",gridTemplateColumns:isMobile?"40px 50px 44px 1fr 80px":"60px 60px 50px 1fr 100px 120px",padding:isMobile?"10px 12px":"12px 14px",fontSize:isMobile?"12px":"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center",gap:"6px",cursor:hasSplits?"pointer":"default"}}>
-                <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?(isMobile?"16px":"18px"):"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
-                <div style={{color:T.textMid,fontWeight:600,fontSize:isMobile?"11px":"13px"}}>#{reg.bib_number}</div>
-                <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:isMobile?"12px":"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
-                <div style={{minWidth:0,overflow:"hidden"}}><div style={{color:T.text,fontWeight:600,fontSize:isMobile?"12px":"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.first_name} {r.last_name} {hasSplits&&<span style={{color:T.accent,fontSize:"10px"}}>{isExpanded?"▲":"▼"} splits</span>}</div><div style={{color:T.textLight,fontSize:isMobile?"10px":"11px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isMobile?(reg.category||r.club||reg.distance||""):`${r.club||""}${r.club&&reg.distance?" · ":""}${reg.distance||""}`}</div></div>
-                {!isMobile&&<div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>}
-                <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:isMobile?"12px":"14px"}}>{formatTime(reg.finish_time)}</div>
-              </div>
-              {isExpanded&&hasSplits&&(
-                <div style={{background:`${T.accent}11`,padding:"14px 18px",borderTop:`1px solid ${T.accent}33`,borderBottom:`1px solid ${T.accent}33`}}>
-                  <div style={{fontSize:"11px",fontWeight:700,color:T.accent,marginBottom:"10px",letterSpacing:"0.1em",textTransform:"uppercase"}}>⏱ Intermediate Splits</div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2, 1fr)":"repeat(auto-fit, minmax(120px, 1fr))",gap:"8px"}}>
-                    {reg.splits.map((sp,idx)=>(
-                      <div key={idx} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"8px 10px"}}>
-                        <div style={{fontSize:"10px",fontWeight:700,color:T.textMid,letterSpacing:"0.05em"}}>📍 {sp.km}K</div>
-                        <div style={{fontSize:"15px",fontWeight:800,color:T.text,fontFamily:"monospace",marginTop:"2px"}}>{sp.time}</div>
-                        {sp.pace&&<div style={{fontSize:"10px",color:T.textLight,marginTop:"2px"}}>pace {sp.pace}/km</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            return <div key={reg.id} style={{display:"grid",gridTemplateColumns:isMobile?"40px 50px 44px 1fr 80px":"60px 60px 50px 1fr 100px 120px",padding:isMobile?"10px 12px":"12px 14px",fontSize:isMobile?"12px":"13px",background:i%2===0?T.bg:T.bgAlt,borderTop:`1px solid ${T.border}`,alignItems:"center",gap:"6px"}}>
+              <div style={{fontWeight:900,color:rank<=3?T.warning:T.text,fontSize:rank<=3?(isMobile?"16px":"18px"):"14px"}}>{rank<=3?(rank===1?"🥇":rank===2?"🥈":"🥉"):rank}</div>
+              <div style={{color:T.textMid,fontWeight:600,fontSize:isMobile?"11px":"13px"}}>#{reg.bib_number}</div>
+              <div>{r.avatar_url?(<img src={r.avatar_url} alt="" style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",objectFit:"cover",border:`2px solid ${rank<=3?T.warning:T.border}`}}/>):(<div style={{width:isMobile?"32px":"36px",height:isMobile?"32px":"36px",borderRadius:"50%",background:T.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:isMobile?"12px":"14px",border:`2px solid ${rank<=3?T.warning:T.border}`}}>{(r.first_name?.[0]||"?").toUpperCase()}</div>)}</div>
+              <div style={{minWidth:0,overflow:"hidden"}}><div style={{color:T.text,fontWeight:600,fontSize:isMobile?"12px":"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.first_name} {r.last_name}</div><div style={{color:T.textLight,fontSize:isMobile?"10px":"11px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{isMobile?(reg.category||r.club||reg.distance||""):`${r.club||""}${r.club&&reg.distance?" · ":""}${reg.distance||""}`}</div></div>
+              {!isMobile&&<div style={{color:T.textMid,fontSize:"12px"}}>{reg.category||"—"}</div>}
+              <div style={{textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.text,fontSize:isMobile?"12px":"14px"}}>{formatTime(reg.finish_time)}</div>
             </div>;
           })}
         </div>
