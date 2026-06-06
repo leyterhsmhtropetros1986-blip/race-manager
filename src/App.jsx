@@ -5966,20 +5966,28 @@ function CRMDashboard({session,profile,races}){
         </select>
         <button onClick={()=>{
           if(!sortedContacts.length){toast(lang==="el"?"Καμία επαφή":"No contacts","warning");return;}
-          const rows=[["Full Name","Email","Phone","City","Total Races","Last Race Date","Source"]];
-          sortedContacts.forEach(c=>{
-            rows.push([c.full_name||"",c.email||"",c.phone||"",c.city||"",c.total_registrations||0,c.last_race_date||"",c.source||""]);
-          });
-          const csv="\uFEFF"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-          const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+          // Build XLS as HTML table (Excel reads it natively)
+          const headers=["Full Name","Email","Phone","City","Total Races","Last Race Date","Source"];
+          const headerHtml=headers.map(h=>`<th style="background:#4a5dc7;color:#fff;font-weight:700;padding:8px;border:1px solid #999">${h}</th>`).join("");
+          const rowsHtml=sortedContacts.map(c=>`<tr>
+            <td style="padding:6px;border:1px solid #ccc">${c.full_name||""}</td>
+            <td style="padding:6px;border:1px solid #ccc">${c.email||""}</td>
+            <td style="padding:6px;border:1px solid #ccc">${c.phone||""}</td>
+            <td style="padding:6px;border:1px solid #ccc">${c.city||""}</td>
+            <td style="padding:6px;border:1px solid #ccc;text-align:right">${c.total_registrations||0}</td>
+            <td style="padding:6px;border:1px solid #ccc">${c.last_race_date||""}</td>
+            <td style="padding:6px;border:1px solid #ccc">${c.source||""}</td>
+          </tr>`).join("");
+          const xls=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Επαφές</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+          const blob=new Blob(["\uFEFF"+xls],{type:"application/vnd.ms-excel;charset=utf-8;"});
           const url=URL.createObjectURL(blob);
           const a=document.createElement("a");
           a.href=url;
-          a.download=`crm-contacts-${new Date().toISOString().slice(0,10)}.csv`;
+          a.download=`crm-contacts-${new Date().toISOString().slice(0,10)}.xls`;
           document.body.appendChild(a);a.click();document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          toast(lang==="el"?`✅ Εξήχθησαν ${sortedContacts.length} επαφές`:`✅ Exported ${sortedContacts.length} contacts`,"success");
-        }} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 {lang==="el"?"Export CSV":"Export CSV"}</button>
+          toast(lang==="el"?`✅ Εξήχθησαν ${sortedContacts.length} επαφές (Excel)`:`✅ Exported ${sortedContacts.length} contacts`,"success");
+        }} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 {lang==="el"?"Export Excel":"Export Excel"}</button>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
         {sortedContacts.map(c=>(
