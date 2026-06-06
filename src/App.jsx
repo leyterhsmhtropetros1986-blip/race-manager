@@ -6797,6 +6797,111 @@ function RaceForecast({races,registrations,session,profile}){
 
   if(myRaces.length===0)return <EmptyState icon="💰" title={lang==="el"?"Δεν έχεις αγώνες":"No races yet"} message={lang==="el"?"Δημιούργησε έναν αγώνα για να δεις forecast":"Create a race first"}/>;
 
+  function exportForecastPDF(){
+    if(!selectedRace||!forecast){toast(lang==="el"?"⚠ Επίλεξε αγώνα":"⚠ Select race","warning");return;}
+    const now=new Date();
+    const exportDate=now.toLocaleString("el-GR");
+    const expenseRows=(forecast.expense_items||[]).map(exp=>{
+      const diff=(parseFloat(exp.actual_amount)||0)-(parseFloat(exp.amount)||0);
+      const diffStr=diff>0?`+${diff.toFixed(2)}`:diff.toFixed(2);
+      const diffColor=diff>0?"#dc2626":"#10b981";
+      return `<tr>
+        <td>${exp.category||"-"}</td>
+        <td class="num">${Number(exp.amount||0).toFixed(2)}€</td>
+        <td class="num">${exp.actual_amount?Number(exp.actual_amount).toFixed(2)+"€":"-"}</td>
+        <td class="num" style="color:${diffColor};font-weight:700">${exp.actual_amount?diffStr+"€":"-"}</td>
+      </tr>`;
+    }).join("")||`<tr><td colspan="4" style="text-align:center;color:#999;padding:14px">Χωρίς έξοδα</td></tr>`;
+    const profitColor=profit>=0?"#10b981":"#dc2626";
+    const actualProfitColor=actualProfit>=0?"#10b981":"#dc2626";
+    const variance=actualProfit-profit;
+    const varianceStr=variance>=0?`+${variance.toFixed(2)}`:variance.toFixed(2);
+    const html=`<!DOCTYPE html>
+<html lang="el"><head><meta charset="UTF-8"><title>Forecast - ${selectedRace.name}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:11pt}
+  .header{border-bottom:3px solid #4a5dc7;padding-bottom:16px;margin-bottom:24px}
+  h1{font-size:22pt;color:#4a5dc7;margin-bottom:6px}
+  .meta{color:#666;font-size:10pt}
+  h2{font-size:14pt;color:#1a1a1a;margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid #e8e6df}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  thead{background:#f5f3ec}
+  th{padding:10px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
+  td{padding:8px;border-bottom:1px solid #e8e6df}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .total-row{background:#f5f3ec;font-weight:700}
+  .total-row td{padding:12px 8px;font-size:12pt}
+  .profit-card{background:linear-gradient(135deg,${profit>=0?"#10b981":"#dc2626"} 0%,${profit>=0?"#059669":"#b91c1c"} 100%);color:#fff;padding:24px;border-radius:12px;margin:20px 0;display:flex;justify-content:space-between}
+  .profit-section{flex:1}
+  .profit-section.right{border-left:1px solid rgba(255,255,255,0.3);padding-left:24px;margin-left:24px}
+  .profit-label{font-size:10pt;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;opacity:0.9;margin-bottom:6px}
+  .profit-value{font-size:24pt;font-weight:900;font-family:monospace}
+  .profit-sub{font-size:9pt;opacity:0.85;margin-top:4px}
+  .variance{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;font-size:11pt;font-weight:700}
+  .footer{margin-top:30px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
+  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#3a4dab}
+  @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
+</style></head><body>
+<button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
+<div class="header">
+  <h1>💰 ${selectedRace.name}</h1>
+  <div class="meta">📅 ${selectedRace.date} · 📍 ${selectedRace.location||"—"} · 📊 Οικονομική Πρόβλεψη vs Πραγματικά</div>
+</div>
+
+<h2>📊 ΕΣΟΔΑ</h2>
+<table>
+<thead><tr><th>Κατηγορία</th><th class="num">Πρόβλεψη</th><th class="num">Πραγματικό</th></tr></thead>
+<tbody>
+<tr><td>Εγγραφές (${editing.expected_registrations} × ${Number(editing.avg_registration_fee).toFixed(2)}€)</td><td class="num">${registrationRevenue.toFixed(2)}€</td><td class="num">${actualRegRevenue.toFixed(2)}€</td></tr>
+<tr><td>Sponsorships</td><td class="num">${Number(editing.expected_sponsorships||0).toFixed(2)}€</td><td class="num">${Number(editing.actual_sponsorships||0).toFixed(2)}€</td></tr>
+<tr><td>Άλλα Έσοδα</td><td class="num">${Number(editing.expected_other_revenue||0).toFixed(2)}€</td><td class="num">${Number(editing.actual_other_revenue||0).toFixed(2)}€</td></tr>
+<tr class="total-row"><td>ΣΥΝΟΛΟ</td><td class="num">${totalRevenue.toFixed(2)}€</td><td class="num">${actualRevenue.toFixed(2)}€</td></tr>
+</tbody>
+</table>
+
+<h2>💸 ΕΞΟΔΑ</h2>
+<table>
+<thead><tr><th>Κατηγορία</th><th class="num">Πρόβλεψη</th><th class="num">Πραγματικό</th><th class="num">Διαφορά</th></tr></thead>
+<tbody>
+${expenseRows}
+<tr class="total-row"><td>ΣΥΝΟΛΟ</td><td class="num">${totalExpenses.toFixed(2)}€</td><td class="num">${actualTotalExpenses.toFixed(2)}€</td><td class="num">${(actualTotalExpenses-totalExpenses).toFixed(2)}€</td></tr>
+</tbody>
+</table>
+
+<div class="profit-card">
+  <div class="profit-section">
+    <div class="profit-label">📊 ΠΡΟΒΛΕΨΗ ΚΕΡΔΟΥΣ</div>
+    <div class="profit-value">${profit.toFixed(2)}€</div>
+    <div class="profit-sub">${totalRevenue.toFixed(0)}€ − ${totalExpenses.toFixed(0)}€</div>
+  </div>
+  <div class="profit-section right">
+    <div class="profit-label">✅ ΠΡΑΓΜΑΤΙΚΟ ΚΕΡΔΟΣ</div>
+    <div class="profit-value">${actualProfit.toFixed(2)}€</div>
+    <div class="profit-sub">${actualRevenue.toFixed(0)}€ − ${actualTotalExpenses.toFixed(0)}€</div>
+  </div>
+</div>
+
+<div style="background:#f5f3ec;border-radius:10px;padding:14px 18px;margin-top:14px">
+  <div style="display:flex;justify-content:space-between;font-size:11pt;font-weight:700">
+    <span>📈 Διαφορά (Πραγματικό − Πρόβλεψη)</span>
+    <span style="color:${variance>=0?"#10b981":"#dc2626"};font-family:monospace">${varianceStr}€</span>
+  </div>
+</div>
+
+<div class="footer">
+  <div>Race Management · racemanagement.gr</div>
+  <div>Εξαγωγή: ${exportDate}</div>
+</div>
+</body></html>`;
+    const w=window.open("","_blank");
+    if(!w){toast(lang==="el"?"⚠️ Επέτρεψε popups για PDF":"⚠️ Allow popups","warning");return;}
+    w.document.write(html);
+    w.document.close();
+    toast(lang==="el"?"✅ Άνοιξε νέο tab — πάτα '🖨️' για PDF":"✅ New tab opened","success");
+  }
+
   return <div>
     <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"22px",fontWeight:800}}>💰 {lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
     
@@ -6813,7 +6918,8 @@ function RaceForecast({races,registrations,session,profile}){
       {/* Race Info Header */}
       <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.accent}15 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px 20px",marginBottom:"20px"}}>
         <div style={{fontSize:"18px",fontWeight:800,color:T.text}}>🏃 {selectedRace.name}</div>
-        <div style={{fontSize:"13px",color:T.textMid,marginTop:"4px"}}>📅 {selectedRace.date} · 📍 {selectedRace.location||"—"}</div>
+        <div style={{fontSize:"13px",color:T.textMid,marginTop:"4px",marginBottom:"12px"}}>📅 {selectedRace.date} · 📍 {selectedRace.location||"—"}</div>
+        <button onClick={exportForecastPDF} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💾 {lang==="el"?"Αποθήκευση PDF":"Save PDF"}</button>
       </div>
 
       {/* ============ TABS: Forecast / Actual ============ */}
