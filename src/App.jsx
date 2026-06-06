@@ -6645,6 +6645,35 @@ function RaceForecast({races,registrations,session,profile}){
   const [newExpense,setNewExpense]=useState({category:"",amount:""});
   const [actualTxs,setActualTxs]=useState([]);
   const [viewMode,setViewMode]=useState("forecast");
+  const [showArchive,setShowArchive]=useState(false);
+  const [archiveList,setArchiveList]=useState([]);
+  const [archiveLoading,setArchiveLoading]=useState(false);
+  async function loadArchive(){
+    setArchiveLoading(true);
+    const {data,error}=await supabase.from("pdf_archive").select("*").order("created_at",{ascending:false});
+    if(!error&&data)setArchiveList(data);
+    setArchiveLoading(false);
+  }
+  async function openArchivePDF(item){
+    try{
+      const {data,error}=await supabase.storage.from("pdf-archive").createSignedUrl(item.file_path,300);
+      if(error)throw error;
+      window.open(data.signedUrl,"_blank");
+    }catch(err){
+      toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error","error");
+    }
+  }
+  async function deleteArchivePDF(item){
+    if(!confirm(lang==="el"?`Διαγραφή του αρχείου ${item.race_name};`:`Delete ${item.race_name}?`))return;
+    try{
+      await supabase.storage.from("pdf-archive").remove([item.file_path]);
+      await supabase.from("pdf_archive").delete().eq("id",item.id);
+      toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","info");
+      loadArchive();
+    }catch(err){
+      toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error","error");
+    }
+  }
   const [showAddTx,setShowAddTx]=useState(false);
   const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
   const [txBusy,setTxBusy]=useState(false);
@@ -6940,7 +6969,10 @@ ${expenseRows}
       <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.accent}15 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px 20px",marginBottom:"20px"}}>
         <div style={{fontSize:"18px",fontWeight:800,color:T.text}}>🏃 {selectedRace.name}</div>
         <div style={{fontSize:"13px",color:T.textMid,marginTop:"4px",marginBottom:"12px"}}>📅 {selectedRace.date} · 📍 {selectedRace.location||"—"}</div>
-        <button onClick={exportForecastPDF} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💾 {lang==="el"?"Αποθήκευση PDF":"Save PDF"}</button>
+        <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+          <button onClick={exportForecastPDF} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💾 {lang==="el"?"Αποθήκευση PDF":"Save PDF"}</button>
+          <button onClick={()=>{setShowArchive(true);loadArchive();}} style={{background:T.bgAlt,color:T.text,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📁 {lang==="el"?"Αρχείο PDF":"Archive"}</button>
+        </div>
       </div>
 
       {/* ============ TABS: Forecast / Actual ============ */}
@@ -7104,6 +7136,36 @@ ${expenseRows}
 
       {saving&&<div style={{textAlign:"center",padding:"10px",color:T.textMid,fontSize:"12px",marginTop:"12px"}}>💾 {lang==="el"?"Αποθήκευση...":"Saving..."}</div>}
     </>)}
+    
+    {showArchive&&<Modal title={`📁 ${lang==="el"?"Αρχείο PDF":"PDF Archive"}`} onClose={()=>setShowArchive(false)} wide={true}>
+      {archiveLoading?(
+        <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>⏳ {lang==="el"?"Φόρτωση...":"Loading..."}</div>
+      ):archiveList.length===0?(
+        <div style={{textAlign:"center",padding:"40px",color:T.textLight}}>
+          📭 {lang==="el"?"Δεν υπάρχουν αρχεία ακόμα":"No archived PDFs yet"}<br/>
+          <span style={{fontSize:"12px"}}>{lang==="el"?"Πάτησε 💾 Αποθήκευση PDF για να δημιουργήσεις":"Click 💾 Save PDF to create one"}</span>
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          {archiveList.map(item=>(
+            <div key={item.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"10px",padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.text,fontWeight:700,fontSize:"14px",marginBottom:"4px"}}>📊 {item.race_name}</div>
+                <div style={{color:T.textMid,fontSize:"12px",display:"flex",gap:"12px",flexWrap:"wrap"}}>
+                  <span>📅 {new Date(item.created_at).toLocaleString("el-GR")}</span>
+                  <span>📁 {item.pdf_type}</span>
+                  <span>💾 {item.file_size_kb}KB</span>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:"6px"}}>
+                <button onClick={()=>openArchivePDF(item)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"6px",padding:"7px 12px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>👁 {lang==="el"?"Άνοιγμα":"Open"}</button>
+                <button onClick={()=>deleteArchivePDF(item)} style={{background:"transparent",border:`1px solid ${T.danger}44`,color:T.danger,borderRadius:"6px",padding:"7px 10px",fontSize:"12px",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>}
   </div>;
 }
 
