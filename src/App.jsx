@@ -3761,9 +3761,9 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       }catch(err){console.error("Progress charts error:",err);return null;}
     })()}
     {/* Personal Activities - Manual entries */}
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"28px",boxShadow:T.shadow,marginBottom:"28px"}}>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
-        <h3 style={{margin:0,color:T.text,fontSize:"18px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px",paddingBottom:"12px",borderBottom:`2px solid ${T.primary}33`,marginBottom:"4px",width:"100%"}}>🏃‍♂️ {lang==="el"?"Δραστηριότητες & Προπονήσεις":"Activities & Training"}</h3>
+        <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px"}}>🏃‍♂️ {lang==="el"?"Δραστηριότητες & Προπονήσεις":"Activities & Training"}</h3>
         <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
           <label style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"8px 14px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px"}}>
             📤 {lang==="el"?"Upload GPX":"Upload GPX"}
@@ -3825,7 +3825,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   </div>
                 </div>
                 {act.gpx_url&&<InlineGpxMap gpxUrl={act.gpx_url}/>}
-                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>}
+                {act.gpx_url&&<GpxSplits gpxUrl={act.gpx_url}/>
                 <div style={{marginTop:"10px",display:"flex",alignItems:"center",gap:"8px",paddingTop:"8px",borderTop:`1px solid ${T.border}`}}>
                   <KudosButton activityId={act.id} myProfileId={myProfileId}/>
                 </div>
@@ -3952,7 +3952,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
       </div>
     )}
     {/* My Races - Auto-synced από registrations */}
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"28px",boxShadow:T.shadow,marginBottom:"28px"}}>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"24px",boxShadow:T.shadow,marginBottom:"20px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"16px",flexWrap:"wrap",gap:"8px"}}>
         <h3 style={{margin:0,color:T.text,fontSize:"17px",fontWeight:800,display:"flex",alignItems:"center",gap:"8px"}}>🗓 Οι Αγώνες μου</h3>
         <div style={{background:T.primary+"15",color:T.primary,padding:"4px 12px",borderRadius:"999px",fontSize:"12px",fontWeight:700}}>{history.length} {history.length===1?"αγώνας":"αγώνες"}</div>
