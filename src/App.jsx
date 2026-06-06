@@ -5466,7 +5466,7 @@ function AdminPanel(){
   const [loading,setLoading]=useState(true);
   const [tab,setTab]=useState("pendingRaces");
   const [approvedRaces,setApprovedRaces]=useState([]);
-  const [manualForm,setManualForm]=useState({race_id:"",first_name:"",last_name:"",email:"",phone:"",dob:"",gender:"male",city:"",distance:"",bib_number:"",tshirt:"",amka:"",notes:""});
+  const [manualForm,setManualForm]=useState({race_id:"",first_name:"",last_name:"",email:"",phone:"",dob:"",gender:"male",city:"",distance:"",bib_number:"",tshirt:"",amka:"",notes:"",perks:""});
   const [manualSaving,setManualSaving]=useState(false);
   const [manualLastSaved,setManualLastSaved]=useState(null);
   async function fetchOrgs(){
@@ -5475,7 +5475,7 @@ function AdminPanel(){
       supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false}),
       supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true}),
       supabase.from("runners").select("id,first_name,last_name,email,dob,athlete_profile_id,created_at"),
-      supabase.from("races").select("id,name,date,distances").order("date",{ascending:false})
+      supabase.from("races").select("id,name,date,distances").in("status",["approved","upcoming","active"]).order("date",{ascending:false})
     ]);
     if(approvedRes.data)setApprovedRaces(approvedRes.data);
     if(orgsRes.data){setPendingOrgs(orgsRes.data.filter(o=>o.status==="pending"));setAllOrgs(orgsRes.data);}
@@ -5552,6 +5552,10 @@ function AdminPanel(){
   async function submitManualReg(){
     if(!manualForm.race_id){toast(lang==="el"?"⚠ Επίλεξε αγώνα":"⚠ Select race","warning");return;}
     if(!manualForm.first_name.trim()||!manualForm.last_name.trim()){toast(lang==="el"?"⚠ Όνομα + Επώνυμο":"⚠ First + Last name","warning");return;}
+    if(!manualForm.email.trim()){toast(lang==="el"?"⚠ Email υποχρεωτικό":"⚠ Email required","warning");return;}
+    if(!manualForm.phone.trim()){toast(lang==="el"?"⚠ Τηλέφωνο υποχρεωτικό":"⚠ Phone required","warning");return;}
+    if(!manualForm.dob){toast(lang==="el"?"⚠ Ημ. Γέννησης υποχρεωτική":"⚠ DOB required","warning");return;}
+    if(!manualForm.tshirt){toast(lang==="el"?"⚠ Μέγεθος T-shirt υποχρεωτικό":"⚠ T-shirt size required","warning");return;}
     setManualSaving(true);
     try{
       // Find or create runner
@@ -5583,14 +5587,14 @@ function AdminPanel(){
         tshirt:manualForm.tshirt||null,
         price_paid:0,
         gdpr_consent_at:new Date().toISOString(),
-        custom_answers:{admin_created:true,notes:manualForm.notes||""}
+        custom_answers:{admin_created:true,notes:manualForm.notes||"",perks:manualForm.perks||""}
       }]);
       if(regErr)throw regErr;
       const fullName=`${manualForm.first_name} ${manualForm.last_name}`;
       setManualLastSaved(fullName);
       toast(lang==="el"?`✅ Εγγραφή: ${fullName}`:`✅ Registered: ${fullName}`,"success");
       // Keep race_id, clear personal fields
-      setManualForm({...manualForm,first_name:"",last_name:"",email:"",phone:"",dob:"",city:"",bib_number:"",tshirt:"",amka:"",notes:""});
+      setManualForm({...manualForm,first_name:"",last_name:"",email:"",phone:"",dob:"",city:"",bib_number:"",tshirt:"",amka:"",notes:"",perks:""});
     }catch(err){
       toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error: "+err.message,"error");
     }
@@ -5796,18 +5800,18 @@ function AdminPanel(){
       
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"12px"}}>
         <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Email":"Email"}</label>
+          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Email":"Email"} *</label>
           <input type="email" value={manualForm.email} onChange={e=>setManualForm({...manualForm,email:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
         </div>
         <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Τηλέφωνο":"Phone"}</label>
+          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Τηλέφωνο":"Phone"} *</label>
           <input value={manualForm.phone} onChange={e=>setManualForm({...manualForm,phone:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
         </div>
       </div>
       
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"12px",marginBottom:"12px"}}>
         <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Ημ. Γέννησης":"DOB"}</label>
+          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>{lang==="el"?"Ημ. Γέννησης":"DOB"} *</label>
           <input type="date" value={manualForm.dob} onChange={e=>setManualForm({...manualForm,dob:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
         </div>
         <div>
@@ -5836,7 +5840,7 @@ function AdminPanel(){
           <input type="number" value={manualForm.bib_number} onChange={e=>setManualForm({...manualForm,bib_number:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
         </div>
         <div>
-          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>T-Shirt</label>
+          <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>T-Shirt *</label>
           <select value={manualForm.tshirt} onChange={e=>setManualForm({...manualForm,tshirt:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}>
             <option value="">—</option>
             <option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="XXL">XXL</option>
@@ -5855,7 +5859,12 @@ function AdminPanel(){
         </div>
       </div>
       
-      <button onClick={submitManualReg} disabled={manualSaving||!manualForm.race_id||!manualForm.first_name||!manualForm.last_name} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 28px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",width:"100%",opacity:(manualSaving||!manualForm.race_id||!manualForm.first_name||!manualForm.last_name)?0.5:1}}>{manualSaving?(lang==="el"?"⏳ Αποθήκευση...":"⏳ Saving..."):(lang==="el"?"✅ Καταχώρηση & Επόμενος":"✅ Save & Next")}</button>
+      <div style={{marginBottom:"16px"}}>
+        <label style={{display:"block",color:T.textMid,fontSize:"12px",fontWeight:700,marginBottom:"6px"}}>🎁 {lang==="el"?"Παροχές (π.χ. κλάτσα, ποτό)":"Perks"}</label>
+        <input value={manualForm.perks} onChange={e=>setManualForm({...manualForm,perks:e.target.value})} placeholder={lang==="el"?"π.χ. κλάτσα, μετάλλιο, σνακ":"e.g. cap, medal"} style={{width:"100%",padding:"10px 12px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontSize:"14px",fontFamily:"inherit",boxSizing:"border-box"}}/>
+      </div>
+      
+      <button onClick={submitManualReg} disabled={manualSaving||!manualForm.race_id||!manualForm.first_name||!manualForm.last_name||!manualForm.email||!manualForm.phone||!manualForm.dob||!manualForm.tshirt} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"10px",padding:"14px 28px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",width:"100%",opacity:(manualSaving||!manualForm.race_id||!manualForm.first_name||!manualForm.last_name||!manualForm.email||!manualForm.phone||!manualForm.dob||!manualForm.tshirt)?0.5:1}}>{manualSaving?(lang==="el"?"⏳ Αποθήκευση...":"⏳ Saving..."):(lang==="el"?"✅ Καταχώρηση & Επόμενος":"✅ Save & Next")}</button>
     </div>
   </div>)}
   </div>;
