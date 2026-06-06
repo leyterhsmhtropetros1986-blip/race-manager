@@ -6798,7 +6798,7 @@ function RaceForecast({races,registrations,session,profile}){
 
   if(myRaces.length===0)return <EmptyState icon="💰" title={lang==="el"?"Δεν έχεις αγώνες":"No races yet"} message={lang==="el"?"Δημιούργησε έναν αγώνα για να δεις forecast":"Create a race first"}/>;
 
-  function exportForecastPDF(){
+  async function exportForecastPDF(){
     if(!selectedRace||!forecast){toast(lang==="el"?"⚠ Επίλεξε αγώνα":"⚠ Select race","warning");return;}
     const now=new Date();
     const exportDate=now.toLocaleString("el-GR");
@@ -6901,6 +6901,26 @@ ${expenseRows}
     w.document.write(html);
     w.document.close();
     toast(lang==="el"?"✅ Άνοιξε νέο tab — πάτα '🖨️' για PDF":"✅ New tab opened","success");
+    // Upload to archive (async, doesn't block UI)
+    try{
+      const userId=session?.user?.id;
+      if(userId){
+        const fileName=`forecast-${selectedRace.name.replace(/[^a-z0-9]/gi,"_")}-${now.getTime()}.html`;
+        const filePath=`${userId}/${fileName}`;
+        const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+        const {error:upErr}=await supabase.storage.from("pdf-archive").upload(filePath,blob,{contentType:"text/html",upsert:false});
+        if(!upErr){
+          await supabase.from("pdf_archive").insert([{
+            user_id:userId,
+            race_id:selectedRace.id,
+            race_name:selectedRace.name,
+            pdf_type:"forecast",
+            file_path:filePath,
+            file_size_kb:Math.round(blob.size/1024)
+          }]);
+        }
+      }
+    }catch(err){console.error("Archive save failed:",err);}
   }
 
   return <div>
