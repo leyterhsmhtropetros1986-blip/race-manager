@@ -4387,6 +4387,20 @@ function AthleteDashboard({races,registrations,runners,profile,session,onRefresh
       <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.availableRacesTitle}</h2>
       {availableRaces.length===0&&<EmptyState icon="🏁" title={t.noAvailable} message="Επίσκεψέ μας ξανά σύντομα!"/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"18px"}}>{availableRaces.map(race=>(<AthleteRaceCard key={race.id} race={race} registrations={registrations} runners={runners} session={session} onSelect={setSelectedRace}/>))}</div>
+      
+      {/* Custom T-shirt Service Card */}
+      <div style={{marginTop:"32px",background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,borderRadius:"18px",padding:"28px 24px",color:"#fff",boxShadow:`0 12px 36px ${T.primary}44`,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-20px",right:"-20px",fontSize:"140px",opacity:0.12,lineHeight:1}}>👕</div>
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{fontSize:"11px",fontWeight:800,letterSpacing:"0.15em",textTransform:"uppercase",opacity:0.9,marginBottom:"8px"}}>✨ {lang==="el"?"ΕΠΑΓΓΕΛΜΑΤΙΚΗ ΥΠΗΡΕΣΙΑ":"PROFESSIONAL SERVICE"}</div>
+          <h3 style={{margin:"0 0 10px",fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>👕 {lang==="el"?"Custom T-shirts για τον αγώνα σου":"Custom T-shirts for your race"}</h3>
+          <p style={{margin:"0 0 18px",fontSize:"14px",opacity:0.95,lineHeight:1.5,maxWidth:"600px"}}>{lang==="el"?"Σχεδιάζουμε & εκτυπώνουμε επαγγελματικά T-shirts για τον αγώνα ή τον σύλλογό σου. Ποιότητα κορυφαία, τιμές προσιτές, παράδοση on time.":"Professional t-shirt design & printing for your race or club. Premium quality, affordable prices, on-time delivery."}</p>
+          <div style={{display:"flex",gap:"10px",flexWrap:"wrap"}}>
+            <a href="mailto:info@racemanagement.gr?subject=Custom%20T-shirts%20-%20Race%20Management" style={{background:"#fff",color:T.primary,border:"none",borderRadius:"10px",padding:"12px 22px",fontSize:"14px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:"8px"}}>✉️ {lang==="el"?"Ζήτησε προσφορά":"Get a quote"}</a>
+            <a href="tel:+306936960328" style={{background:"rgba(255,255,255,0.2)",color:"#fff",border:"1px solid rgba(255,255,255,0.4)",borderRadius:"10px",padding:"12px 22px",fontSize:"14px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:"8px"}}>📞 6936 960 328</a>
+          </div>
+        </div>
+      </div>
     </div>)}
     {tab==="my"&&(<div>
       <h2 style={{margin:"0 0 18px",color:T.text,fontSize:"22px",fontWeight:900,letterSpacing:"-0.02em"}}>{t.myRegsTitle}</h2>
