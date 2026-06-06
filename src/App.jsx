@@ -5475,7 +5475,7 @@ function AdminPanel(){
       supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false}),
       supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true}),
       supabase.from("runners").select("id,first_name,last_name,email,dob,athlete_profile_id,created_at"),
-      supabase.from("races").select("id,name,date,distances").in("status",["approved","upcoming"]).order("date",{ascending:false})
+      supabase.from("races").select("id,name,date,distances").order("date",{ascending:false})
     ]);
     if(approvedRes.data)setApprovedRaces(approvedRes.data);
     if(orgsRes.data){setPendingOrgs(orgsRes.data.filter(o=>o.status==="pending"));setAllOrgs(orgsRes.data);}
