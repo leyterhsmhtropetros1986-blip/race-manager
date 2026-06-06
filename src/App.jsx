@@ -6933,11 +6933,24 @@ ${expenseRows}
     // Upload to archive (async, doesn't block UI)
     try{
       const userId=session?.user?.id;
-      if(userId){
-        const fileName=`forecast-${selectedRace.name.replace(/[^a-z0-9]/gi,"_")}-${now.getTime()}.html`;
+      if(userId&&window.html2pdf){
+        const fileName=`forecast-${selectedRace.name.replace(/[^a-z0-9]/gi,"_")}-${now.getTime()}.pdf`;
         const filePath=`${userId}/${fileName}`;
-        const blob=new Blob(["﻿"+html],{type:"text/html;charset=utf-8"});
-        const {error:upErr}=await supabase.storage.from("pdf-archive").upload(filePath,blob,{contentType:"text/html",upsert:false});
+        // Create hidden div with PDF content
+        const tempDiv=document.createElement("div");
+        tempDiv.innerHTML=html.replace(/<button[^>]*onclick="window\.print\(\)"[^>]*>.*?<\/button>/,"");
+        tempDiv.style.position="absolute";
+        tempDiv.style.left="-9999px";
+        document.body.appendChild(tempDiv);
+        const pdfBlob=await window.html2pdf().set({
+          margin:[10,10,10,10],
+          filename:fileName,
+          image:{type:"jpeg",quality:0.95},
+          html2canvas:{scale:2,useCORS:true},
+          jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}
+        }).from(tempDiv).output("blob");
+        document.body.removeChild(tempDiv);
+        const {error:upErr}=await supabase.storage.from("pdf-archive").upload(filePath,pdfBlob,{contentType:"application/pdf",upsert:false});
         if(!upErr){
           await supabase.from("pdf_archive").insert([{
             user_id:userId,
@@ -6945,7 +6958,7 @@ ${expenseRows}
             race_name:selectedRace.name,
             pdf_type:"forecast",
             file_path:filePath,
-            file_size_kb:Math.round(blob.size/1024)
+            file_size_kb:Math.round(pdfBlob.size/1024)
           }]);
         }
       }
