@@ -5060,7 +5060,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
             else ageCat="60+";
           }
         }
-        const gender=r.gender==="male"?"♂":r.gender==="female"?"♀":"—";
+        const gender=(r.gender==="male"||r.gender==="Άνδρας")?"♂":(r.gender==="female"||r.gender==="Γυναίκα")?"♀":(r.gender||"—");
         const regDate=reg.created_at?new Date(reg.created_at).toLocaleDateString("el-GR"):"—";
         return `<tr>
           <td class="num">${i+1}</td>
