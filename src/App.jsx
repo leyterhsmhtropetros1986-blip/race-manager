@@ -5064,10 +5064,9 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
         const regDate=reg.created_at?new Date(reg.created_at).toLocaleDateString("el-GR"):"—";
         return `<tr>
           <td class="num">${i+1}</td>
-          <td class="bib">#${reg.bib_number||"-"}</td>
           <td><strong>${fullName}</strong></td>
           <td class="center">${gender}</td>
-          <td class="center">${ageCat}</td>
+          <td class="center">${ageCat}</td><td>${r.dob||"—"}</td>
           <td>${r.club||"—"}</td><td>${r.phone||"—"}</td><td>${r.email||"—"}</td><td class="center">${reg.tshirt||"—"}</td><td class="center">${(reg.custom_answers&&reg.custom_answers.socks)||"—"}</td>
           <td class="center">${regDate}</td>
         </tr>`;
@@ -5077,9 +5076,9 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
           <h2>🏃 ${dist} <span class="count">(${groupRegs.length} ${lang==="el"?"συμμετέχοντες":"participants"})</span></h2>
           <table>
             <thead><tr>
-              <th>#</th><th>BIB</th><th>${lang==="el"?"Ονοματεπώνυμο":"Full Name"}</th>
+              <th>#</th><th>${lang==="el"?"Ονοματεπώνυμο":"Full Name"}</th>
               <th>${lang==="el"?"Φύλο":"Gender"}</th><th>${lang==="el"?"Κατηγορία":"Age Cat"}</th>
-              <th>${lang==="el"?"Σύλλογος":"Club"}</th><th>${lang==="el"?"Τηλέφωνο":"Phone"}</th><th>Email</th><th>T-Shirt</th><th>${lang==="el"?"Κάλτσα":"Socks"}</th><th>${lang==="el"?"Εγγραφή":"Registered"}</th>
+              <th>${lang==="el"?"Ημ.Γέννησης":"DOB"}</th><th>${lang==="el"?"Σύλλογος":"Club"}</th><th>${lang==="el"?"Τηλέφωνο":"Phone"}</th><th>Email</th><th>T-Shirt</th><th>${lang==="el"?"Κάλτσα":"Socks"}</th><th>${lang==="el"?"Εγγραφή":"Registered"}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -5135,7 +5134,7 @@ ${sections}
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
     const data=regs.map((reg,i)=>{
       const r=runners.find(x=>x.id===reg.runner_id)||{};
-      return {"Α/Α":i+1,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":reg.category||"","T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||""};
+      return {"Α/Α":i+1,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Ημ.Γέννησης":r.dob||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":getAgeCategory(r.dob,race.date)||"","T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||""};
     });
     if(!window.XLSX){
       await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
