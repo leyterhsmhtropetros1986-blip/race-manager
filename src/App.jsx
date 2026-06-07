@@ -5135,7 +5135,7 @@ ${sections}
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
     const data=regs.map((reg,i)=>{
       const r=runners.find(x=>x.id===reg.runner_id)||{};
-      return {"Α/Α":i+1,"BIB":reg.bib_number,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":reg.category||"","T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||"","Τιμή":reg.price_paid||0};
+      return {"Α/Α":i+1,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":reg.category||"","T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||""};
     });
     if(!window.XLSX){
       await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
