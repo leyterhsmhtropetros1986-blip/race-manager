@@ -5134,7 +5134,7 @@ ${sections}
     if(!regs.length){toast(t.noRegsCsv,"warning");return;}
     const data=regs.map((reg,i)=>{
       const r=runners.find(x=>x.id===reg.runner_id)||{};
-      return {"Α/Α":i+1,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Ημ.Γέννησης":r.dob||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":getAgeCategory(r.dob,race.date)||"","T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||""};
+      return {"Α/Α":i+1,"Όνομα":r.first_name||"","Επώνυμο":r.last_name||"","Φύλο":r.gender||"","Ημ.Γέννησης":r.dob||"","Email":r.email||"","Τηλέφωνο":r.phone||"","Σύλλογος":r.club||"","Διαδρομή":reg.distance||"","Κατηγορία":((function(d,rd){if(!d)return "";const b=new Date(d);const e=rd?new Date(rd):new Date();let a=e.getFullYear()-b.getFullYear();const m=e.getMonth()-b.getMonth();if(m<0||(m===0&&e.getDate()<b.getDate()))a--;if(a<20)return "U20";if(a<30)return "20-29";if(a<40)return "30-39";if(a<50)return "40-49";if(a<60)return "50-59";return "60+";})(r.dob,race.date)),"T-Shirt":reg.tshirt||"","Κάλτσα":(reg.custom_answers&&reg.custom_answers.socks)||""};
     });
     if(!window.XLSX){
       await new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
