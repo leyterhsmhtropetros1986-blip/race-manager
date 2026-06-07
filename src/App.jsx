@@ -5068,7 +5068,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
           <td><strong>${fullName}</strong></td>
           <td class="center">${gender}</td>
           <td class="center">${ageCat}</td>
-          <td>${r.club||"—"}</td>
+          <td>${r.club||"—"}</td><td>${r.phone||"—"}</td><td>${r.email||"—"}</td><td class="center">${reg.tshirt||"—"}</td><td class="center">${(reg.custom_answers&&reg.custom_answers.socks)||"—"}</td>
           <td class="center">${regDate}</td>
         </tr>`;
       }).join("");
@@ -5079,7 +5079,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
             <thead><tr>
               <th>#</th><th>BIB</th><th>${lang==="el"?"Ονοματεπώνυμο":"Full Name"}</th>
               <th>${lang==="el"?"Φύλο":"Gender"}</th><th>${lang==="el"?"Κατηγορία":"Age Cat"}</th>
-              <th>${lang==="el"?"Σύλλογος":"Club"}</th><th>${lang==="el"?"Εγγραφή":"Registered"}</th>
+              <th>${lang==="el"?"Σύλλογος":"Club"}</th><th>${lang==="el"?"Τηλέφωνο":"Phone"}</th><th>Email</th><th>T-Shirt</th><th>${lang==="el"?"Κάλτσα":"Socks"}</th><th>${lang==="el"?"Εγγραφή":"Registered"}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
