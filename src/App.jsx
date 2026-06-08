@@ -4904,7 +4904,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
   const [editId,setEditId]=useState(null);
   const [uploadingBanner,setUploadingBanner]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});
+  const [form,setForm]=useState({name:"",date:"",location:"",distances:[],max_runners:"",description:"",organizer_email:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});
 
   async function uploadBanner(e){
     const file=e.target.files?.[0];
@@ -4921,8 +4921,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
 
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
-  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});}
-  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[],documents:race.documents||[]});setShowForm(true);}
+  function resetForm(){setEditId(null);setForm({name:"",date:"",location:"",distances:[],max_runners:"",description:"",organizer_email:"",pricing:[],perks:[],early_bird:null,custom_fields:[],banner_url:"",public_runners_list:false,routes:[],sponsors:[],faq:[],gallery:[],documents:[]});}
+  function openEdit(race){setEditId(race.id);setForm({name:race.name||"",date:race.date||"",location:race.location||"",distances:race.distance?race.distance.split(" | "):[],max_runners:race.max_runners?String(race.max_runners):"",description:race.description||"",organizer_email:race.organizer_email||"",pricing:race.pricing||[],perks:race.perks||[],early_bird:race.early_bird||null,custom_fields:race.custom_fields||[],banner_url:race.banner_url||"",public_runners_list:!!race.public_runners_list,routes:race.routes||[],sponsors:race.sponsors||[],faq:race.faq||[],gallery:race.gallery||[],documents:race.documents||[]});setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.date){toast(t.fillNameDate,"warning");return;}
@@ -4934,7 +4934,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
     setLoading(true);
     const validPricing=form.pricing.filter(p=>form.distances.includes(p.distance));
     const validRoutes=(form.routes||[]).filter(r=>form.distances.includes(r.distance));
-    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[],documents:form.documents||[]};
+    const payload={name:form.name,date:form.date,location:form.location,distance:form.distances.join(" | "),description:form.description,organizer_email:form.organizer_email||null,max_runners:form.max_runners?parseInt(form.max_runners):null,pricing:validPricing,perks:form.perks,early_bird:form.early_bird,custom_fields:form.custom_fields,banner_url:form.banner_url||null,public_runners_list:!!form.public_runners_list,routes:validRoutes,sponsors:form.sponsors||[],faq:form.faq||[],gallery:form.gallery||[],documents:form.documents||[]};
     if(editId){
       const {data,error}=await supabase.from("races").update(payload).eq("id",editId).select();
       if(error){toast("Σφάλμα: "+error.message,"error");setLoading(false);return;}
@@ -5397,6 +5397,7 @@ ${sections}
       <CustomFieldsPicker fields={form.custom_fields} onChange={cf=>setForm({...form,custom_fields:cf})}/>
       <In label={t.maxRunners} type="number" value={form.max_runners} onChange={e=>setForm({...form,max_runners:e.target.value})} placeholder={t.maxRunnersPlaceholder}/>
       <F label={t.description}><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3} style={{...css.input,resize:"vertical"}}/></F>
+      <In label="Email διοργανωσης (ειδοποιησεις εγγραφων)" type="email" value={form.organizer_email||""} onChange={e=>setForm({...form,organizer_email:e.target.value})} placeholder="info@agtrace.gr"/>
       <div style={{display:"flex",gap:"10px",marginTop:"20px"}}>
         <Btn onClick={save} style={{flex:1}} disabled={loading}>{loading?"...":(editId?t.saveChanges:t.createRace)}</Btn>
         <Btn v="sec" onClick={()=>{setShowForm(false);resetForm();}} style={{flex:1}}>{t.cancel}</Btn>
