@@ -3116,6 +3116,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         <span>🛡 Συναινώ στην επεξεργασία των προσωπικών μου δεδομένων σύμφωνα με την <button type="button" onClick={()=>setShowLegalPage("privacy")} style={{background:"none",border:"none",color:T.primary,fontWeight:700,cursor:"pointer",textDecoration:"underline",padding:0,font:"inherit"}}>Πολιτική Απορρήτου</button> (GDPR) *</span>
       </label>
     </div>
+    {race&&(race.payment_iban||race.payment_iris)&&<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"8px",padding:"12px",marginBottom:"12px",fontSize:"13px",color:T.textMid}}><div style={{fontWeight:700,color:T.text,marginBottom:"6px"}}>💳 Στοιχεια πληρωμης</div>{race.payment_iban&&<div style={{marginBottom:"4px"}}>🏦 Καταθεση IBAN: <strong style={{color:T.text}}>{race.payment_iban}</strong></div>}{race.payment_iris&&<div>📱 IRIS (ΑΦΜ/τηλ): <strong style={{color:T.text}}>{race.payment_iris}</strong></div>}</div>}
     <div style={{display:"flex",gap:"10px"}}>
       <Btn onClick={submit} style={{flex:1}} disabled={loading}>{loading?"...":`${t.confirmReg}${priceInfo.final>0?` (${priceInfo.final.toFixed(2)}€)`:""}`}</Btn>
       <Btn v="sec" onClick={onClose} style={{flex:1}}>{t.cancel}</Btn>
