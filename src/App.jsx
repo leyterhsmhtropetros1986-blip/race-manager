@@ -7024,6 +7024,7 @@ ${expenseRows}
     // Upload to archive (async, doesn't block UI)
     try{
       const userId=session?.user?.id;
+      if(userId&&!window.html2pdf){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js");}
       if(userId&&window.html2pdf){
         const fileName=`forecast-${selectedRace.name.replace(/[^a-z0-9]/gi,"_")}-${now.getTime()}.pdf`;
         const filePath=`${userId}/${fileName}`;
