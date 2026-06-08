@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 // Cache-bust: 2026-06-05T13:00 — force Vercel rebuild for privacy fixes
 
@@ -2647,7 +2651,7 @@ function PublicRunnersPage({raceId,onBack}){
         <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",boxShadow:T.shadow}}>
           {filtered.map((reg,i)=>(
             <div key={reg.id} style={{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",borderTop:i?`1px solid ${T.border}`:"none",background:i%2===0?T.bg:T.bgAlt}}>
-              <div style={{background:T.primary,color:"#fff",borderRadius:"8px",padding:"4px 10px",fontWeight:700,fontSize:"13px",minWidth:"45px",textAlign:"center"}}>#{reg.bib_number}</div>
+              
               {reg.runner.avatar_url?(<img src={reg.runner.avatar_url} alt="" style={{width:"40px",height:"40px",borderRadius:"50%",objectFit:"cover"}}/>):(<div style={{width:"40px",height:"40px",borderRadius:"50%",background:T.accent,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>{(reg.runner.first_name?.[0]||"?").toUpperCase()}</div>)}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.text,fontWeight:700,fontSize:"15px",marginBottom:"4px"}}>{reg.runner.first_name} {reg.runner.last_name}</div>
