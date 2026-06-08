@@ -4929,6 +4929,7 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
 
   async function save(){
     if(!form.name||!form.date){toast(t.fillNameDate,"warning");return;}
+    if(!form.organizer_email){toast(lang==="el"?"⚠️ Το email διοργανωσης ειναι υποχρεωτικο":"⚠️ Organizer email required","warning");return;}
     // Validate race date is not in the past
     const raceDate=new Date(form.date);
     const today=new Date();today.setHours(0,0,0,0);
