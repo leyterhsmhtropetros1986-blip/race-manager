@@ -2826,7 +2826,7 @@ function LoginPage({onBack}){
 }
 
 function AthleteRaceCard({race,registrations,runners,session,onSelect}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
   const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
   const distances=race.distance?race.distance.split(" | "):[];
@@ -4424,7 +4424,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
 }
 
 function AthleteDashboard({races,registrations,runners,profile,session,onRefresh}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const [registerRace,setRegisterRace]=useState(null);
   const [selectedRace,setSelectedRace]=useState(null);
   const [tab,setTab]=useState("available");
