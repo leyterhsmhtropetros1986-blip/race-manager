@@ -1527,12 +1527,12 @@ function CustomFieldsPicker({fields,onChange}){
     onChange([...fields,f]);
     setNewField({label:"",type:"text",required:false,options:""});
   }
-  function removeField(id){onChange(fields.filter(f=>f.id!==id));}
+  function removeField(i){onChange(fields.filter((_,idx)=>idx!==i));}
   return <F label={t.customFieldsLabel}>
     <div style={{color:T.textMid,fontSize:"12px",marginBottom:"10px"}}>{t.customFieldsDesc}</div>
     {fields.length>0&&(
       <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"12px"}}>
-        {fields.map(f=>(
+        {fields.map((f,i)=>(
           <div key={f.id} style={{background:T.bg,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
             <div style={{flex:1}}>
               <div style={{color:T.text,fontSize:"13px",fontWeight:600}}>{f.label}{f.required&&" *"}</div>
@@ -1540,7 +1540,7 @@ function CustomFieldsPicker({fields,onChange}){
                 {f.type==="text"&&t.typeText}{f.type==="number"&&t.typeNumber}{f.type==="checkbox"&&t.typeCheckbox}{f.type==="select"&&`${t.typeSelect}: ${(f.options||[]).join(", ")}`}
               </div>
             </div>
-            <button onClick={()=>removeField(f.id)} style={{background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"18px"}}>×</button>
+            <button onClick={()=>removeField(i)} style={{background:"none",border:"none",color:T.danger,cursor:"pointer",fontSize:"18px"}}>×</button>
           </div>
         ))}
       </div>
