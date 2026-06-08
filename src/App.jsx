@@ -2955,6 +2955,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     }
     // AMKA validation
     if(!form.tshirt){toast("⚠ Το μεγεθος T-shirt ειναι υποχρεωτικο","warning");return;}
+    if(!form.tshirt){toast("⚠ Το μεγεθος T-shirt ειναι υποχρεωτικο","warning");return;}
     if(form.amka){
       const amkaCheck=validateAMKA(form.amka);
       if(!amkaCheck.valid){toast("🆔 "+amkaCheck.error,"warning");return;}
