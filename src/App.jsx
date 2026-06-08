@@ -3073,7 +3073,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
       <In label={t.phone+" *"} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="69..."/>
-      <In label="ΑΜΚΑ" value={form.amka} onChange={e=>set("amka",e.target.value)} placeholder="Προαιρετικό"/>
+      
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
       <DOBInput label={t.dob+" *"} value={form.dob} onChange={v=>set("dob",v)}/>
