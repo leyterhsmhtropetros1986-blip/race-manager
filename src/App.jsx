@@ -2828,7 +2828,7 @@ function LoginPage({onBack}){
 }
 
 function AthleteRaceCard({race,registrations,runners,session,onSelect}){
-  const {t,lang}=useLang();
+  const {t}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
   const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
   const distances=race.distance?race.distance.split(" | "):[];
@@ -3864,7 +3864,6 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
           <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
             {(showAllActivities?activities.slice(0,10):activities.slice(0,1)).map(act=>{
               const typeIcon={race:"🏆",training:"🏃",long_run:"📏",tempo:"⚡",intervals:"🎯",recovery:"😌",other:"📝"}[act.activity_type]||"📝";
-              const typeLabel={race:lang==="el"?"Αγώνας":"Race",training:lang==="el"?"Προπόνηση":"Training",long_run:lang==="el"?"Long Run":"Long Run",tempo:"Tempo",intervals:"Intervals",recovery:lang==="el"?"Recovery":"Recovery",other:lang==="el"?"Άλλο":"Other"}[act.activity_type]||"";
               const d=act.duration_seconds;
               const durStr=d?`${Math.floor(d/3600)>0?Math.floor(d/3600)+":":""}${String(Math.floor((d%3600)/60)).padStart(2,"0")}:${String(d%60).padStart(2,"0")}`:"—";
               const pace=(act.distance_km&&d)?((d/60)/act.distance_km):null;
@@ -4135,7 +4134,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   </div>;
 }
 
-function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRegister}){
+function RaceDetailsPage({race,registrations,runners,session,onBack,onRegister}){
   const {t,lang}=useLang();
   const [activeTab,setActiveTab]=useState("info");
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
@@ -4616,7 +4615,7 @@ function matchRunner(csvRow,registrations,runners){
 function ImportResultsModal({race,registrations,runners,onClose,onSuccess}){
   const {lang}=useLang();
   const [step,setStep]=useState("upload"); // upload | preview | done
-  const [csvText,setCsvText]=useState("");
+  const [,setCsvText]=useState("");
   const [preview,setPreview]=useState(null);
   const [loading,setLoading]=useState(false);
   const raceRegs=registrations.filter(r=>r.race_id===race.id);
@@ -5948,7 +5947,7 @@ function AdminPanel(){
   </div>;
 }
 
-function CRMDashboard({session,profile,races}){
+function CRMDashboard({profile,races}){
   const {lang}=useLang();
   const [contacts,setContacts]=useState([]);
   const [sponsors,setSponsors]=useState([]);
@@ -5978,8 +5977,6 @@ function CRMDashboard({session,profile,races}){
   if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>🔄 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
   const athleteContacts=contacts.filter(c=>c.contact_type==="athlete");
   const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
-  const confirmedSponsors=sponsors.filter(s=>s.status==="confirmed");
-  const totalSponsorAmount=confirmedSponsors.reduce((sum,s)=>sum+(parseFloat(s.amount)||0),0);
   const filteredContacts=athleteContacts.filter(c=>{
     if(!search)return true;
     const q=search.toLowerCase();
@@ -6094,7 +6091,6 @@ function CRMDashboard({session,profile,races}){
     })()}
     {/* TASKS MODULE - simplified */}
     {activeView==="tasks"&&(()=>{
-      const [newTitle,priorityValue]=["",""];
       return <TasksModule tasks={tasks} onRefresh={fetchCRM} myProfileId={profile?.id} lang={lang} races={races}/>;
     })()}
     {/* SPONSORS / VOLUNTEERS - placeholders for next phases */}
@@ -6739,7 +6735,7 @@ function RaceForecast({races,registrations,session,profile}){
   const [saving,setSaving]=useState(false);
   const [editing,setEditing]=useState({});
   const [newExpense,setNewExpense]=useState({category:"",amount:""});
-  const [actualTxs,setActualTxs]=useState([]);
+  const [,setActualTxs]=useState([]);
   const [viewMode,setViewMode]=useState("forecast");
   const [showArchive,setShowArchive]=useState(false);
   const [archiveList,setArchiveList]=useState([]);
@@ -6770,9 +6766,9 @@ function RaceForecast({races,registrations,session,profile}){
       toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error","error");
     }
   }
-  const [showAddTx,setShowAddTx]=useState(false);
+  const [,setShowAddTx]=useState(false);
   const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
-  const [txBusy,setTxBusy]=useState(false);
+  const [,setTxBusy]=useState(false);
 
   const selectedRace=myRaces.find(r=>r.id===selectedRaceId);
   
@@ -6938,8 +6934,6 @@ function RaceForecast({races,registrations,session,profile}){
         <td class="num" style="color:${diffColor};font-weight:700">${exp.actual_amount?diffStr+"€":"-"}</td>
       </tr>`;
     }).join("")||`<tr><td colspan="4" style="text-align:center;color:#999;padding:14px">Χωρίς έξοδα</td></tr>`;
-    const profitColor=profit>=0?"#10b981":"#dc2626";
-    const actualProfitColor=actualProfit>=0?"#10b981":"#dc2626";
     const variance=actualProfit-profit;
     const varianceStr=variance>=0?`+${variance.toFixed(2)}`:variance.toFixed(2);
     const html=`<!DOCTYPE html>
@@ -7280,7 +7274,7 @@ ${expenseRows}
 }
 
 function ResetPasswordModal({onClose}){
-  const {t,lang}=useLang();
+  const {lang}=useLang();
   const [password,setPassword]=useState("");
   const [password2,setPassword2]=useState("");
   const [show,setShow]=useState(false);
@@ -7370,7 +7364,6 @@ function AppContent(){
     const WARN_BEFORE=30*1000; // warn 30s before
     let idleTimer=null;
     let warnTimer=null;
-    let lastActivity=Date.now();
     
     function doLogout(){
       toast(lang==="el"?"🔒 Αποσύνδεση λόγω αδράνειας (5')":"🔒 Logged out due to inactivity (5min)","warning");
@@ -7380,7 +7373,6 @@ function AppContent(){
       toast(lang==="el"?"⚠ Αποσύνδεση σε 30 δευτερόλεπτα...":"⚠ Logging out in 30 seconds...","warning");
     }
     function resetTimer(){
-      lastActivity=Date.now();
       if(idleTimer)clearTimeout(idleTimer);
       if(warnTimer)clearTimeout(warnTimer);
       warnTimer=setTimeout(doWarn,IDLE_LIMIT-WARN_BEFORE);
