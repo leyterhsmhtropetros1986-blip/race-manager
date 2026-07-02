@@ -76,6 +76,14 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
       opacity: 0.55;
       cursor: not-allowed;
     }
+    /* Dashboard stat card hover lift */
+    .stat-card {
+      transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+    }
   `;
   if (document.head) document.head.appendChild(s);
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
@@ -5474,7 +5482,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
 }
 
 function OrganizerStats({races,registrations,session,profile}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   const myRaceIds=myRaces.map(r=>r.id);
@@ -5485,56 +5493,78 @@ function OrganizerStats({races,registrations,session,profile}){
   const paidRegs=myRegs.filter(r=>r.payment_status==="paid").length;
   const pendingRegs=myRegs.filter(r=>r.payment_status!=="paid").length;
   const avgPerRace=totalRaces>0?(totalRegs/totalRaces).toFixed(1):"0";
+  const paidPct=totalRegs>0?Math.round((paidRegs/totalRegs)*100):0;
   const racesData=myRaces.map(r=>{const regs=myRegs.filter(reg=>reg.race_id===r.id);const revenue=regs.reduce((sum,reg)=>sum+(parseFloat(reg.price_paid)||0),0);return{...r,regCount:regs.length,revenue};}).sort((a,b)=>b.regCount-a.regCount);
   const maxRegCount=racesData.length>0?Math.max(...racesData.map(r=>r.regCount||0),1):1;
+  const statCards=[
+    {icon:"🏟",value:totalRaces,label:t.statsTotalRaces,color:T.primary},
+    {icon:"📋",value:totalRegs,label:t.statsTotalRegs,color:T.accent},
+    {icon:"💰",value:`${totalRevenue.toFixed(2)}€`,label:t.statsTotalRevenue,color:T.warning},
+    {icon:"📈",value:avgPerRace,label:t.statsAvgPerRace,color:T.primaryDark},
+  ];
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.statsTitle}</h2>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"24px"}}>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.primary}}>{totalRaces}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRaces}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.accent}}>{totalRegs}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRegs}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.warning}}>{totalRevenue.toFixed(2)}€</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRevenue}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.text}}>{avgPerRace}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsAvgPerRace}</div>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"22px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.primary}44`,flexShrink:0}}>📊</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.statsTitle}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Επισκόπηση απόδοσης των αγώνων σου":"Overview of your races' performance"}</div>
       </div>
     </div>
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",marginBottom:"20px",boxShadow:T.shadow}}>
-      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>💳 {t.paymentStatus}</h3>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
-        <div style={{background:`${T.accent}10`,border:`1px solid ${T.accent}44`,borderRadius:"10px",padding:"14px"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent}}>{paidRegs}</div>
-          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPaid}</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(190px, 1fr))",gap:"14px",marginBottom:"24px"}}>
+      {statCards.map((c,i)=>(
+        <div key={i} className="stat-card" style={{position:"relative",background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"4px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{display:"flex",alignItems:"center",gap:"13px"}}>
+            <div style={{width:"46px",height:"46px",borderRadius:"13px",background:`${c.color}1a`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"23px",flexShrink:0}}>{c.icon}</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:"26px",fontWeight:900,color:c.color,lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.value}</div>
+              <div style={{fontSize:"10.5px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"3px"}}>{c.label}</div>
+            </div>
+          </div>
         </div>
-        <div style={{background:`${T.warning}10`,border:`1px solid ${T.warning}44`,borderRadius:"10px",padding:"14px"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.warning}}>{pendingRegs}</div>
-          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPending}</div>
+      ))}
+    </div>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",marginBottom:"20px",boxShadow:T.shadow}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px",flexWrap:"wrap",gap:"6px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"15px"}}>💳 {t.paymentStatus}</h3>
+        <span style={{fontSize:"12px",fontWeight:800,color:T.accent,background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"20px",padding:"3px 12px"}}>{paidPct}% {lang==="el"?"πληρωμένα":"paid"}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",background:`${T.accent}0d`,border:`1px solid ${T.accent}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{width:"40px",height:"40px",borderRadius:"11px",background:`${T.accent}1f`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px",flexShrink:0}}>✅</div>
+          <div><div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1.1}}>{paidRegs}</div><div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPaid}</div></div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",background:`${T.warning}0d`,border:`1px solid ${T.warning}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{width:"40px",height:"40px",borderRadius:"11px",background:`${T.warning}1f`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px",flexShrink:0}}>⏳</div>
+          <div><div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1.1}}>{pendingRegs}</div><div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPending}</div></div>
         </div>
       </div>
+      <div style={{display:"flex",height:"10px",borderRadius:"99px",overflow:"hidden",background:T.bg}}>
+        <div style={{width:`${paidPct}%`,background:`linear-gradient(90deg, ${T.accent} 0%, ${T.accentDark} 100%)`,transition:"width 0.4s ease"}}/>
+        <div style={{flex:1,background:`${T.warning}55`}}/>
+      </div>
     </div>
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow}}>
-      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>📊 {t.statsRegsPerRace}</h3>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow}}>
+      <h3 style={{margin:"0 0 16px",color:T.text,fontSize:"15px"}}>📊 {t.statsRegsPerRace}</h3>
       {racesData.length===0?(<div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"20px"}}>{t.statsNoData}</div>):(
-        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
-          {racesData.map(r=>(
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {racesData.map((r,i)=>{
+            const rankColors=["#d4a017","#9a9aa3","#c17d4a"];
+            const rankBg=i<3?rankColors[i]:T.textLight;
+            return (
             <div key={r.id}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px",flexWrap:"wrap",gap:"6px"}}>
-                <span style={{color:T.text,fontSize:"13px",fontWeight:600}}>{r.name}</span>
-                <span style={{color:T.textMid,fontSize:"12px"}}>{r.regCount} · 💰 {r.revenue.toFixed(2)}€</span>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"5px",flexWrap:"wrap",gap:"6px"}}>
+                <span style={{display:"flex",alignItems:"center",gap:"8px",minWidth:0}}>
+                  <span style={{width:"22px",height:"22px",borderRadius:"7px",background:`${rankBg}22`,color:rankBg,fontSize:"11px",fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</span>
+                  <span style={{color:T.text,fontSize:"13px",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</span>
+                </span>
+                <span style={{color:T.textMid,fontSize:"12px",whiteSpace:"nowrap"}}><b style={{color:T.text}}>{r.regCount}</b> · 💰 {r.revenue.toFixed(2)}€</span>
               </div>
-              <div style={{background:T.bg,height:"10px",borderRadius:"99px",overflow:"hidden"}}>
-                <div style={{background:`linear-gradient(90deg, ${T.primary} 0%, ${T.accent} 100%)`,height:"100%",width:`${(r.regCount/maxRegCount)*100}%`}}/>
+              <div style={{background:T.bg,height:"12px",borderRadius:"99px",overflow:"hidden"}}>
+                <div style={{background:`linear-gradient(90deg, ${T.primary} 0%, ${T.accent} 100%)`,height:"100%",width:`${Math.max((r.regCount/maxRegCount)*100,r.regCount>0?4:0)}%`,borderRadius:"99px",transition:"width 0.4s ease"}}/>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
     </div>
