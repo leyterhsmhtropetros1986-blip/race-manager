@@ -379,7 +379,7 @@ function getDaysUntilRace(date){
     const now=new Date();
     const diffMs=raceDate-now;
     return Math.ceil(diffMs/(1000*60*60*24));
-  }catch(e){return null;}
+  }catch{return null;}
 }
 
 function RaceCountdown({date,compact,lang}){
@@ -1684,7 +1684,7 @@ function parseGPX(gpxText){
       if(!isNaN(lat)&&!isNaN(lng))points.push([lat,lng,isNaN(ele)?0:ele]);
     });
     return points.length>0?points:null;
-  }catch(e){return null;}
+  }catch{return null;}
 }
 
 function haversineKm(p1,p2){
@@ -1957,7 +1957,7 @@ function WeatherWidget({location,raceDate}){
           });
           setLoading(false);
         }
-      }catch(e){if(!cancelled){setError("err");setLoading(false);}}
+      }catch{if(!cancelled){setError("err");setLoading(false);}}
     })();
     return()=>{cancelled=true;};
   },[location,raceDate]);
@@ -2090,7 +2090,7 @@ function ShareMenu({raceName,raceDate,onClose}){
     try{
       await navigator.clipboard.writeText(url);
       toast(lang==="el"?"Σύνδεσμος αντιγράφηκε!":"Link copied!","success");
-    }catch(e){toast(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy","error");}
+    }catch{toast(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy","error");}
     onClose();
   }
   const opts=[
@@ -3275,7 +3275,7 @@ function GpxSplits({gpxUrl}){
           });
         }
         if(!cancelled)setSplits(result);
-      }catch(e){
+      }catch{
         if(!cancelled)setErr(true);
       }
     })();
@@ -3349,7 +3349,7 @@ function InlineGpxMap({gpxUrl}){
           if(!isNaN(lat)&&!isNaN(lon))pts.push([lat,lon]);
         });
         if(!cancelled)setPoints(pts);
-      }catch(e){
+      }catch{
         if(!cancelled)setErr(true);
       }
     })();
@@ -4210,7 +4210,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
   const [showCalendarMenu,setShowCalendarMenu]=useState(false);
   async function share(){
     if(navigator.share){
-      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch(e){}
+      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch{/* ignore */}
     }
     setShowShareMenu(true);
   }
@@ -4248,7 +4248,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           </div>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
             <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)",flex:1,minWidth:0}}>{race.name}</h1>
-            <button onClick={async(e)=>{e.stopPropagation();try{const url=window.location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);}else{const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}toast("📋 "+(lang==="el"?"Αντιγράφηκε το link!":"Link copied!"),"success");}catch(err){toast("Σφάλμα αντιγραφής","error");}}} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(8px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0,whiteSpace:"nowrap"}} title={lang==="el"?"Αντιγραφή link":"Copy link"}>📋 {lang==="el"?"Share":"Share"}</button>
+            <button onClick={async(e)=>{e.stopPropagation();try{const url=window.location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);}else{const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}toast("📋 "+(lang==="el"?"Αντιγράφηκε το link!":"Link copied!"),"success");}catch{toast("Σφάλμα αντιγραφής","error");}}} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(8px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0,whiteSpace:"nowrap"}} title={lang==="el"?"Αντιγραφή link":"Copy link"}>📋 {lang==="el"?"Share":"Share"}</button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:"18px",color:"rgba(255,255,255,0.95)",fontSize:"14px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
             <span>📅 {race.date}</span>
@@ -6558,14 +6558,14 @@ function PublicAthleteView({athleteId,mySession,onBack}){
         try{
           const {data:r}=await supabase.from("runners").select("id,first_name,last_name,city,club,avatar_url").eq("athlete_profile_id",p.id).limit(1).maybeSingle();
           if(r)runner=r;
-        }catch(e){}
+        }catch{/* ignore */}
         
         // Fetch public activities - existing policy `select_all=true` allows
         let activities=[];
         try{
           const {data:a}=await supabase.from("personal_activities").select("id,name,date,distance_km,duration_h,duration_m,duration_s,elevation_gain_m,gpx_url,activity_type").eq("profile_id",p.id).order("date",{ascending:false}).limit(10);
           if(a)activities=a;
-        }catch(e){}
+        }catch{/* ignore */}
         
         // Fetch race history if runner exists
         let races=[];
@@ -6573,7 +6573,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
           try{
             const {data:regs}=await supabase.from("registrations").select("id,distance,bib_number,races(name,date,location)").eq("runner_id",runner.id);
             if(regs)races=regs.filter(r=>r.races);
-          }catch(e){}
+          }catch{/* ignore */}
         }
         
         // Fetch follow counts - athlete_follows table exists from yesterday's SQL
@@ -6585,7 +6585,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
             const {data:f}=await supabase.from("athlete_follows").select("id").eq("follower_id",myId).eq("following_id",p.id).maybeSingle();
             iAmFollowing=!!f;
           }
-        }catch(e){}
+        }catch{/* ignore */}
         
         if(!cancelled){
           setData({profile:p,runner,activities,races});
@@ -7359,7 +7359,7 @@ function AppContent(){
       const sp=new URLSearchParams(window.location.search);
       const aid=sp.get("athlete");
       if(aid&&aid.startsWith("RM-"))setViewAthleteId(aid);
-    }catch(e){}
+    }catch{/* ignore */}
     return()=>subscription?.unsubscribe();
   },[]);
 
