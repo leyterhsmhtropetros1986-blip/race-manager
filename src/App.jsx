@@ -76,6 +76,14 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
       opacity: 0.55;
       cursor: not-allowed;
     }
+    /* Dashboard stat card hover lift */
+    .stat-card {
+      transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+    }
   `;
   if (document.head) document.head.appendChild(s);
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
@@ -311,13 +319,13 @@ const LangContext = createContext({lang:"el", t:STR.el, setLang:()=>{}});
 function useLang(){return useContext(LangContext);}
 
 const T = {
-  bg:"#f5f3ef", bgAlt:"#ffffff", bgInput:"#ffffff",
-  border:"#e0ddd6", borderDark:"#c9c5bc",
-  text:"#2a2a2e", textMid:"#6b6b73", textLight:"#9a9aa3",
-  primary:"#4a5dc7", primaryDark:"#3a4ba8",
-  accent:"#2da77f", accentDark:"#1f8862",
-  warning:"#d4a017", danger:"#d04545",
-  shadow:"0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+  bg:"#eef2ef", bgAlt:"#ffffff", bgInput:"#ffffff",
+  border:"#dbe3dd", borderDark:"#c1cbc4",
+  text:"#111a14", textMid:"#4b5650", textLight:"#8a938d",
+  primary:"#14211a", primaryDark:"#0b120e",
+  accent:"#16a34a", accentDark:"#15803d",
+  warning:"#f59e0b", danger:"#ef4444",
+  shadow:"0 2px 8px rgba(15,25,18,0.10), 0 1px 3px rgba(0,0,0,0.06)",
 };
 
 const CATEGORIES = ["Γενική","Άνδρες 18-29","Άνδρες 30-39","Άνδρες 40-49","Άνδρες 50+","Γυναίκες 18-29","Γυναίκες 30-39","Γυναίκες 40-49","Γυναίκες 50+","Παίδες U18"];
@@ -353,8 +361,8 @@ function Btn({children,v="pri",sm,...p}){
   const vs={
     pri:{background:`linear-gradient(135deg, ${T.primary} 0%, ${T.primaryDark} 100%)`,color:"#fff",fontWeight:700,boxShadow:`0 2px 8px ${T.primary}33`},
     sec:{background:T.bgAlt,color:T.text,border:`1px solid ${T.border}`},
-    red:{background:"#fce8e8",color:T.danger,border:`1px solid ${T.danger}33`,fontWeight:600},
-    grn:{background:"#e1f3ec",color:T.accent,border:`1px solid ${T.accent}44`,fontWeight:600},
+    red:{background:"#fee2e2",color:T.danger,border:`1px solid ${T.danger}33`,fontWeight:600},
+    grn:{background:"#dcfce7",color:T.accent,border:`1px solid ${T.accent}44`,fontWeight:600},
     ghost:{background:"transparent",color:T.textMid,border:`1px solid ${T.border}`}
   };
   return <button {...p} className={`btn-enhanced ${p.className||""}`} style={{borderRadius:"10px",border:"none",cursor:"pointer",padding:sm?"7px 14px":"11px 22px",fontSize:sm?"12px":"13px",fontFamily:"inherit",letterSpacing:"0.01em",transition:"all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",...vs[v],...p.style}}>{children}</button>;
@@ -379,7 +387,7 @@ function getDaysUntilRace(date){
     const now=new Date();
     const diffMs=raceDate-now;
     return Math.ceil(diffMs/(1000*60*60*24));
-  }catch(e){return null;}
+  }catch{return null;}
 }
 
 function RaceCountdown({date,compact,lang}){
@@ -396,7 +404,7 @@ function RaceCountdown({date,compact,lang}){
 }
 
 function Skeleton({width,height,radius,style}){
-  return <div style={{background:"linear-gradient(90deg, #e8e6df 0%, #f0eee7 50%, #e8e6df 100%)",backgroundSize:"200% 100%",animation:"skeletonPulse 1.4s ease-in-out infinite",width:width||"100%",height:height||"16px",borderRadius:radius||"6px",...style}}/>;
+  return <div style={{background:"linear-gradient(90deg, #dde5e0 0%, #eef2ef 50%, #dde5e0 100%)",backgroundSize:"200% 100%",animation:"skeletonPulse 1.4s ease-in-out infinite",width:width||"100%",height:height||"16px",borderRadius:radius||"6px",...style}}/>;
 }
 
 function SkeletonCard(){
@@ -425,7 +433,7 @@ function EmptyState({icon,title,message,action,actionLabel,onAction}){
     <div style={{fontSize:"56px",marginBottom:"14px",opacity:0.9}}>{icon||"📭"}</div>
     <h3 style={{margin:"0 0 6px",color:T.text,fontSize:"17px",fontWeight:800,letterSpacing:"-0.01em"}}>{title}</h3>
     {message&&<p style={{margin:"0 0 18px",color:T.textMid,fontSize:"14px",lineHeight:1.6,maxWidth:"360px",marginLeft:"auto",marginRight:"auto"}}>{message}</p>}
-    {action&&actionLabel&&<button onClick={onAction} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(74,93,199,0.2)"}}>{actionLabel}</button>}
+    {action&&actionLabel&&<button onClick={onAction} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 22px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(20,33,26,0.2)"}}>{actionLabel}</button>}
   </div>;
 }
 
@@ -450,7 +458,7 @@ function emailTemplate(title,bodyHtml){
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
     <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
       <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
-        <div style="background:linear-gradient(135deg,#4a5dc7 0%,#3a4ba8 100%);padding:32px;text-align:center;">
+        <div style="background:linear-gradient(135deg,#14211a 0%,#0b120e 100%);padding:32px;text-align:center;">
           <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.02em;">🏃 Race Management</h1>
           <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:13px;">racemanagement.gr</p>
         </div>
@@ -460,7 +468,7 @@ function emailTemplate(title,bodyHtml){
         </div>
         <div style="background:#f9f9fb;padding:20px 28px;border-top:1px solid #eee;text-align:center;color:#888;font-size:12px;">
           <p style="margin:0 0 6px;">© ${new Date().getFullYear()} ΜΗΤΡΟΠΕΤΡΟΣ ΕΛΕΥΘΕΡΙΟΣ · ΑΦΜ 105127494</p>
-          <p style="margin:0;">📞 693 6960328 · ✉️ <a href="mailto:info@racemanagement.gr" style="color:#4a5dc7;text-decoration:none;">info@racemanagement.gr</a></p>
+          <p style="margin:0;">📞 693 6960328 · ✉️ <a href="mailto:info@racemanagement.gr" style="color:#14211a;text-decoration:none;">info@racemanagement.gr</a></p>
         </div>
       </div>
     </div>
@@ -541,7 +549,7 @@ function DarkModeToggle(){
 
 function validateGreekPhone(phone){
   if(!phone)return{valid:true,clean:""}; // Optional in most cases
-  const clean=String(phone).replace(/[\s\-\(\)]/g,"");
+  const clean=String(phone).replace(/[\s\-()]/g,"");
   // Greek mobile: starts with 69, 10 digits total. Or +30 69...
   // Greek landline: 10 digits starting with 2
   // International with +30
@@ -1684,7 +1692,7 @@ function parseGPX(gpxText){
       if(!isNaN(lat)&&!isNaN(lng))points.push([lat,lng,isNaN(ele)?0:ele]);
     });
     return points.length>0?points:null;
-  }catch(e){return null;}
+  }catch{return null;}
 }
 
 function haversineKm(p1,p2){
@@ -1784,8 +1792,8 @@ function ElevationProfile({points,height}){
   return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{width:"100%",height:height||200,display:"block"}}>
     <defs>
       <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#4a5dc7" stopOpacity="0.45"/>
-        <stop offset="100%" stopColor="#4a5dc7" stopOpacity="0.02"/>
+        <stop offset="0%" stopColor="#14211a" stopOpacity="0.45"/>
+        <stop offset="100%" stopColor="#14211a" stopOpacity="0.02"/>
       </linearGradient>
     </defs>
     {/* gridlines */}
@@ -1799,7 +1807,7 @@ function ElevationProfile({points,height}){
     {/* Area */}
     <path d={areaPath} fill="url(#elevGrad)"/>
     {/* Line */}
-    <polyline points={linePts} fill="none" stroke="#4a5dc7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+    <polyline points={linePts} fill="none" stroke="#14211a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
     {/* X axis ticks */}
     {kmTicks.map((k,i)=>(
       <g key={i}>
@@ -1828,7 +1836,7 @@ function RouteMap({points,height,defaultLayer}){
   const startIcon=L.divIcon({html:'<div style="background:#10b981;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;font-family:system-ui">▶</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
   const finishIcon=L.divIcon({html:'<div style="background:#ef4444;width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;font-family:system-ui">END</div>',iconSize:[38,38],iconAnchor:[19,19],className:""});
   const layers={
-    standard:{url:"https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png",attribution:'&copy; OpenStreetMap',label:"🗺",routeColor:"#4a5dc7"},
+    standard:{url:"https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png",attribution:'&copy; OpenStreetMap',label:"🗺",routeColor:"#14211a"},
     satellite:{url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",attribution:'Tiles &copy; Esri',label:"🛰",routeColor:"#fbbf24"},
     terrain:{url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",attribution:'&copy; OpenTopoMap (CC-BY-SA)',label:"⛰",routeColor:"#dc2626"}
   };
@@ -1898,7 +1906,7 @@ function RoutesPicker({distances,routes,onChange}){
             </div>
             <div style={{display:"flex",gap:"8px"}}>
               {route?(
-                <button type="button" onClick={()=>removeRoute(d)} style={{background:"#fce8e8",color:T.danger,border:`1px solid ${T.danger}33`,borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:600}}>🗑 {lang==="el"?"Αφαίρεση":"Remove"}</button>
+                <button type="button" onClick={()=>removeRoute(d)} style={{background:"#fee2e2",color:T.danger,border:`1px solid ${T.danger}33`,borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"12px",fontFamily:"inherit",fontWeight:600}}>🗑 {lang==="el"?"Αφαίρεση":"Remove"}</button>
               ):(
                 <label style={{cursor:uploading[d]?"wait":"pointer",background:T.primary,color:"#fff",borderRadius:"8px",padding:"7px 14px",fontSize:"12px",fontWeight:700,fontFamily:"inherit",display:"inline-block",opacity:uploading[d]?0.6:1}}>
                   {uploading[d]?(lang==="el"?"Επεξεργασία...":"Processing..."):"📤 Upload GPX"}
@@ -1957,7 +1965,7 @@ function WeatherWidget({location,raceDate}){
           });
           setLoading(false);
         }
-      }catch(e){if(!cancelled){setError("err");setLoading(false);}}
+      }catch{if(!cancelled){setError("err");setLoading(false);}}
     })();
     return()=>{cancelled=true;};
   },[location,raceDate]);
@@ -2082,7 +2090,6 @@ function ShareMenu({raceName,raceDate,onClose}){
     let target="";
     if(platform==="facebook")target=`https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
     else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
-    else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
     else if(platform==="telegram")target=`https://t.me/share/url?url=${encUrl}&text=${encText}`;
     else if(platform==="twitter")target=`https://twitter.com/intent/tweet?text=${encText}&url=${encUrl}`;
     if(target)window.open(target,"_blank","noopener,noreferrer");
@@ -2091,13 +2098,12 @@ function ShareMenu({raceName,raceDate,onClose}){
     try{
       await navigator.clipboard.writeText(url);
       toast(lang==="el"?"Σύνδεσμος αντιγράφηκε!":"Link copied!","success");
-    }catch(e){toast(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy","error");}
+    }catch{toast(lang==="el"?"Δεν μπόρεσε να αντιγραφεί":"Could not copy","error");}
     onClose();
   }
   const opts=[
     {id:"facebook",label:"Facebook",icon:"📘",bg:"#1877f2"},
     {id:"viber",label:"Viber",icon:"💬",bg:"#7360f2"},
-    {id:"viber",label:"Viber",icon:"📞",bg:"#7360f2"},
     {id:"telegram",label:"Telegram",icon:"✈️",bg:"#0088cc"},
     {id:"twitter",label:"X / Twitter",icon:"🐦",bg:"#000"}
   ];
@@ -2448,7 +2454,7 @@ function PublicHomePage(){
                   </div>
                 </div>
                 <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
-                  <button onClick={()=>openLogin()} style={{flex:1,minWidth:"120px",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 16px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 12px rgba(74,93,199,0.25)"}}>{t.clickToRegister}</button>
+                  <button onClick={()=>openLogin()} style={{flex:1,minWidth:"120px",background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 16px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 12px rgba(20,33,26,0.25)"}}>{t.clickToRegister}</button>
                   <button onClick={()=>openResults(race.id)} style={{background:T.bg,color:T.text,border:"none",borderRadius:"10px",padding:"10px 14px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t.viewResultsBtn}</button>
                   {race.public_runners_list&&<button onClick={()=>openRunners(race.id)} style={{background:T.bg,color:T.text,border:"none",borderRadius:"10px",padding:"10px 14px",fontSize:"13px",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t.showRunnersBtn}</button>}
                 </div>
@@ -2738,13 +2744,13 @@ function LoginPage({onBack}){
         try{
           const adminBody=`
             <p>Νέα εγγραφή διοργανωτή στην πλατφόρμα!</p>
-            <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+            <div style="background:#f5f7ff;border-left:4px solid #14211a;padding:18px 22px;margin:20px 0;border-radius:8px;">
               <p style="margin:0 0 8px;"><strong>👤 Όνομα:</strong> ${name}</p>
               <p style="margin:0 0 8px;"><strong>✉️ Email:</strong> ${email}</p>
               <p style="margin:0;"><strong>🏷 Ρόλος:</strong> Διοργανωτής</p>
             </div>
             <p>Συνδέσου στο admin panel για να εγκρίνεις τη νέα εγγραφή.</p>
-            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Άνοιγμα Admin →</a></p>
+            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Άνοιγμα Admin →</a></p>
           `;
           sendEmail("info@racemanagement.gr",`🔔 Νέος Διοργανωτής: ${name}`,emailTemplate("Νέα Εγγραφή Διοργανωτή",adminBody));
         }catch(err){console.error("Admin notification failed:",err);}
@@ -2830,7 +2836,7 @@ function LoginPage({onBack}){
 }
 
 function AthleteRaceCard({race,registrations,runners,session,onSelect}){
-  const {t,lang}=useLang();
+  const {t}=useLang();
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
   const totalRegs=registrations.filter(r=>r.race_id===race.id).length;
   const distances=race.distance?race.distance.split(" | "):[];
@@ -3005,7 +3011,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       const emailBody=`
         <p>Γεια σας <strong>${form.first_name} ${form.last_name}</strong>,</p>
         <p>Η εγγραφή σας στον αγώνα ολοκληρώθηκε επιτυχώς!</p>
-        <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+        <div style="background:#f5f7ff;border-left:4px solid #14211a;padding:18px 22px;margin:20px 0;border-radius:8px;">
           <p style="margin:0 0 8px;"><strong>🏁 Αγώνας:</strong> ${race.name}</p>
           <p style="margin:0 0 8px;"><strong>📅 Ημερομηνία:</strong> ${race.date}</p>
           <p style="margin:0 0 8px;"><strong>📍 Τοποθεσία:</strong> ${race.location||"—"}</p>
@@ -3014,7 +3020,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
           ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Κόστος:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
         </div>
         <p>Καλή επιτυχία στον αγώνα! 🏃‍♂️💨</p>
-        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τη σελίδα του αγώνα →</a></p>
+        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τη σελίδα του αγώνα →</a></p>
       `;
       sendEmail(session.user.email,emailSubject,emailTemplate(`Επιβεβαίωση Εγγραφής`,emailBody));
       // Send notification to organizer
@@ -3025,7 +3031,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
           const orgBody=`
             <p>Γεια σας <strong>${orgData.full_name||""}</strong>,</p>
             <p>Νέα εγγραφή στον αγώνα σας <strong>"${race.name}"</strong>!</p>
-            <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+            <div style="background:#f5f7ff;border-left:4px solid #14211a;padding:18px 22px;margin:20px 0;border-radius:8px;">
               <p style="margin:0 0 8px;"><strong>👤 Αθλητής:</strong> ${form.first_name} ${form.last_name}</p>
               <p style="margin:0 0 8px;"><strong>✉️ Email:</strong> ${session.user.email}</p>
               ${form.phone?`<p style="margin:0 0 8px;"><strong>📞 Τηλέφωνο:</strong> ${form.phone}</p>`:""}
@@ -3034,7 +3040,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
               ${form.city?`<p style="margin:0 0 8px;"><strong>📍 Πόλη:</strong> ${form.city}</p>`:""}
               ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Πληρωμή:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
             </div>
-            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε όλες τις εγγραφές →</a></p>
+            <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε όλες τις εγγραφές →</a></p>
           `;
           sendEmail(orgData.email,orgSubject,emailTemplate("Νέα Εγγραφή!",orgBody));
         }
@@ -3277,7 +3283,7 @@ function GpxSplits({gpxUrl}){
           });
         }
         if(!cancelled)setSplits(result);
-      }catch(e){
+      }catch{
         if(!cancelled)setErr(true);
       }
     })();
@@ -3351,7 +3357,7 @@ function InlineGpxMap({gpxUrl}){
           if(!isNaN(lat)&&!isNaN(lon))pts.push([lat,lon]);
         });
         if(!cancelled)setPoints(pts);
-      }catch(e){
+      }catch{
         if(!cancelled)setErr(true);
       }
     })();
@@ -3866,7 +3872,6 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
           <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
             {(showAllActivities?activities.slice(0,10):activities.slice(0,1)).map(act=>{
               const typeIcon={race:"🏆",training:"🏃",long_run:"📏",tempo:"⚡",intervals:"🎯",recovery:"😌",other:"📝"}[act.activity_type]||"📝";
-              const typeLabel={race:lang==="el"?"Αγώνας":"Race",training:lang==="el"?"Προπόνηση":"Training",long_run:lang==="el"?"Long Run":"Long Run",tempo:"Tempo",intervals:"Intervals",recovery:lang==="el"?"Recovery":"Recovery",other:lang==="el"?"Άλλο":"Other"}[act.activity_type]||"";
               const d=act.duration_seconds;
               const durStr=d?`${Math.floor(d/3600)>0?Math.floor(d/3600)+":":""}${String(Math.floor((d%3600)/60)).padStart(2,"0")}:${String(d%60).padStart(2,"0")}`:"—";
               const pace=(act.distance_km&&d)?((d/60)/act.distance_km):null;
@@ -4137,7 +4142,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   </div>;
 }
 
-function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRegister}){
+function RaceDetailsPage({race,registrations,runners,session,onBack,onRegister}){
   const {t,lang}=useLang();
   const [activeTab,setActiveTab]=useState("info");
   const myReg=registrations.find(r=>r.race_id===race.id&&runners.find(rn=>rn.id===r.runner_id)?.email===session.user.email);
@@ -4212,7 +4217,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
   const [showCalendarMenu,setShowCalendarMenu]=useState(false);
   async function share(){
     if(navigator.share){
-      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch(e){}
+      try{await navigator.share({title:race.name,text:`${race.name} - ${race.date}`,url:window.location.href});return;}catch{/* ignore */}
     }
     setShowShareMenu(true);
   }
@@ -4250,7 +4255,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
           </div>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"}}>
             <h1 style={{margin:"0 0 12px",color:"#fff",fontSize:"clamp(26px,5vw,36px)",fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1,textShadow:"0 2px 14px rgba(0,0,0,0.4)",flex:1,minWidth:0}}>{race.name}</h1>
-            <button onClick={async(e)=>{e.stopPropagation();try{const url=window.location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);}else{const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}toast("📋 "+(lang==="el"?"Αντιγράφηκε το link!":"Link copied!"),"success");}catch(err){toast("Σφάλμα αντιγραφής","error");}}} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(8px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0,whiteSpace:"nowrap"}} title={lang==="el"?"Αντιγραφή link":"Copy link"}>📋 {lang==="el"?"Share":"Share"}</button>
+            <button onClick={async(e)=>{e.stopPropagation();try{const url=window.location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);}else{const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}toast("📋 "+(lang==="el"?"Αντιγράφηκε το link!":"Link copied!"),"success");}catch{toast("Σφάλμα αντιγραφής","error");}}} style={{background:"rgba(255,255,255,0.18)",backdropFilter:"blur(8px)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"10px",padding:"8px 14px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",flexShrink:0,whiteSpace:"nowrap"}} title={lang==="el"?"Αντιγραφή link":"Copy link"}>📋 {lang==="el"?"Share":"Share"}</button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:"18px",color:"rgba(255,255,255,0.95)",fontSize:"14px",fontWeight:500,flexWrap:"wrap",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>
             <span>📅 {race.date}</span>
@@ -4317,7 +4322,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
                   {pricingEntry?.description&&<div style={{color:T.textMid,fontSize:"13px",lineHeight:1.5,marginTop:"4px",whiteSpace:"pre-wrap"}}>{pricingEntry.description}</div>}
                 </div>
               </div>
-              <button onClick={()=>{if(canRegister)onRegister(race);}} disabled={!canRegister} style={{background:isMyDistance?T.accent:(canRegister?T.primary:T.borderDark),color:"#fff",border:"none",borderRadius:"14px",padding:"14px 28px",fontSize:"14px",fontWeight:800,letterSpacing:"0.02em",cursor:canRegister?"pointer":"default",fontFamily:"inherit",boxShadow:canRegister?"0 4px 14px rgba(74,93,199,0.3)":"none",opacity:canRegister||isMyDistance?1:0.6,minWidth:"140px"}}>{isMyDistance?`✓ ${t.myDistance}`:(canRegister?(lang==="el"?"Εγγραφή →":"Register →"):(race.status==="finished"?t.statusFinished:"—"))}</button>
+              <button onClick={()=>{if(canRegister)onRegister(race);}} disabled={!canRegister} style={{background:isMyDistance?T.accent:(canRegister?T.primary:T.borderDark),color:"#fff",border:"none",borderRadius:"14px",padding:"14px 28px",fontSize:"14px",fontWeight:800,letterSpacing:"0.02em",cursor:canRegister?"pointer":"default",fontFamily:"inherit",boxShadow:canRegister?"0 4px 14px rgba(20,33,26,0.3)":"none",opacity:canRegister||isMyDistance?1:0.6,minWidth:"140px"}}>{isMyDistance?`✓ ${t.myDistance}`:(canRegister?(lang==="el"?"Εγγραφή →":"Register →"):(race.status==="finished"?t.statusFinished:"—"))}</button>
             </div>;
           })}
         </div>
@@ -4358,7 +4363,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
                   </div>
                 )}
                 <div style={{padding:"16px 24px",borderTop:`1px solid ${T.border}`,display:"flex",gap:"10px",flexWrap:"wrap",alignItems:"center"}}>
-                  <button onClick={()=>downloadGPX(route,race.name)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 18px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(74,93,199,0.2)",display:"inline-flex",alignItems:"center",gap:"6px"}}>📥 {lang==="el"?"Κατέβασμα GPX":"Download GPX"}</button>
+                  <button onClick={()=>downloadGPX(route,race.name)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 18px",fontSize:"13px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(20,33,26,0.2)",display:"inline-flex",alignItems:"center",gap:"6px"}}>📥 {lang==="el"?"Κατέβασμα GPX":"Download GPX"}</button>
                   {route.file_name&&<span style={{color:T.textLight,fontSize:"11px"}}>{route.file_name}</span>}
                 </div>
               </div>
@@ -4422,7 +4427,7 @@ function RaceDetailsPage({race,registrations,runners,profile,session,onBack,onRe
     {canRegister&&distances.length>0&&activeTab!=="routes"&&(
       <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"14px 20px",background:`linear-gradient(180deg, rgba(245,243,239,0) 0%, ${T.bg} 60%)`,zIndex:20}}>
         <div style={{maxWidth:"1000px",margin:"0 auto"}}>
-          <button onClick={()=>onRegister(race)} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"16px",padding:"16px 24px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 6px 20px rgba(74,93,199,0.35), 0 2px 6px rgba(0,0,0,0.08)",letterSpacing:"0.02em"}}>{lang==="el"?"Εγγραφή στον Αγώνα →":"Register for Race →"}</button>
+          <button onClick={()=>onRegister(race)} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"16px",padding:"16px 24px",fontSize:"15px",fontWeight:800,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 6px 20px rgba(20,33,26,0.35), 0 2px 6px rgba(0,0,0,0.08)",letterSpacing:"0.02em"}}>{lang==="el"?"Εγγραφή στον Αγώνα →":"Register for Race →"}</button>
         </div>
       </div>
     )}
@@ -4618,7 +4623,7 @@ function matchRunner(csvRow,registrations,runners){
 function ImportResultsModal({race,registrations,runners,onClose,onSuccess}){
   const {lang}=useLang();
   const [step,setStep]=useState("upload"); // upload | preview | done
-  const [csvText,setCsvText]=useState("");
+  const [,setCsvText]=useState("");
   const [preview,setPreview]=useState(null);
   const [loading,setLoading]=useState(false);
   const raceRegs=registrations.filter(r=>r.race_id===race.id);
@@ -4988,25 +4993,25 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:11pt}
-  .header{border-bottom:3px solid #4a5dc7;padding-bottom:14px;margin-bottom:20px}
+  .header{border-bottom:3px solid #14211a;padding-bottom:14px;margin-bottom:20px}
   h1{font-size:22pt;color:#1a1a1a;margin-bottom:6px}
   .meta{color:#666;font-size:10pt}
-  .stats{display:flex;gap:14px;margin:18px 0;padding:14px;background:#f5f3ef;border-radius:8px;font-size:10pt}
+  .stats{display:flex;gap:14px;margin:18px 0;padding:14px;background:#eef2ef;border-radius:8px;font-size:10pt}
   .stat{flex:1}
   .stat-label{color:#666;font-size:9pt;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
   .stat-value{font-size:15pt;font-weight:800;color:#1a1a1a}
   table{width:100%;border-collapse:collapse;font-size:10pt}
-  thead{background:#4a5dc7;color:#fff}
+  thead{background:#14211a;color:#fff}
   th{padding:10px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
   td{padding:8px;border-bottom:1px solid #e8e6df}
   tbody tr:nth-child(even){background:#fafaf7}
   .num{text-align:right;font-variant-numeric:tabular-nums}
-  .bib{font-weight:700;color:#4a5dc7;font-family:monospace}
+  .bib{font-weight:700;color:#14211a;font-family:monospace}
   .paid{color:#10b981;font-weight:600;font-size:9pt}
   .pending{color:#d97706;font-weight:600;font-size:9pt}
   .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
-  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
-  .print-note:hover{background:#3a4dab;transform:translateY(-2px)}
+  .print-note{position:fixed;top:20px;right:20px;background:#14211a;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(20,33,26,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#0b120e;transform:translateY(-2px)}
   @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
 </style></head><body>
 <button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
@@ -5098,24 +5103,24 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:10.5pt}
-  .header{border-bottom:3px solid #4a5dc7;padding-bottom:14px;margin-bottom:24px}
+  .header{border-bottom:3px solid #14211a;padding-bottom:14px;margin-bottom:24px}
   h1{font-size:20pt;color:#1a1a1a;margin-bottom:6px}
   .meta{color:#666;font-size:10pt}
-  .subtitle{margin-top:8px;font-size:11pt;color:#4a5dc7;font-weight:700}
+  .subtitle{margin-top:8px;font-size:11pt;color:#14211a;font-weight:700}
   .route-section{margin-bottom:30px;page-break-inside:avoid}
-  .route-section h2{font-size:14pt;color:#1a1a1a;background:#f5f3ef;padding:10px 14px;border-left:4px solid #4a5dc7;margin-bottom:0}
+  .route-section h2{font-size:14pt;color:#1a1a1a;background:#eef2ef;padding:10px 14px;border-left:4px solid #14211a;margin-bottom:0}
   .route-section h2 .count{color:#666;font-weight:400;font-size:10pt;margin-left:8px}
   table{width:100%;border-collapse:collapse;font-size:10pt}
-  thead{background:#4a5dc7;color:#fff}
+  thead{background:#14211a;color:#fff}
   th{padding:9px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
   td{padding:7px 8px;border-bottom:1px solid #e8e6df}
   tbody tr:nth-child(even){background:#fafaf7}
   .num{text-align:right;font-variant-numeric:tabular-nums;color:#999;width:30px}
-  .bib{font-weight:700;color:#4a5dc7;font-family:monospace;width:50px}
+  .bib{font-weight:700;color:#14211a;font-family:monospace;width:50px}
   .center{text-align:center}
   .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
-  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
-  .print-note:hover{background:#3a4dab}
+  .print-note{position:fixed;top:20px;right:20px;background:#14211a;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(20,33,26,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#0b120e}
   @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
 </style></head><body>
 <button class="print-note" onclick="window.print()">🖨️ ${lang==="el"?"Εκτύπωση / Save as PDF":"Print / Save as PDF"}</button>
@@ -5167,23 +5172,20 @@ ${sections}
       const totalRegs=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).length;
       const totalRevenue=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
       const activeRaces=myRaces.filter(r=>r.status==="active"||r.status==="upcoming").length;
-      return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"16px"}}>
-        <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}05 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>🏁 {lang==="el"?"Σύνολο":"Total"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{myRaces.length}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>⚡ {lang==="el"?"Ενεργοί":"Active"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{activeRaces}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}05 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>👥 {lang==="el"?"Εγγραφές":"Registrations"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{totalRegs}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>💰 {lang==="el"?"Έσοδα":"Revenue"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalRevenue.toFixed(0)}€</div>
-        </div>
+      const raceStats=[
+        {icon:"🏁",label:lang==="el"?"Σύνολο":"Total",value:myRaces.length,color:T.primary},
+        {icon:"⚡",label:lang==="el"?"Ενεργοί":"Active",value:activeRaces,color:T.accent},
+        {icon:"👥",label:lang==="el"?"Εγγραφές":"Registrations",value:totalRegs,color:T.warning},
+        {icon:"💰",label:lang==="el"?"Έσοδα":"Revenue",value:`${totalRevenue.toFixed(0)}€`,color:T.accentDark},
+      ];
+      return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"10px",marginBottom:"16px"}}>
+        {raceStats.map((c,i)=>(
+          <div key={i} className="stat-card" style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}05 100%)`,border:`1px solid ${c.color}33`,borderRadius:"12px",padding:"12px 16px",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+            <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>{c.icon} {c.label}</div>
+            <div style={{fontSize:"22px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+          </div>
+        ))}
       </div>;
     })()}
     {/* Search & Filter */}
@@ -5447,7 +5449,13 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
   });
   const totalRevenue=filtered.reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.regsTitle} ({filtered.length}){totalRevenue>0&&<span style={{color:T.accent,fontSize:"15px",marginLeft:"12px"}}>💰 {totalRevenue.toFixed(2)}€</span>}</h2>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.primary}44`,flexShrink:0}}>📋</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.regsTitle}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{filtered.length} {lang==="el"?"εγγραφές":"registrations"}{totalRevenue>0?` · 💰 ${totalRevenue.toFixed(2)}€`:""}</div>
+      </div>
+    </div>
     <div style={{display:"flex",gap:"10px",marginBottom:"14px",flexWrap:"wrap"}}>
       <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={lang==="el"?"🔍 Αναζήτηση: όνομα, email, BIB...":"🔍 Search: name, email, BIB..."} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
       <Sel value={filterRace} onChange={e=>setFilterRace(e.target.value)}><option value="all">{t.allRaces}</option>{myRaces.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel>
@@ -5477,7 +5485,7 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
 }
 
 function OrganizerStats({races,registrations,session,profile}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const isAdmin=profile?.role==="admin";
   const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   const myRaceIds=myRaces.map(r=>r.id);
@@ -5488,56 +5496,78 @@ function OrganizerStats({races,registrations,session,profile}){
   const paidRegs=myRegs.filter(r=>r.payment_status==="paid").length;
   const pendingRegs=myRegs.filter(r=>r.payment_status!=="paid").length;
   const avgPerRace=totalRaces>0?(totalRegs/totalRaces).toFixed(1):"0";
+  const paidPct=totalRegs>0?Math.round((paidRegs/totalRegs)*100):0;
   const racesData=myRaces.map(r=>{const regs=myRegs.filter(reg=>reg.race_id===r.id);const revenue=regs.reduce((sum,reg)=>sum+(parseFloat(reg.price_paid)||0),0);return{...r,regCount:regs.length,revenue};}).sort((a,b)=>b.regCount-a.regCount);
   const maxRegCount=racesData.length>0?Math.max(...racesData.map(r=>r.regCount||0),1):1;
+  const statCards=[
+    {icon:"🏟",value:totalRaces,label:t.statsTotalRaces,color:T.primary},
+    {icon:"📋",value:totalRegs,label:t.statsTotalRegs,color:T.accent},
+    {icon:"💰",value:`${totalRevenue.toFixed(2)}€`,label:t.statsTotalRevenue,color:T.warning},
+    {icon:"📈",value:avgPerRace,label:t.statsAvgPerRace,color:T.primaryDark},
+  ];
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.statsTitle}</h2>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"24px"}}>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.primary}}>{totalRaces}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRaces}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.accent}}>{totalRegs}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRegs}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"24px",fontWeight:900,color:T.warning}}>{totalRevenue.toFixed(2)}€</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsTotalRevenue}</div>
-      </div>
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"18px",textAlign:"center",boxShadow:T.shadow}}>
-        <div style={{fontSize:"28px",fontWeight:900,color:T.text}}>{avgPerRace}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"4px"}}>{t.statsAvgPerRace}</div>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"22px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.primary}44`,flexShrink:0}}>📊</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.statsTitle}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Επισκόπηση απόδοσης των αγώνων σου":"Overview of your races' performance"}</div>
       </div>
     </div>
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",marginBottom:"20px",boxShadow:T.shadow}}>
-      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>💳 {t.paymentStatus}</h3>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
-        <div style={{background:`${T.accent}10`,border:`1px solid ${T.accent}44`,borderRadius:"10px",padding:"14px"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent}}>{paidRegs}</div>
-          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPaid}</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(190px, 1fr))",gap:"14px",marginBottom:"24px"}}>
+      {statCards.map((c,i)=>(
+        <div key={i} className="stat-card" style={{position:"relative",background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"4px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{display:"flex",alignItems:"center",gap:"13px"}}>
+            <div style={{width:"46px",height:"46px",borderRadius:"13px",background:`${c.color}1a`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"23px",flexShrink:0}}>{c.icon}</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:"26px",fontWeight:900,color:c.color,lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.value}</div>
+              <div style={{fontSize:"10.5px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"3px"}}>{c.label}</div>
+            </div>
+          </div>
         </div>
-        <div style={{background:`${T.warning}10`,border:`1px solid ${T.warning}44`,borderRadius:"10px",padding:"14px"}}>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.warning}}>{pendingRegs}</div>
-          <div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPending}</div>
+      ))}
+    </div>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",marginBottom:"20px",boxShadow:T.shadow}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px",flexWrap:"wrap",gap:"6px"}}>
+        <h3 style={{margin:0,color:T.text,fontSize:"15px"}}>💳 {t.paymentStatus}</h3>
+        <span style={{fontSize:"12px",fontWeight:800,color:T.accent,background:`${T.accent}12`,border:`1px solid ${T.accent}33`,borderRadius:"20px",padding:"3px 12px"}}>{paidPct}% {lang==="el"?"πληρωμένα":"paid"}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",background:`${T.accent}0d`,border:`1px solid ${T.accent}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{width:"40px",height:"40px",borderRadius:"11px",background:`${T.accent}1f`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px",flexShrink:0}}>✅</div>
+          <div><div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1.1}}>{paidRegs}</div><div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPaid}</div></div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",background:`${T.warning}0d`,border:`1px solid ${T.warning}44`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{width:"40px",height:"40px",borderRadius:"11px",background:`${T.warning}1f`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px",flexShrink:0}}>⏳</div>
+          <div><div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1.1}}>{pendingRegs}</div><div style={{fontSize:"12px",color:T.textMid}}>{t.paymentPending}</div></div>
         </div>
       </div>
+      <div style={{display:"flex",height:"10px",borderRadius:"99px",overflow:"hidden",background:T.bg}}>
+        <div style={{width:`${paidPct}%`,background:`linear-gradient(90deg, ${T.accent} 0%, ${T.accentDark} 100%)`,transition:"width 0.4s ease"}}/>
+        <div style={{flex:1,background:`${T.warning}55`}}/>
+      </div>
     </div>
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"20px",boxShadow:T.shadow}}>
-      <h3 style={{margin:"0 0 14px",color:T.text,fontSize:"15px"}}>📊 {t.statsRegsPerRace}</h3>
+    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow}}>
+      <h3 style={{margin:"0 0 16px",color:T.text,fontSize:"15px"}}>📊 {t.statsRegsPerRace}</h3>
       {racesData.length===0?(<div style={{color:T.textLight,fontSize:"13px",textAlign:"center",padding:"20px"}}>{t.statsNoData}</div>):(
-        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
-          {racesData.map(r=>(
+        <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+          {racesData.map((r,i)=>{
+            const rankColors=["#f59e0b","#9a9aa3","#c17d4a"];
+            const rankBg=i<3?rankColors[i]:T.textLight;
+            return (
             <div key={r.id}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px",flexWrap:"wrap",gap:"6px"}}>
-                <span style={{color:T.text,fontSize:"13px",fontWeight:600}}>{r.name}</span>
-                <span style={{color:T.textMid,fontSize:"12px"}}>{r.regCount} · 💰 {r.revenue.toFixed(2)}€</span>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"5px",flexWrap:"wrap",gap:"6px"}}>
+                <span style={{display:"flex",alignItems:"center",gap:"8px",minWidth:0}}>
+                  <span style={{width:"22px",height:"22px",borderRadius:"7px",background:`${rankBg}22`,color:rankBg,fontSize:"11px",fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</span>
+                  <span style={{color:T.text,fontSize:"13px",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</span>
+                </span>
+                <span style={{color:T.textMid,fontSize:"12px",whiteSpace:"nowrap"}}><b style={{color:T.text}}>{r.regCount}</b> · 💰 {r.revenue.toFixed(2)}€</span>
               </div>
-              <div style={{background:T.bg,height:"10px",borderRadius:"99px",overflow:"hidden"}}>
-                <div style={{background:`linear-gradient(90deg, ${T.primary} 0%, ${T.accent} 100%)`,height:"100%",width:`${(r.regCount/maxRegCount)*100}%`}}/>
+              <div style={{background:T.bg,height:"12px",borderRadius:"99px",overflow:"hidden"}}>
+                <div style={{background:`linear-gradient(90deg, ${T.primary} 0%, ${T.accent} 100%)`,height:"100%",width:`${Math.max((r.regCount/maxRegCount)*100,r.regCount>0?4:0)}%`,borderRadius:"99px",transition:"width 0.4s ease"}}/>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
     </div>
@@ -5697,13 +5727,13 @@ function AdminPanel(){
         const body=`
           <p>Γεια σας <strong>${owner.full_name||""}</strong>,</p>
           <p>Ο αγώνας σας <strong>"${race.name}"</strong> <strong style="color:#10b981;">εγκρίθηκε</strong> και είναι πλέον δημόσιος!</p>
-          <div style="background:#f5f7ff;border-left:4px solid #4a5dc7;padding:18px 22px;margin:20px 0;border-radius:8px;">
+          <div style="background:#f5f7ff;border-left:4px solid #14211a;padding:18px 22px;margin:20px 0;border-radius:8px;">
             <p style="margin:0 0 8px;"><strong>🏁 Αγώνας:</strong> ${race.name}</p>
             <p style="margin:0 0 8px;"><strong>📅 Ημερομηνία:</strong> ${race.date}</p>
             <p style="margin:0;"><strong>📍 Τοποθεσία:</strong> ${race.location||"—"}</p>
           </div>
           <p>Οι αθλητές μπορούν τώρα να εγγραφούν!</p>
-          <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τον αγώνα →</a></p>
+          <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τον αγώνα →</a></p>
         `;
         sendEmail(owner.email,`✅ Ο αγώνας "${race.name}" εγκρίθηκε`,emailTemplate("Ο αγώνας σας εγκρίθηκε!",body));
       }
@@ -5744,7 +5774,7 @@ function AdminPanel(){
           <li>Ανεβάσετε προκηρύξεις και έγγραφα</li>
           <li>Δείτε αποτελέσματα</li>
         </ul>
-        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#4a5dc7;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Συνδεθείτε τώρα →</a></p>
+        <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Συνδεθείτε τώρα →</a></p>
       `;
       sendEmail(org.email,"✅ Ο λογαριασμός σας εγκρίθηκε",emailTemplate("Καλωσήρθατε!",body));
     }
@@ -5763,6 +5793,27 @@ function AdminPanel(){
   const statusLabels={pending:t.statusPending,approved:t.statusApproved,rejected:t.statusRejected};
   if(loading)return <div style={{textAlign:"center",color:T.textMid,padding:"40px"}}>{t.loading}</div>;
   return <div>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.warning} 0%, ${T.danger} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.warning}44`,flexShrink:0}}>👑</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{lang==="el"?"Πίνακας Διαχείρισης":"Admin Panel"}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Εγκρίσεις, διοργανωτές & έλεγχος συστήματος":"Approvals, organizers & system control"}</div>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"10px",marginBottom:"20px"}}>
+      {[
+        {icon:"🏁",label:lang==="el"?"Αγώνες προς έγκριση":"Pending races",value:pendingRaces.length,color:T.warning},
+        {icon:"⏳",label:lang==="el"?"Διοργανωτές σε αναμονή":"Pending organizers",value:pendingOrgs.length,color:T.primary},
+        {icon:"👥",label:lang==="el"?"Σύνολο διοργανωτών":"Total organizers",value:allOrgs.length,color:T.accent},
+        {icon:"🔍",label:lang==="el"?"Πιθανοί διπλοί":"Possible duplicates",value:duplicates.length,color:T.danger},
+      ].map((c,i)=>(
+        <div key={i} className="stat-card" style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}05 100%)`,border:`1px solid ${c.color}33`,borderRadius:"12px",padding:"12px 16px",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700,marginBottom:"3px"}}>{c.icon} {c.label}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+        </div>
+      ))}
+    </div>
     <div style={{display:"flex",gap:"6px",marginBottom:"24px",flexWrap:"wrap"}}>
       <button onClick={()=>setTab("pendingRaces")} style={{background:tab==="pendingRaces"?T.warning:T.bgAlt,color:tab==="pendingRaces"?"#fff":T.textMid,border:`1px solid ${tab==="pendingRaces"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pendingRaces"?700:500,fontFamily:"inherit"}}>🏁 {lang==="el"?"Αγώνες προς Έγκριση":"Pending Races"} ({pendingRaces.length})</button>
       <button onClick={()=>setTab("pending")} style={{background:tab==="pending"?T.warning:T.bgAlt,color:tab==="pending"?"#fff":T.textMid,border:`1px solid ${tab==="pending"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pending"?700:500,fontFamily:"inherit"}}>{t.pendingTab} ({pendingOrgs.length})</button>
@@ -5950,7 +6001,7 @@ function AdminPanel(){
   </div>;
 }
 
-function CRMDashboard({session,profile,races}){
+function CRMDashboard({profile,races}){
   const {lang}=useLang();
   const [contacts,setContacts]=useState([]);
   const [sponsors,setSponsors]=useState([]);
@@ -5980,8 +6031,6 @@ function CRMDashboard({session,profile,races}){
   if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>🔄 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
   const athleteContacts=contacts.filter(c=>c.contact_type==="athlete");
   const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
-  const confirmedSponsors=sponsors.filter(s=>s.status==="confirmed");
-  const totalSponsorAmount=confirmedSponsors.reduce((sum,s)=>sum+(parseFloat(s.amount)||0),0);
   const filteredContacts=athleteContacts.filter(c=>{
     if(!search)return true;
     const q=search.toLowerCase();
@@ -6000,27 +6049,24 @@ function CRMDashboard({session,profile,races}){
       </div>
     </div>
     {/* Stats Cards */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
-      <div onClick={()=>setActiveView("contacts")} style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px",cursor:"pointer",transition:"transform 0.2s"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>👥</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.primary,lineHeight:1}}>{athleteContacts.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Αθλητές":"Athletes"}</div>
-      </div>
-      <div onClick={()=>setActiveView("sponsors")} style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>🤝</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.accent,lineHeight:1}}>{sponsors.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Χορηγοί":"Sponsors"}</div>
-      </div>
-      <div onClick={()=>setActiveView("volunteers")} style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>🙋</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.warning,lineHeight:1}}>{volunteers.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Εθελοντές":"Volunteers"}</div>
-      </div>
-      <div onClick={()=>setActiveView("tasks")} style={{background:`linear-gradient(135deg, ${T.danger}15 0%, ${T.danger}08 100%)`,border:`1px solid ${T.danger}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>📋</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.danger,lineHeight:1}}>{todoTasks.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Tasks":"Tasks"}</div>
-      </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"12px",marginBottom:"20px"}}>
+      {[
+        {view:"contacts",icon:"👥",value:athleteContacts.length,label:lang==="el"?"Αθλητές":"Athletes",color:T.primary},
+        {view:"sponsors",icon:"🤝",value:sponsors.length,label:lang==="el"?"Χορηγοί":"Sponsors",color:T.accent},
+        {view:"volunteers",icon:"🙋",value:volunteers.length,label:lang==="el"?"Εθελοντές":"Volunteers",color:T.warning},
+        {view:"tasks",icon:"📋",value:todoTasks.length,label:"Tasks",color:T.danger},
+      ].map(c=>(
+        <div key={c.view} className="stat-card" onClick={()=>setActiveView(c.view)} style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}08 100%)`,border:`1px solid ${c.color}33`,borderRadius:"14px",padding:"16px",cursor:"pointer",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+            <div style={{width:"42px",height:"42px",borderRadius:"12px",background:`${c.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"21px",flexShrink:0}}>{c.icon}</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:"24px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+              <div style={{fontSize:"10.5px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"3px",fontWeight:700}}>{c.label}</div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
     {/* View tabs */}
     <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
@@ -6048,7 +6094,7 @@ function CRMDashboard({session,profile,races}){
           if(!sortedContacts.length){toast(lang==="el"?"Καμία επαφή":"No contacts","warning");return;}
           // Build XLS as HTML table (Excel reads it natively)
           const headers=["Full Name","Email","Phone","City","Total Races","Last Race Date","Source"];
-          const headerHtml=headers.map(h=>`<th style="background:#4a5dc7;color:#fff;font-weight:700;padding:8px;border:1px solid #999">${h}</th>`).join("");
+          const headerHtml=headers.map(h=>`<th style="background:#14211a;color:#fff;font-weight:700;padding:8px;border:1px solid #999">${h}</th>`).join("");
           const rowsHtml=sortedContacts.map(c=>`<tr>
             <td style="padding:6px;border:1px solid #ccc">${c.full_name||""}</td>
             <td style="padding:6px;border:1px solid #ccc">${c.email||""}</td>
@@ -6096,7 +6142,6 @@ function CRMDashboard({session,profile,races}){
     })()}
     {/* TASKS MODULE - simplified */}
     {activeView==="tasks"&&(()=>{
-      const [newTitle,priorityValue]=["",""];
       return <TasksModule tasks={tasks} onRefresh={fetchCRM} myProfileId={profile?.id} lang={lang} races={races}/>;
     })()}
     {/* SPONSORS / VOLUNTEERS - placeholders for next phases */}
@@ -6560,14 +6605,14 @@ function PublicAthleteView({athleteId,mySession,onBack}){
         try{
           const {data:r}=await supabase.from("runners").select("id,first_name,last_name,city,club,avatar_url").eq("athlete_profile_id",p.id).limit(1).maybeSingle();
           if(r)runner=r;
-        }catch(e){}
+        }catch{/* ignore */}
         
         // Fetch public activities - existing policy `select_all=true` allows
         let activities=[];
         try{
           const {data:a}=await supabase.from("personal_activities").select("id,name,date,distance_km,duration_h,duration_m,duration_s,elevation_gain_m,gpx_url,activity_type").eq("profile_id",p.id).order("date",{ascending:false}).limit(10);
           if(a)activities=a;
-        }catch(e){}
+        }catch{/* ignore */}
         
         // Fetch race history if runner exists
         let races=[];
@@ -6575,7 +6620,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
           try{
             const {data:regs}=await supabase.from("registrations").select("id,distance,bib_number,races(name,date,location)").eq("runner_id",runner.id);
             if(regs)races=regs.filter(r=>r.races);
-          }catch(e){}
+          }catch{/* ignore */}
         }
         
         // Fetch follow counts - athlete_follows table exists from yesterday's SQL
@@ -6587,7 +6632,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
             const {data:f}=await supabase.from("athlete_follows").select("id").eq("follower_id",myId).eq("following_id",p.id).maybeSingle();
             iAmFollowing=!!f;
           }
-        }catch(e){}
+        }catch{/* ignore */}
         
         if(!cancelled){
           setData({profile:p,runner,activities,races});
@@ -6741,7 +6786,7 @@ function RaceForecast({races,registrations,session,profile}){
   const [saving,setSaving]=useState(false);
   const [editing,setEditing]=useState({});
   const [newExpense,setNewExpense]=useState({category:"",amount:""});
-  const [actualTxs,setActualTxs]=useState([]);
+  const [,setActualTxs]=useState([]);
   const [viewMode,setViewMode]=useState("forecast");
   const [showArchive,setShowArchive]=useState(false);
   const [archiveList,setArchiveList]=useState([]);
@@ -6772,9 +6817,9 @@ function RaceForecast({races,registrations,session,profile}){
       toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error","error");
     }
   }
-  const [showAddTx,setShowAddTx]=useState(false);
+  const [,setShowAddTx]=useState(false);
   const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
-  const [txBusy,setTxBusy]=useState(false);
+  const [,setTxBusy]=useState(false);
 
   const selectedRace=myRaces.find(r=>r.id===selectedRaceId);
   
@@ -6940,8 +6985,6 @@ function RaceForecast({races,registrations,session,profile}){
         <td class="num" style="color:${diffColor};font-weight:700">${exp.actual_amount?diffStr+"€":"-"}</td>
       </tr>`;
     }).join("")||`<tr><td colspan="4" style="text-align:center;color:#999;padding:14px">Χωρίς έξοδα</td></tr>`;
-    const profitColor=profit>=0?"#10b981":"#dc2626";
-    const actualProfitColor=actualProfit>=0?"#10b981":"#dc2626";
     const variance=actualProfit-profit;
     const varianceStr=variance>=0?`+${variance.toFixed(2)}`:variance.toFixed(2);
     const html=`<!DOCTYPE html>
@@ -6949,16 +6992,16 @@ function RaceForecast({races,registrations,session,profile}){
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:11pt}
-  .header{border-bottom:3px solid #4a5dc7;padding-bottom:16px;margin-bottom:24px}
-  h1{font-size:22pt;color:#4a5dc7;margin-bottom:6px}
+  .header{border-bottom:3px solid #14211a;padding-bottom:16px;margin-bottom:24px}
+  h1{font-size:22pt;color:#14211a;margin-bottom:6px}
   .meta{color:#666;font-size:10pt}
   h2{font-size:14pt;color:#1a1a1a;margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid #e8e6df}
   table{width:100%;border-collapse:collapse;margin-bottom:14px}
-  thead{background:#f5f3ec}
+  thead{background:#eef2ef}
   th{padding:10px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
   td{padding:8px;border-bottom:1px solid #e8e6df}
   .num{text-align:right;font-variant-numeric:tabular-nums}
-  .total-row{background:#f5f3ec;font-weight:700}
+  .total-row{background:#eef2ef;font-weight:700}
   .total-row td{padding:12px 8px;font-size:12pt}
   .profit-card{background:linear-gradient(135deg,${profit>=0?"#10b981":"#dc2626"} 0%,${profit>=0?"#059669":"#b91c1c"} 100%);color:#fff;padding:24px;border-radius:12px;margin:20px 0;display:flex;justify-content:space-between}
   .profit-section{flex:1}
@@ -6968,8 +7011,8 @@ function RaceForecast({races,registrations,session,profile}){
   .profit-sub{font-size:9pt;opacity:0.85;margin-top:4px}
   .variance{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;font-size:11pt;font-weight:700}
   .footer{margin-top:30px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
-  .print-note{position:fixed;top:20px;right:20px;background:#4a5dc7;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(74,93,199,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
-  .print-note:hover{background:#3a4dab}
+  .print-note{position:fixed;top:20px;right:20px;background:#14211a;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(20,33,26,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
+  .print-note:hover{background:#0b120e}
   @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
 </style></head><body>
 <button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
@@ -7011,7 +7054,7 @@ ${expenseRows}
   </div>
 </div>
 
-<div style="background:#f5f3ec;border-radius:10px;padding:14px 18px;margin-top:14px">
+<div style="background:#eef2ef;border-radius:10px;padding:14px 18px;margin-top:14px">
   <div style="display:flex;justify-content:space-between;font-size:11pt;font-weight:700">
     <span>📈 Διαφορά (Πραγματικό − Πρόβλεψη)</span>
     <span style="color:${variance>=0?"#10b981":"#dc2626"};font-family:monospace">${varianceStr}€</span>
@@ -7065,7 +7108,13 @@ ${expenseRows}
   }
 
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"22px",fontWeight:800}}>💰 {lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.warning} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.warning}44`,flexShrink:0}}>💰</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Πρόβλεψη vs πραγματικά έσοδα & έξοδα":"Forecast vs actual revenue & expenses"}</div>
+      </div>
+    </div>
     
     {/* Race Selector */}
     <div style={{marginBottom:"20px"}}>
@@ -7282,7 +7331,7 @@ ${expenseRows}
 }
 
 function ResetPasswordModal({onClose}){
-  const {t,lang}=useLang();
+  const {lang}=useLang();
   const [password,setPassword]=useState("");
   const [password2,setPassword2]=useState("");
   const [show,setShow]=useState(false);
@@ -7361,7 +7410,7 @@ function AppContent(){
       const sp=new URLSearchParams(window.location.search);
       const aid=sp.get("athlete");
       if(aid&&aid.startsWith("RM-"))setViewAthleteId(aid);
-    }catch(e){}
+    }catch{/* ignore */}
     return()=>subscription?.unsubscribe();
   },[]);
 
@@ -7372,7 +7421,6 @@ function AppContent(){
     const WARN_BEFORE=30*1000; // warn 30s before
     let idleTimer=null;
     let warnTimer=null;
-    let lastActivity=Date.now();
     
     function doLogout(){
       toast(lang==="el"?"🔒 Αποσύνδεση λόγω αδράνειας (5')":"🔒 Logged out due to inactivity (5min)","warning");
@@ -7382,7 +7430,6 @@ function AppContent(){
       toast(lang==="el"?"⚠ Αποσύνδεση σε 30 δευτερόλεπτα...":"⚠ Logging out in 30 seconds...","warning");
     }
     function resetTimer(){
-      lastActivity=Date.now();
       if(idleTimer)clearTimeout(idleTimer);
       if(warnTimer)clearTimeout(warnTimer);
       warnTimer=setTimeout(doWarn,IDLE_LIMIT-WARN_BEFORE);
