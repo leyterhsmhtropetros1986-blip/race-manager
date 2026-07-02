@@ -5172,23 +5172,20 @@ ${sections}
       const totalRegs=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).length;
       const totalRevenue=registrations.filter(r=>myRaces.some(mr=>mr.id===r.race_id)).reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
       const activeRaces=myRaces.filter(r=>r.status==="active"||r.status==="upcoming").length;
-      return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"16px"}}>
-        <div style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}05 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>🏁 {lang==="el"?"Σύνολο":"Total"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.primary,lineHeight:1}}>{myRaces.length}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>⚡ {lang==="el"?"Ενεργοί":"Active"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{activeRaces}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}05 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>👥 {lang==="el"?"Εγγραφές":"Registrations"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{totalRegs}</div>
-        </div>
-        <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"12px 16px"}}>
-          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>💰 {lang==="el"?"Έσοδα":"Revenue"}</div>
-          <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalRevenue.toFixed(0)}€</div>
-        </div>
+      const raceStats=[
+        {icon:"🏁",label:lang==="el"?"Σύνολο":"Total",value:myRaces.length,color:T.primary},
+        {icon:"⚡",label:lang==="el"?"Ενεργοί":"Active",value:activeRaces,color:T.accent},
+        {icon:"👥",label:lang==="el"?"Εγγραφές":"Registrations",value:totalRegs,color:T.warning},
+        {icon:"💰",label:lang==="el"?"Έσοδα":"Revenue",value:`${totalRevenue.toFixed(0)}€`,color:T.accentDark},
+      ];
+      return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"10px",marginBottom:"16px"}}>
+        {raceStats.map((c,i)=>(
+          <div key={i} className="stat-card" style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}05 100%)`,border:`1px solid ${c.color}33`,borderRadius:"12px",padding:"12px 16px",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+            <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"3px"}}>{c.icon} {c.label}</div>
+            <div style={{fontSize:"22px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+          </div>
+        ))}
       </div>;
     })()}
     {/* Search & Filter */}
@@ -5452,7 +5449,13 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
   });
   const totalRevenue=filtered.reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"20px"}}>{t.regsTitle} ({filtered.length}){totalRevenue>0&&<span style={{color:T.accent,fontSize:"15px",marginLeft:"12px"}}>💰 {totalRevenue.toFixed(2)}€</span>}</h2>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.primary} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.primary}44`,flexShrink:0}}>📋</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{t.regsTitle}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{filtered.length} {lang==="el"?"εγγραφές":"registrations"}{totalRevenue>0?` · 💰 ${totalRevenue.toFixed(2)}€`:""}</div>
+      </div>
+    </div>
     <div style={{display:"flex",gap:"10px",marginBottom:"14px",flexWrap:"wrap"}}>
       <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder={lang==="el"?"🔍 Αναζήτηση: όνομα, email, BIB...":"🔍 Search: name, email, BIB..."} style={{flex:1,minWidth:"200px",padding:"10px 14px",fontSize:"13px",borderRadius:"10px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}/>
       <Sel value={filterRace} onChange={e=>setFilterRace(e.target.value)}><option value="all">{t.allRaces}</option>{myRaces.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel>
@@ -5790,6 +5793,27 @@ function AdminPanel(){
   const statusLabels={pending:t.statusPending,approved:t.statusApproved,rejected:t.statusRejected};
   if(loading)return <div style={{textAlign:"center",color:T.textMid,padding:"40px"}}>{t.loading}</div>;
   return <div>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.warning} 0%, ${T.danger} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.warning}44`,flexShrink:0}}>👑</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{lang==="el"?"Πίνακας Διαχείρισης":"Admin Panel"}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Εγκρίσεις, διοργανωτές & έλεγχος συστήματος":"Approvals, organizers & system control"}</div>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"10px",marginBottom:"20px"}}>
+      {[
+        {icon:"🏁",label:lang==="el"?"Αγώνες προς έγκριση":"Pending races",value:pendingRaces.length,color:T.warning},
+        {icon:"⏳",label:lang==="el"?"Διοργανωτές σε αναμονή":"Pending organizers",value:pendingOrgs.length,color:T.primary},
+        {icon:"👥",label:lang==="el"?"Σύνολο διοργανωτών":"Total organizers",value:allOrgs.length,color:T.accent},
+        {icon:"🔍",label:lang==="el"?"Πιθανοί διπλοί":"Possible duplicates",value:duplicates.length,color:T.danger},
+      ].map((c,i)=>(
+        <div key={i} className="stat-card" style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}05 100%)`,border:`1px solid ${c.color}33`,borderRadius:"12px",padding:"12px 16px",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700,marginBottom:"3px"}}>{c.icon} {c.label}</div>
+          <div style={{fontSize:"22px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+        </div>
+      ))}
+    </div>
     <div style={{display:"flex",gap:"6px",marginBottom:"24px",flexWrap:"wrap"}}>
       <button onClick={()=>setTab("pendingRaces")} style={{background:tab==="pendingRaces"?T.warning:T.bgAlt,color:tab==="pendingRaces"?"#fff":T.textMid,border:`1px solid ${tab==="pendingRaces"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pendingRaces"?700:500,fontFamily:"inherit"}}>🏁 {lang==="el"?"Αγώνες προς Έγκριση":"Pending Races"} ({pendingRaces.length})</button>
       <button onClick={()=>setTab("pending")} style={{background:tab==="pending"?T.warning:T.bgAlt,color:tab==="pending"?"#fff":T.textMid,border:`1px solid ${tab==="pending"?T.warning:T.border}`,borderRadius:"8px",padding:"10px 18px",cursor:"pointer",fontSize:"13px",fontWeight:tab==="pending"?700:500,fontFamily:"inherit"}}>{t.pendingTab} ({pendingOrgs.length})</button>
@@ -6025,27 +6049,24 @@ function CRMDashboard({profile,races}){
       </div>
     </div>
     {/* Stats Cards */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"12px",marginBottom:"20px"}}>
-      <div onClick={()=>setActiveView("contacts")} style={{background:`linear-gradient(135deg, ${T.primary}15 0%, ${T.primary}08 100%)`,border:`1px solid ${T.primary}33`,borderRadius:"14px",padding:"16px",cursor:"pointer",transition:"transform 0.2s"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>👥</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.primary,lineHeight:1}}>{athleteContacts.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Αθλητές":"Athletes"}</div>
-      </div>
-      <div onClick={()=>setActiveView("sponsors")} style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}08 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>🤝</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.accent,lineHeight:1}}>{sponsors.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Χορηγοί":"Sponsors"}</div>
-      </div>
-      <div onClick={()=>setActiveView("volunteers")} style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}08 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>🙋</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.warning,lineHeight:1}}>{volunteers.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Εθελοντές":"Volunteers"}</div>
-      </div>
-      <div onClick={()=>setActiveView("tasks")} style={{background:`linear-gradient(135deg, ${T.danger}15 0%, ${T.danger}08 100%)`,border:`1px solid ${T.danger}33`,borderRadius:"14px",padding:"16px",cursor:"pointer"}}>
-        <div style={{fontSize:"22px",marginBottom:"4px"}}>📋</div>
-        <div style={{fontSize:"26px",fontWeight:900,color:T.danger,lineHeight:1}}>{todoTasks.length}</div>
-        <div style={{fontSize:"11px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:"6px",fontWeight:700}}>{lang==="el"?"Tasks":"Tasks"}</div>
-      </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"12px",marginBottom:"20px"}}>
+      {[
+        {view:"contacts",icon:"👥",value:athleteContacts.length,label:lang==="el"?"Αθλητές":"Athletes",color:T.primary},
+        {view:"sponsors",icon:"🤝",value:sponsors.length,label:lang==="el"?"Χορηγοί":"Sponsors",color:T.accent},
+        {view:"volunteers",icon:"🙋",value:volunteers.length,label:lang==="el"?"Εθελοντές":"Volunteers",color:T.warning},
+        {view:"tasks",icon:"📋",value:todoTasks.length,label:"Tasks",color:T.danger},
+      ].map(c=>(
+        <div key={c.view} className="stat-card" onClick={()=>setActiveView(c.view)} style={{position:"relative",background:`linear-gradient(135deg, ${c.color}15 0%, ${c.color}08 100%)`,border:`1px solid ${c.color}33`,borderRadius:"14px",padding:"16px",cursor:"pointer",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:"3px",background:`linear-gradient(90deg, ${c.color} 0%, ${c.color}66 100%)`}}/>
+          <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+            <div style={{width:"42px",height:"42px",borderRadius:"12px",background:`${c.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"21px",flexShrink:0}}>{c.icon}</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:"24px",fontWeight:900,color:c.color,lineHeight:1}}>{c.value}</div>
+              <div style={{fontSize:"10.5px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.08em",marginTop:"3px",fontWeight:700}}>{c.label}</div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
     {/* View tabs */}
     <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
@@ -7087,7 +7108,13 @@ ${expenseRows}
   }
 
   return <div>
-    <h2 style={{margin:"0 0 20px",color:T.text,fontSize:"22px",fontWeight:800}}>💰 {lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"20px"}}>
+      <div style={{width:"46px",height:"46px",borderRadius:"14px",background:`linear-gradient(135deg, ${T.warning} 0%, ${T.accent} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",boxShadow:`0 6px 16px ${T.warning}44`,flexShrink:0}}>💰</div>
+      <div>
+        <h2 style={{margin:0,color:T.text,fontSize:"20px"}}>{lang==="el"?"Προβλέψεις Αγώνα":"Race Forecast"}</h2>
+        <div style={{color:T.textMid,fontSize:"12px",marginTop:"2px"}}>{lang==="el"?"Πρόβλεψη vs πραγματικά έσοδα & έξοδα":"Forecast vs actual revenue & expenses"}</div>
+      </div>
+    </div>
     
     {/* Race Selector */}
     <div style={{marginBottom:"20px"}}>
