@@ -541,7 +541,7 @@ function DarkModeToggle(){
 
 function validateGreekPhone(phone){
   if(!phone)return{valid:true,clean:""}; // Optional in most cases
-  const clean=String(phone).replace(/[\s\-\(\)]/g,"");
+  const clean=String(phone).replace(/[\s\-()]/g,"");
   // Greek mobile: starts with 69, 10 digits total. Or +30 69...
   // Greek landline: 10 digits starting with 2
   // International with +30
@@ -2082,7 +2082,6 @@ function ShareMenu({raceName,raceDate,onClose}){
     let target="";
     if(platform==="facebook")target=`https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
     else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
-    else if(platform==="viber")target=`viber://forward?text=${encText}%20${encUrl}`;
     else if(platform==="telegram")target=`https://t.me/share/url?url=${encUrl}&text=${encText}`;
     else if(platform==="twitter")target=`https://twitter.com/intent/tweet?text=${encText}&url=${encUrl}`;
     if(target)window.open(target,"_blank","noopener,noreferrer");
@@ -2097,7 +2096,6 @@ function ShareMenu({raceName,raceDate,onClose}){
   const opts=[
     {id:"facebook",label:"Facebook",icon:"📘",bg:"#1877f2"},
     {id:"viber",label:"Viber",icon:"💬",bg:"#7360f2"},
-    {id:"viber",label:"Viber",icon:"📞",bg:"#7360f2"},
     {id:"telegram",label:"Telegram",icon:"✈️",bg:"#0088cc"},
     {id:"twitter",label:"X / Twitter",icon:"🐦",bg:"#000"}
   ];
