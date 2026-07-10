@@ -2708,6 +2708,43 @@ function PublicRunnersPage({raceId,onBack}){
   </div>;
 }
 
+function RoleSelectButton({icon,title,description,colors,onClick,emphasized}){
+  const [hovered,setHovered]=useState(false);
+  const isActive=hovered;
+  return <button
+    type="button"
+    onClick={onClick}
+    onMouseEnter={()=>setHovered(true)}
+    onMouseLeave={()=>setHovered(false)}
+    style={{
+      width:"100%",
+      background:isActive?colors.hoverBg:colors.bg,
+      color:"#fff",
+      border:`1px solid ${colors.border}`,
+      borderRadius:"16px",
+      minHeight:"92px",
+      padding:"22px 24px",
+      cursor:"pointer",
+      fontFamily:"inherit",
+      textAlign:"left",
+      display:"flex",
+      alignItems:"center",
+      gap:"18px",
+      boxShadow:isActive
+        ?(emphasized?"0 10px 28px rgba(0,0,0,0.14), 0 4px 10px rgba(0,0,0,0.08)":"0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)")
+        :(emphasized?"0 2px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)":"0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)"),
+      transform:isActive?"scale(1.02)":"scale(1)",
+      transition:"transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease",
+    }}
+  >
+    <span style={{fontSize:"32px",lineHeight:1,flexShrink:0,width:"44px",height:"44px",display:"flex",alignItems:"center",justifyContent:"center"}}>{icon}</span>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:"17px",fontWeight:700,marginBottom:"6px",letterSpacing:"-0.02em",lineHeight:1.25}}>{title}</div>
+      <div style={{fontSize:"13.5px",fontWeight:400,opacity:0.9,lineHeight:1.5,color:"rgba(255,255,255,0.92)"}}>{description}</div>
+    </div>
+  </button>;
+}
+
 function LoginPage({onBack}){
   const {t,lang}=useLang();
   const [step,setStep]=useState("role");
@@ -2799,25 +2836,44 @@ function LoginPage({onBack}){
   const roleColor=role==="organizer"?T.primary:T.accent;
   const roleIcon=role==="organizer"?"🏟":"🏃";
   const roleLabel=role==="organizer"?t.organizer:t.athlete;
-  return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:"20px",position:"relative"}}>
+  return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:"24px",position:"relative"}}>
     <div style={{position:"absolute",top:"20px",right:"20px"}}><DarkModeToggle/><LangToggle/></div>
-    <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"20px",padding:"40px",width:"100%",maxWidth:"460px",boxShadow:T.shadow}}>
-      <div style={{textAlign:"center",marginBottom:"32px"}}>
-        <img src="/11085.png" alt="Race Management" style={{width:"80px",height:"80px",borderRadius:"50%",margin:"0 auto 16px",display:"block",objectFit:"cover"}}/>
-        <h1 style={{color:T.text,fontSize:"22px",fontWeight:900,margin:"0 0 4px"}}>{t.appName}</h1>
-        <p style={{color:T.textMid,fontSize:"13px",margin:0}}>{t.tagline}</p>
+    <div style={{
+      background:T.bgAlt,
+      border:`1px solid ${step==="role"?"#e8ece9":T.border}`,
+      borderRadius:step==="role"?"24px":"20px",
+      padding:step==="role"?"48px 44px":"40px",
+      width:"100%",
+      maxWidth:step==="role"?"480px":"460px",
+      boxShadow:step==="role"?"0 1px 2px rgba(0,0,0,0.03), 0 8px 32px rgba(15,25,18,0.05)":T.shadow,
+    }}>
+      <div style={{textAlign:"center",marginBottom:step==="role"?"36px":"32px"}}>
+        <img src="/11085.png" alt="Race Management" style={{width:step==="role"?"72px":"80px",height:step==="role"?"72px":"80px",borderRadius:"50%",margin:"0 auto 18px",display:"block",objectFit:"cover"}}/>
+        <h1 style={{color:T.text,fontSize:step==="role"?"24px":"22px",fontWeight:900,margin:"0 0 6px",letterSpacing:"-0.02em"}}>{t.appName}</h1>
+        <p style={{color:T.textMid,fontSize:step==="role"?"14px":"13px",margin:0,lineHeight:1.5}}>{t.tagline}</p>
       </div>
       {onBack&&<button onClick={onBack} style={{background:"none",border:"none",color:T.textMid,cursor:"pointer",fontSize:"13px",marginBottom:"14px",padding:"4px 0",fontFamily:"inherit"}}>{t.backToRaces}</button>}
       {step==="role"&&(
         <div>
-          <h3 style={{color:T.text,textAlign:"center",fontSize:"15px",marginBottom:"6px",fontWeight:600}}>{t.welcome}</h3>
-          <p style={{color:T.textMid,textAlign:"center",fontSize:"13px",marginBottom:"24px"}}>{t.chooseRole}</p>
-          <button onClick={()=>selectRole("organizer")} style={{width:"100%",background:T.primary,color:"#fff",border:"none",borderRadius:"12px",padding:"20px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:"12px",textAlign:"left",display:"flex",alignItems:"center",gap:"16px",boxShadow:T.shadow}}>
-            <span style={{fontSize:"32px"}}>🏟</span><div><div style={{fontSize:"16px",marginBottom:"3px"}}>{t.imOrganizer}</div><div style={{fontSize:"12px",fontWeight:400,opacity:0.9}}>{t.organizerDesc}</div></div>
-          </button>
-          <button onClick={()=>selectRole("athlete")} style={{width:"100%",background:T.accent,color:"#fff",border:"none",borderRadius:"12px",padding:"20px",fontSize:"14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:"16px",boxShadow:T.shadow}}>
-            <span style={{fontSize:"32px"}}>🏃</span><div><div style={{fontSize:"16px",marginBottom:"3px"}}>{t.imAthlete}</div><div style={{fontSize:"12px",fontWeight:400,opacity:0.9}}>{t.athleteDesc}</div></div>
-          </button>
+          <h3 style={{color:T.text,textAlign:"center",fontSize:"18px",margin:"0 0 8px",fontWeight:700,letterSpacing:"-0.02em"}}>{t.welcome}</h3>
+          <p style={{color:T.textMid,textAlign:"center",fontSize:"14px",margin:"0 0 32px",lineHeight:1.55,maxWidth:"340px",marginLeft:"auto",marginRight:"auto"}}>{t.chooseRole}</p>
+          <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+            <RoleSelectButton
+              icon="🏟"
+              title={t.imOrganizer}
+              description={t.organizerDesc}
+              emphasized
+              colors={{bg:"#1F2937",hoverBg:"#111827",border:"#374151"}}
+              onClick={()=>selectRole("organizer")}
+            />
+            <RoleSelectButton
+              icon="🏃"
+              title={t.imAthlete}
+              description={t.athleteDesc}
+              colors={{bg:"#16A34A",hoverBg:"#15803D",border:"#15803D"}}
+              onClick={()=>selectRole("athlete")}
+            />
+          </div>
         </div>
       )}
       {step==="auth"&&forgotMode&&(
