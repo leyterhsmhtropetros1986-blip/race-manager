@@ -97,6 +97,64 @@ const SUPABASE_URL = "https://kcqnykjbgqjlgcxmcaro.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0dnpl6eFXDjB1Ot26f-qsg_B9IasaUw";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const RUNNER_PUBLIC_COLS="id,first_name,last_name,city,club,avatar_url,gender,dob";
+const RUNNER_ORG_COLS="id,first_name,last_name,email,phone,dob,gender,club,city,avatar_url,amka,emergency_name,emergency_phone,nationality";
+const REG_PUBLIC_COLS="id,runner_id,race_id,distance,bib_number,finish_time,overall_rank,category_rank,category,splits";
+const REG_ORG_COLS="id,runner_id,race_id,distance,bib_number,category,tshirt,medical_cert,payment_status,price_paid,custom_answers,created_at,finish_time,overall_rank";
+
+async function fetchRunnersByIds(ids,cols=RUNNER_PUBLIC_COLS){
+  const unique=[...new Set((ids||[]).filter(Boolean))];
+  if(!unique.length)return[];
+  const {data}=await supabase.from("runners").select(cols).in("id",unique);
+  return data||[];
+}
+
+async function loadScopedAppData(session){
+  const userId=session.user.id;
+  const email=session.user.email;
+
+  const profileRes=await supabase.from("profiles").select("*").eq("id",userId).single();
+  const profile=profileRes.data;
+  const role=profile?.role;
+  const isAdmin=role==="admin";
+  const isApprovedOrganizer=(role==="organizer"||isAdmin)&&profile?.status==="approved";
+
+  let races, registrations, runners;
+
+  if(isAdmin){
+    const [r1,r2,r3]=await Promise.all([
+      supabase.from("races").select("*").order("created_at",{ascending:false}),
+      supabase.from("registrations").select("*"),
+      supabase.from("runners").select("*"),
+    ]);
+    races=r1.data||[];
+    registrations=r2.data||[];
+    runners=r3.data||[];
+  }else if(isApprovedOrganizer){
+    const {data:raceData}=await supabase.from("races").select("*").eq("user_id",userId).order("created_at",{ascending:false});
+    races=raceData||[];
+    const raceIds=races.map(r=>r.id);
+    if(raceIds.length){
+      const {data:regData}=await supabase.from("registrations").select(REG_ORG_COLS).in("race_id",raceIds);
+      registrations=regData||[];
+      runners=await fetchRunnersByIds(registrations.map(r=>r.runner_id),RUNNER_ORG_COLS);
+    }
+    const {data:selfRunner}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    if(selfRunner&&!runners.some(r=>r.id===selfRunner.id))runners.push(selfRunner);
+  }else{
+    const {data:raceData}=await supabase.from("races").select("*").in("status",["upcoming","active","finished"]).order("date",{ascending:true});
+    races=raceData||[];
+    const {data:selfRunner}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    if(selfRunner){
+      runners=[selfRunner];
+      const {data:regData}=await supabase.from("registrations").select("*").eq("runner_id",selfRunner.id);
+      registrations=regData||[];
+    }
+  }
+
+  return{profile,races:races||[],runners:runners||[],registrations:registrations||[]};
+}
+
 const STR = {
   el: {
     appName:"Race Management", tagline:"Πλατφόρμα Διαχείρισης Αγώνων",
@@ -440,11 +498,15 @@ function EmptyState({icon,title,message,action,actionLabel,onAction}){
 async function sendEmail(to,subject,html){
   try{
     const {data:{session}}=await supabase.auth.getSession();
+    if(!session?.access_token){
+      console.error("Email send blocked: authentication required");
+      return false;
+    }
     const url=`${SUPABASE_URL}/functions/v1/rapid-api`;
     const res=await fetch(url,{
       method:"POST",
       headers:{
-        "Authorization":`Bearer ${session?.access_token||SUPABASE_KEY}`,
+        "Authorization":`Bearer ${session.access_token}`,
         "Content-Type":"application/json"
       },
       body:JSON.stringify({to,subject,html})
@@ -628,19 +690,26 @@ function RecentRegistrationsTicker(){
   const [items,setItems]=useState([]);
   useEffect(()=>{
     (async()=>{
-      // Get recent registrations across all races
+      const {data:publicRaces}=await supabase
+        .from("races")
+        .select("id,name")
+        .eq("public_runners_list",true)
+        .in("status",["upcoming","active"])
+        .order("date",{ascending:true});
+      const raceIds=(publicRaces||[]).map(r=>r.id);
+      if(!raceIds.length)return;
       const {data}=await supabase
         .from("registrations")
         .select("id,bib_number,distance,created_at,race_id,runner_id")
+        .in("race_id",raceIds)
         .order("created_at",{ascending:false})
         .limit(8);
       if(!data||data.length===0)return;
       const runnerIds=[...new Set(data.map(r=>r.runner_id))];
-      const raceIds=[...new Set(data.map(r=>r.race_id))];
-      const [{data:runners},{data:races}]=await Promise.all([
+      const [{data:runners}]=await Promise.all([
         supabase.from("runners").select("id,first_name,last_name").in("id",runnerIds),
-        supabase.from("races").select("id,name").in("id",raceIds)
       ]);
+      const races=publicRaces||[];
       const enriched=data.map(reg=>{
         const r=(runners||[]).find(x=>x.id===reg.runner_id);
         const race=(races||[]).find(x=>x.id===reg.race_id);
@@ -2508,14 +2577,13 @@ function PublicResultsPage({raceId,onBack}){
   useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<640);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
     (async()=>{
-      const [r1,r2,r3]=await Promise.all([
-        supabase.from("races").select("*").eq("id",raceId).single(),
-        supabase.from("registrations").select("*").eq("race_id",raceId),
-        supabase.from("runners").select("*")
-      ]);
-      if(r1.data)setRace(r1.data);
-      if(r2.data)setResults(r2.data);
-      if(r3.data)setRunners(r3.data);
+      const {data:raceData}=await supabase.from("races").select("id,name,date,location,distance,banner_url").eq("id",raceId).single();
+      const {data:regData}=await supabase.from("registrations").select(REG_PUBLIC_COLS).eq("race_id",raceId);
+      const runnerIds=(regData||[]).map(r=>r.runner_id);
+      const runnerData=await fetchRunnersByIds(runnerIds,RUNNER_PUBLIC_COLS);
+      if(raceData)setRace(raceData);
+      if(regData)setResults(regData);
+      setRunners(runnerData);
       setLoading(false);
     })();
   },[raceId]);
@@ -2635,23 +2703,34 @@ function PublicRunnersPage({raceId,onBack}){
   const [regs,setRegs]=useState([]);
   const [runners,setRunners]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [blocked,setBlocked]=useState(false);
   const [filterDistance,setFilterDistance]=useState("all");
   const [search,setSearch]=useState("");
   useEffect(()=>{
     (async()=>{
-      const [r1,r2,r3]=await Promise.all([
-        supabase.from("races").select("*").eq("id",raceId).single(),
-        supabase.from("registrations").select("*").eq("race_id",raceId),
-        supabase.from("runners").select("id,first_name,last_name,city,club,avatar_url")
-      ]);
-      if(r1.data)setRace(r1.data);
-      if(r2.data)setRegs(r2.data);
-      if(r3.data)setRunners(r3.data);
+      const {data:raceData}=await supabase.from("races").select("id,name,date,location,distance,banner_url,public_runners_list").eq("id",raceId).single();
+      if(!raceData||!raceData.public_runners_list){
+        setBlocked(true);
+        setLoading(false);
+        return;
+      }
+      const {data:regData}=await supabase.from("registrations").select("id,runner_id,distance").eq("race_id",raceId);
+      const runnerData=await fetchRunnersByIds((regData||[]).map(r=>r.runner_id),RUNNER_PUBLIC_COLS);
+      setRace(raceData);
+      setRegs(regData||[]);
+      setRunners(runnerData);
       setLoading(false);
     })();
   },[raceId]);
   if(loading)return <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:T.textMid,fontFamily:"Inter,sans-serif"}}>{t.loading}</div>;
-  if(!race)return <div style={{minHeight:"100vh",background:T.bg,padding:"40px",fontFamily:"Inter,sans-serif",textAlign:"center"}}>—</div>;
+  if(blocked||!race)return <div style={{minHeight:"100vh",background:T.bg,fontFamily:"Inter,sans-serif",padding:"40px",textAlign:"center"}}>
+    <div style={{maxWidth:"480px",margin:"60px auto",background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"40px"}}>
+      <div style={{fontSize:"48px",marginBottom:"16px"}}>🔒</div>
+      <h2 style={{color:T.text,margin:"0 0 8px"}}>{lang==="el"?"Η λίστα δεν είναι δημόσια":"List is not public"}</h2>
+      <p style={{color:T.textMid,fontSize:"14px",margin:"0 0 20px"}}>{lang==="el"?"Ο διοργανωτής δεν έχει ενεργοποιήσει τη δημόσια προβολή εγγεγραμμένων.":"The organizer has not enabled the public runners list."}</p>
+      <button onClick={onBack} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"10px",padding:"10px 20px",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>{t.backToHome}</button>
+    </div>
+  </div>;
 
   const distances=race.distance?race.distance.split(" | "):[];
   const sq=search.trim().toLowerCase();
@@ -2692,13 +2771,6 @@ function PublicRunnersPage({raceId,onBack}){
                   {reg.runner.club&&<span style={{background:`${T.accent}15`,color:T.accent,padding:"2px 8px",borderRadius:"6px",fontWeight:600}}>👥 {reg.runner.club}</span>}
                   {reg.runner.city&&<span style={{background:T.bg,color:T.textMid,padding:"2px 8px",borderRadius:"6px",fontWeight:600}}>📍 {reg.runner.city}</span>}
                 </div>
-              </div>
-              <div style={{flexShrink:0}}>
-                {reg.payment_status==="paid"?(
-                  <span style={{background:`${T.accent}15`,color:T.accent,border:`1px solid ${T.accent}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>✅ {lang==="el"?"Επιβεβαιώθηκε":"Confirmed"}</span>
-                ):(
-                  <span style={{background:`${T.warning}15`,color:T.warning,border:`1px solid ${T.warning}44`,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700,whiteSpace:"nowrap"}}>⏳ {lang==="el"?"Εκκρεμεί":"Pending"}</span>
-                )}
               </div>
             </div>
           ))}
@@ -2741,13 +2813,14 @@ function LoginPage({onBack}){
       if(error)setError(t.wrongCreds);
       setLoading(false);return;
     }
+    const safeRole=role==="organizer"?"organizer":"athlete";
     const {data,error}=await supabase.auth.signUp({
       email,
       password,
       options:{
         data:{
           full_name:name,
-          role:role
+          role:safeRole
         }
       }
     });
@@ -2958,7 +3031,7 @@ function DOBInput({value,onChange,label}){
 }
 
 function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
-  const {t}=useLang();
+  const {t,lang}=useLang();
   const distances=race.distance?race.distance.split(" | "):[];
   const customFields=race.custom_fields||[];
   const profileName=(profile?.full_name||"").trim().split(" ");
@@ -3023,16 +3096,52 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       await supabase.from("runners").update(runnerData).eq("id",runner.id);
     }
     if(!runner){toast("Σφάλμα: δεν βρέθηκε προφίλ.","error");setLoading(false);return;}
+    // Capacity check
+    if(race.max_runners){
+      const {count}=await supabase.from("registrations").select("id",{count:"exact",head:true}).eq("race_id",race.id);
+      if((count||0)>=race.max_runners){
+        toast(lang==="el"?"🔴 Ο αγώνας έχει εξαντλήσει τις θέσεις":"🔴 Race is sold out","warning");
+        setLoading(false);
+        return;
+      }
+    }
     // Step 2. Check ONLY this specific race - allow same email in other races
     const {data:existing}=await supabase.from("registrations").select("id,bib_number").eq("runner_id",runner.id).eq("race_id",race.id).maybeSingle();
     if(existing){toast(t.alreadyRegAlert+(existing.bib_number?` BIB #${existing.bib_number}`:""),"warning");setLoading(false);return;}
-    // Step 3. Assign BIB and create the registration
-    const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
-    const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
-    const bibNum=(maxBib+1).toString();
-    const {error:regError}=await supabase.from("registrations").insert([{runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,custom_answers:customAnswers,price_paid:priceInfo.final,gdpr_consent_at:new Date().toISOString()}]);
+    // Step 3. Create registration via secure RPC (server assigns BIB + price)
+    const {data:regResult,error:regError}=await supabase.rpc("register_for_race",{
+      p_race_id:race.id,
+      p_runner_id:runner.id,
+      p_distance:form.distance,
+      p_category:form.category||null,
+      p_tshirt:form.tshirt,
+      p_medical_cert:!!form.medical_cert,
+      p_custom_answers:customAnswers
+    });
+    let bibNum;
+    let finalPrice=priceInfo.final;
+    if(regError){
+      const rpcMissing=regError.code==="PGRST202"||regError.message?.includes("Could not find the function");
+      if(rpcMissing){
+        const {data:allRegs}=await supabase.from("registrations").select("bib_number").eq("race_id",race.id);
+        const maxBib=(allRegs||[]).reduce((mx,r)=>Math.max(mx,parseInt(r.bib_number)||0),0);
+        bibNum=(maxBib+1).toString();
+        const {error:insertErr}=await supabase.from("registrations").insert([{
+          runner_id:runner.id,race_id:race.id,distance:form.distance,category:form.category,
+          tshirt:form.tshirt,medical_cert:form.medical_cert,bib_number:bibNum,
+          custom_answers:customAnswers,payment_status:"pending",
+          gdpr_consent_at:new Date().toISOString()
+        }]);
+        if(insertErr){toast("Σφάλμα εγγραφής: "+insertErr.message,"error");setLoading(false);return;}
+      }else{
+        toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;
+      }
+    }else{
+      bibNum=regResult?.bib_number?.toString()||regResult?.bib_number;
+      finalPrice=parseFloat(regResult?.price_paid??priceInfo.final);
+    }
     // Send confirmation email to athlete
-    if(!regError){
+    if(bibNum){
       const emailSubject=`✅ Επιβεβαίωση Εγγραφής - ${race.name}`;
       const emailBody=`
         <p>Γεια σας <strong>${form.first_name} ${form.last_name}</strong>,</p>
@@ -3043,7 +3152,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
           <p style="margin:0 0 8px;"><strong>📍 Τοποθεσία:</strong> ${race.location||"—"}</p>
           <p style="margin:0 0 8px;"><strong>🏃 Απόσταση:</strong> ${form.distance}</p>
           ${bibNum?`<p style="margin:0 0 8px;"><strong>🎫 Νούμερο BIB:</strong> #${bibNum}</p>`:""}
-          ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Κόστος:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
+          ${finalPrice>0?`<p style="margin:0;"><strong>💰 Κόστος:</strong> ${finalPrice.toFixed(2)}€</p>`:""}
         </div>
         <p>Καλή επιτυχία στον αγώνα! 🏃‍♂️💨</p>
         <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε τη σελίδα του αγώνα →</a></p>
@@ -3064,7 +3173,7 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
               <p style="margin:0 0 8px;"><strong>🏃 Απόσταση:</strong> ${form.distance}</p>
               <p style="margin:0 0 8px;"><strong>🎫 Νούμερο BIB:</strong> #${bibNum}</p>
               ${form.city?`<p style="margin:0 0 8px;"><strong>📍 Πόλη:</strong> ${form.city}</p>`:""}
-              ${priceInfo.final>0?`<p style="margin:0;"><strong>💰 Πληρωμή:</strong> ${priceInfo.final.toFixed(2)}€</p>`:""}
+              ${finalPrice>0?`<p style="margin:0;"><strong>💰 Πληρωμή:</strong> ${finalPrice.toFixed(2)}€</p>`:""}
             </div>
             <p style="margin-top:24px;"><a href="https://racemanagement.gr" style="background:#14211a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Δείτε όλες τις εγγραφές →</a></p>
           `;
@@ -3072,9 +3181,9 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
         }
       }catch(err){console.error("Failed to email organizer:",err);}
     }
-    if(regError){toast("Σφάλμα εγγραφής: "+regError.message,"error");setLoading(false);return;}
+    if(regError&&!bibNum){setLoading(false);return;}
     setLoading(false);
-    toast(`✅ Εγγραφή Επιτυχής! BIB #${bibNum} · ${form.distance} · ${priceInfo.final.toFixed(2)}€`,"success");
+    toast(`✅ Εγγραφή Επιτυχής! BIB #${bibNum} · ${form.distance} · ${finalPrice.toFixed(2)}€`,"success");
     onSuccess();
   }
 
@@ -5364,10 +5473,19 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
   const {t,lang}=useLang();
   const [filterRace,setFilterRace]=useState("all");
   const [searchQuery,setSearchQuery]=useState("");
+  const isAdmin=profile?.role==="admin";
+  const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   async function togglePayment(reg){
-    const newStatus=reg.payment_status==="paid"?"pending":"paid";
-    const {error}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
-    if(error){toast("Σφάλμα: "+error.message,"error");return;}
+    const ownsRace=isAdmin||myRaces.some(r=>r.id===reg.race_id);
+    if(!ownsRace){toast(lang==="el"?"⛔ Δεν έχετε δικαίωμα":"⛔ Unauthorized","error");return;}
+    const {error}=await supabase.rpc("toggle_registration_payment",{p_registration_id:reg.id});
+    if(error){
+      const rpcMissing=error.code==="PGRST202"||error.message?.includes("Could not find the function");
+      if(!rpcMissing){toast("Σφάλμα: "+error.message,"error");return;}
+      const newStatus=reg.payment_status==="paid"?"pending":"paid";
+      const {error:upErr}=await supabase.from("registrations").update({payment_status:newStatus}).eq("id",reg.id);
+      if(upErr){toast("Σφάλμα: "+upErr.message,"error");return;}
+    }
     if(onRefresh)onRefresh();
     else window.location.reload();
   }
@@ -5378,8 +5496,6 @@ function OrganizerRegistrations({races,runners,registrations,session,profile,onR
     toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");
     if(onRefresh)onRefresh();
   }
-  const isAdmin=profile?.role==="admin";
-  const myRaces=isAdmin?races:races.filter(r=>r.user_id===session?.user?.id);
   const myRaceIds=myRaces.map(r=>r.id);
   const q=searchQuery.trim().toLowerCase();
   const filtered=registrations.filter(r=>myRaceIds.includes(r.race_id)).filter(r=>filterRace==="all"||r.race_id===filterRace).filter(r=>{
@@ -5806,7 +5922,21 @@ function AdminPanel(){
     setPendingOrgs(prev=>prev.filter(o=>o.id!==id));
     setAllOrgs(prev=>prev.map(o=>o.id===id?{...o,status:"rejected"}:o));
   }
-  async function makeAdmin(id){if(!confirm(t.makeAdminConfirm))return;await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);fetchOrgs();}
+  async function makeAdmin(id){
+    if(!confirm(t.makeAdminConfirm))return;
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user)return;
+    const {data:me}=await supabase.from("profiles").select("role").eq("id",user.id).single();
+    if(me?.role!=="admin"){toast(lang==="el"?"⛔ Δεν έχετε δικαίωμα":"⛔ Unauthorized","error");return;}
+    const {error}=await supabase.rpc("promote_to_admin",{p_target_id:id});
+    if(error){
+      const rpcMissing=error.code==="PGRST202"||error.message?.includes("Could not find the function");
+      if(!rpcMissing){toast("⚠ "+error.message,"error");return;}
+      const {error:upErr}=await supabase.from("profiles").update({role:"admin",status:"approved"}).eq("id",id);
+      if(upErr){toast("⚠ "+upErr.message,"error");return;}
+    }
+    fetchOrgs();
+  }
   const list=tab==="pending"?pendingOrgs:allOrgs;
   const statusColors={pending:T.warning,approved:T.accent,rejected:T.danger};
   const statusLabels={pending:t.statusPending,approved:t.statusApproved,rejected:t.statusRejected};
@@ -7293,32 +7423,22 @@ function AppContent(){
 
   async function refreshAll(){
     if(!session)return;
-    const [r1,r2,r3,r4]=await Promise.all([
-      supabase.from("races").select("*").order("created_at",{ascending:false}),
-      supabase.from("runners").select("*"),
-      supabase.from("registrations").select("*"),
-      supabase.from("profiles").select("*").eq("id",session.user.id).single(),
-    ]);
-    if(r1.data)setRaces(r1.data);
-    if(r2.data)setRunners(r2.data);
-    if(r3.data)setRegistrations(r3.data);
-    if(r4.data)setProfile(r4.data);
+    const data=await loadScopedAppData(session);
+    if(data.races)setRaces(data.races);
+    if(data.runners)setRunners(data.runners);
+    if(data.registrations)setRegistrations(data.registrations);
+    if(data.profile)setProfile(data.profile);
   }
   useEffect(()=>{
     if(!session)return;
     let cancelled=false;
     (async()=>{
-      const [r1,r2,r3,r4]=await Promise.all([
-        supabase.from("races").select("*").order("created_at",{ascending:false}),
-        supabase.from("runners").select("*"),
-        supabase.from("registrations").select("*"),
-        supabase.from("profiles").select("*").eq("id",session.user.id).single(),
-      ]);
+      const data=await loadScopedAppData(session);
       if(cancelled)return;
-      if(r1.data)setRaces(r1.data);
-      if(r2.data)setRunners(r2.data);
-      if(r3.data)setRegistrations(r3.data);
-      if(r4.data)setProfile(r4.data);
+      if(data.races)setRaces(data.races);
+      if(data.runners)setRunners(data.runners);
+      if(data.registrations)setRegistrations(data.registrations);
+      if(data.profile)setProfile(data.profile);
       setLoading(false);
     })();
     return()=>{cancelled=true;};
