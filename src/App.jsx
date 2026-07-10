@@ -2,7 +2,7 @@
 
 
 
-import React, { useState, useEffect, useRef, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 // Cache-bust: 2026-06-05T13:00 — force Vercel rebuild for privacy fixes
 
 // Global keyframe injection for skeleton animation
@@ -1410,11 +1410,6 @@ function Footer(){
   </>;
 }
 
-function upperNoAccent(s){
-  if(!s)return"";
-  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
-}
-
 function LangToggle(){
   const {lang,setLang}=useLang();
   return <div style={{display:"flex",background:T.bg,borderRadius:"8px",padding:"3px",border:`1px solid ${T.border}`}}>
@@ -1583,7 +1578,34 @@ function truncLoc(loc,max=30){
 
 function timeToSeconds(t){if(!t)return 0;const p=String(t).split(":").map(Number);if(p.length===3)return p[0]*3600+p[1]*60+p[2];if(p.length===2)return p[0]*60+p[1];return 0;}
 function formatTime(t){if(!t)return "—";const p=String(t).split(":").map(x=>x.trim());if(p.length===3)return `${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}:${String(parseInt(p[2])||0).padStart(2,"0")}`;if(p.length===2)return `00:${String(parseInt(p[0])||0).padStart(2,"0")}:${String(parseInt(p[1])||0).padStart(2,"0")}`;return t;}
-function validateTime(t){if(!t||!t.trim())return null;const clean=t.trim();if(!/^\d+(:\d+)?(:\d+)?$/.test(clean))return null;const p=clean.split(":").map(x=>parseInt(x)||0);if(p.length===3){if(p[1]>=60||p[2]>=60)return null;return `${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}:${String(p[2]).padStart(2,"0")}`;}if(p.length===2){if(p[1]>=60)return null;return `00:${String(p[0]).padStart(2,"0")}:${String(p[1]).padStart(2,"0")}`;}if(p.length===1){return `00:00:${String(p[0]).padStart(2,"0")}`;}return null;}
+
+function secToChartFormat(sec){
+  if(!sec||isNaN(sec))return"0:00";
+  const s=Math.abs(Math.round(sec));
+  const h=Math.floor(s/3600);
+  const m=Math.floor((s%3600)/60);
+  const ss=s%60;
+  if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+  return `${m}:${String(ss).padStart(2,"0")}`;
+}
+
+function buildTimeProgressChart(myRegs,races){
+  try{
+    if(!races||!Array.isArray(races))return null;
+    const finished=(myRegs||[]).filter(r=>r&&r.finish_time).map(r=>{
+      const race=races.find(rc=>rc&&rc.id===r.race_id);
+      return{distance:r.distance,seconds:timeToSeconds(r.finish_time),date:race?.date||"",raceName:race?.name||""};
+    }).filter(r=>r.seconds>0&&r.date);
+    const byDist={};
+    finished.forEach(r=>{if(!byDist[r.distance])byDist[r.distance]=[];byDist[r.distance].push(r);});
+    const validDists=Object.keys(byDist).filter(d=>byDist[d].length>=2).sort();
+    validDists.forEach(d=>byDist[d].sort((a,b)=>a.date.localeCompare(b.date)));
+    return{validDists,byDist};
+  }catch(err){
+    console.error("Progress charts error:",err);
+    return null;
+  }
+}
 
 function SponsorsPicker({sponsors,onChange}){
   const {lang}=useLang();
@@ -1930,13 +1952,17 @@ function WeatherWidget({location,raceDate}){
   const {lang}=useLang();
   const [weather,setWeather]=useState(null);
   const [coords,setCoords]=useState(null);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState(null);
+  const [loading,setLoading]=useState(!!location);
+  const [error,setError]=useState(location?null:"nolocation");
 
   useEffect(()=>{
-    if(!location){setLoading(false);setError("nolocation");return;}
+    if(!location)return;
     let cancelled=false;
     (async()=>{
+      setLoading(true);
+      setError(null);
+      setWeather(null);
+      setCoords(null);
       try{
         const geoUrl=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en`;
         const geoRes=await fetch(geoUrl);
@@ -2499,8 +2525,8 @@ function PublicResultsPage({raceId,onBack}){
   const distances=race.distance?race.distance.split(" | "):[];
   
   function getAgeCategory(dob,raceDate){
-    if(!dob)return null;
-    const ageInYears=Math.floor((new Date(raceDate||Date.now())-new Date(dob))/(365.25*24*3600*1000));
+    if(!dob||!raceDate)return null;
+    const ageInYears=Math.floor((new Date(raceDate)-new Date(dob))/(365.25*24*3600*1000));
     if(ageInYears<20)return "U20";
     if(ageInYears<30)return "20-29";
     if(ageInYears<40)return "30-39";
@@ -3201,7 +3227,7 @@ function GpxSplits({gpxUrl}){
   const [splits,setSplits]=useState(null);
   const [err,setErr]=useState(false);
   useEffect(()=>{
-    if(!gpxUrl){setErr(true);return;}
+    if(!gpxUrl)return;
     let cancelled=false;
     (async()=>{
       try{
@@ -3338,7 +3364,7 @@ function InlineGpxMap({gpxUrl}){
   const [points,setPoints]=useState(null);
   const [err,setErr]=useState(false);
   useEffect(()=>{
-    if(!gpxUrl){setErr(true);return;}
+    if(!gpxUrl)return;
     let cancelled=false;
     (async()=>{
       try{
@@ -3372,12 +3398,16 @@ function InlineGpxMap({gpxUrl}){
 
 function GpxMapModal({activity,onClose}){
   const {lang}=useLang();
+  const hasGpx=!!activity?.gpx_url;
   const [points,setPoints]=useState(null);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState(null);
+  const [loading,setLoading]=useState(hasGpx);
+  const [error,setError]=useState(hasGpx?null:"No GPX URL");
   useEffect(()=>{
-    if(!activity?.gpx_url){setLoading(false);setError("No GPX URL");return;}
+    if(!activity?.gpx_url)return;
     (async()=>{
+      setLoading(true);
+      setError(null);
+      setPoints(null);
       try{
         const res=await fetch(activity.gpx_url);
         if(!res.ok)throw new Error("Cannot load GPX");
@@ -3450,12 +3480,20 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   const [showProfileForm,setShowProfileForm]=useState(false);
   const [editingActivity,setEditingActivity]=useState(null);
   const [actForm,setActForm]=useState({activity_type:"training",name:"",date:"",distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
-  async function fetchActivities(){
+  async function refreshActivities(){
     if(!myProfileId)return;
     const {data}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
     if(data)setActivities(data);
   }
-  useEffect(()=>{fetchActivities();},[myProfileId]);
+  useEffect(()=>{
+    if(!myProfileId)return;
+    let cancelled=false;
+    (async()=>{
+      const {data}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
+      if(!cancelled&&data)setActivities(data);
+    })();
+    return()=>{cancelled=true;};
+  },[myProfileId]);
   function openNewActivity(){
     setEditingActivity(null);
     setActForm({activity_type:"training",name:"",date:new Date().toISOString().split("T")[0],distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
@@ -3505,7 +3543,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     if(res.error){toast("Σφάλμα: "+res.error.message,"error");return;}
     toast(lang==="el"?"✅ Αποθηκεύτηκε!":"✅ Saved!","success");
     setShowActivityModal(false);
-    fetchActivities();
+    refreshActivities();
     // Auto-open map if GPX was uploaded
     if(payload.gpx_url){
       const newAct=res.data||{...payload,id:editingActivity?.id};
@@ -3517,7 +3555,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     const {error}=await supabase.from("personal_activities").delete().eq("id",id);
     if(error){toast("Σφάλμα: "+error.message,"error");return;}
     toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","info");
-    fetchActivities();
+    refreshActivities();
   }
   async function handleGpxUpload(e){
     const files=Array.from(e.target.files||[]);
@@ -3627,7 +3665,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     if(!file||!myRunner)return;
     setUploading(true);
     const ext=file.name.split(".").pop();
-    const path=`${myRunner.id}-${Date.now()}.${ext}`;
+    const path=`${myRunner.id}-${file.lastModified}-${file.size}.${ext}`;
     const {error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true});
     if(upErr){toast("Σφάλμα: "+upErr.message,"error");setUploading(false);return;}
     const {data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
@@ -3764,25 +3802,9 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     </div>
     {/* Progress Charts - Time improvements per distance */}
     {(()=>{
-      try{
-        if(!races||!Array.isArray(races))return null;
-        const secToFormat=(sec)=>{
-          if(!sec||isNaN(sec))return"0:00";
-          const s=Math.abs(Math.round(sec));
-          const h=Math.floor(s/3600);
-          const m=Math.floor((s%3600)/60);
-          const ss=s%60;
-          if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-          return `${m}:${String(ss).padStart(2,"0")}`;
-        };
-        const finished=(myRegs||[]).filter(r=>r&&r.finish_time).map(r=>{
-          const race=races.find(rc=>rc&&rc.id===r.race_id);
-          return{distance:r.distance,seconds:timeToSeconds(r.finish_time),date:race?.date||"",raceName:race?.name||""};
-        }).filter(r=>r.seconds>0&&r.date);
-        const byDist={};
-        finished.forEach(r=>{if(!byDist[r.distance])byDist[r.distance]=[];byDist[r.distance].push(r);});
-        const validDists=Object.keys(byDist).filter(d=>byDist[d].length>=2).sort();
-        validDists.forEach(d=>byDist[d].sort((a,b)=>a.date.localeCompare(b.date)));
+      const chart=buildTimeProgressChart(myRegs,races);
+      if(!chart)return null;
+      const {validDists,byDist}=chart;
       return <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"20px",boxShadow:T.shadow,marginBottom:"20px"}}>
         <h3 style={{margin:"0 0 10px",color:T.text,fontSize:"14px",display:"flex",alignItems:"center",gap:"6px"}}>📈 {lang==="el"?"Πρόοδος Χρόνων":"Time Progress"}</h3>
         {validDists.length===0?(
@@ -3811,7 +3833,7 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   <div style={{color:T.text,fontWeight:800,fontSize:"15px"}}>🏃 {dist}</div>
                   <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
                     <span style={{color:T.textMid,fontSize:"11px"}}>{data.length} {lang==="el"?"αγώνες":"races"}</span>
-                    {isImproving?(<span style={{background:T.accent+"22",color:T.accent,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📈 -{secToFormat(improvement)}</span>):(<span style={{background:T.warning+"22",color:T.warning,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📉 +{secToFormat(improvement)}</span>)}
+                    {isImproving?(<span style={{background:T.accent+"22",color:T.accent,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📈 -{secToChartFormat(improvement)}</span>):(<span style={{background:T.warning+"22",color:T.warning,padding:"4px 10px",borderRadius:"999px",fontSize:"11px",fontWeight:700}}>📉 +{secToChartFormat(improvement)}</span>)}
                   </div>
                 </div>
                 <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",maxHeight:"180px"}}>
@@ -3820,10 +3842,10 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
                   <path d={path} fill="none" stroke={isImproving?T.accent:T.warning} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   {points.map((p,i)=>(<g key={i}>
                     <circle cx={p.x} cy={p.y} r="5" fill={isImproving?T.accent:T.warning} stroke="#fff" strokeWidth="2"/>
-                    <title>{p.raceName} · {p.date} · {secToFormat(p.seconds)}</title>
+                    <title>{p.raceName} · {p.date} · {secToChartFormat(p.seconds)}</title>
                   </g>))}
-                  <text x={pad-4} y={pad+4} textAnchor="end" fontSize="9" fill={T.textLight}>{secToFormat(minSec)}</text>
-                  <text x={pad-4} y={H-pad+3} textAnchor="end" fontSize="9" fill={T.textLight}>{secToFormat(maxSec)}</text>
+                  <text x={pad-4} y={pad+4} textAnchor="end" fontSize="9" fill={T.textLight}>{secToChartFormat(minSec)}</text>
+                  <text x={pad-4} y={H-pad+3} textAnchor="end" fontSize="9" fill={T.textLight}>{secToChartFormat(maxSec)}</text>
                 </svg>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:T.textLight,marginTop:"6px",padding:"0 16px"}}>
                   <span>{data[0].date}</span>
@@ -3834,7 +3856,6 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
           </div>
         )}
       </div>;
-      }catch(err){console.error("Progress charts error:",err);return null;}
     })()}
     {/* Personal Activities - Manual entries */}
     <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"16px",padding:"28px",boxShadow:T.shadow,marginBottom:"28px"}}>
@@ -4498,12 +4519,6 @@ function loadScript(src){
   });
 }
 
-async function ensureJsPDF(){
-  if(window.jspdf&&window.jspdf.jsPDF)return;
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js");
-}
-
 // Greek text normalization for fuzzy matching
 function normalizeText(s){
   if(!s)return"";
@@ -4967,79 +4982,6 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
   }
   async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
   async function toggleStatus(race){const s=["upcoming","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
-
-  async function exportPDF(race){
-    const regs=registrations.filter(r=>r.race_id===race.id);
-    if(!regs.length){toast(t.noRegsCsv,"warning");return;}
-    const paidCount=regs.filter(r=>r.payment_status==="paid").length;
-    const totalRev=regs.filter(r=>r.payment_status==="paid").reduce((sum,r)=>sum+(parseFloat(r.price_paid)||0),0);
-    // Build pretty HTML for print
-    const rows=regs.map((reg,i)=>{
-      const r=runners.find(x=>x.id===reg.runner_id)||{};
-      const paid=reg.payment_status==="paid";
-      return `<tr>
-        <td class="num">${i+1}</td>
-        <td class="bib">#${reg.bib_number||"-"}</td>
-        <td>${(r.first_name||"")} ${(r.last_name||"")}</td>
-        <td>${reg.distance||"-"}</td>
-        <td>${r.club||"-"}</td>
-        <td>${r.city||"-"}</td>
-        <td class="${paid?"paid":"pending"}">${paid?"✓ Πληρωμένο":"⏳ Εκκρεμές"}</td>
-        <td class="num">${reg.price_paid?Number(reg.price_paid).toFixed(2)+"€":"-"}</td>
-      </tr>`;
-    }).join("");
-    const html=`<!DOCTYPE html>
-<html lang="el"><head><meta charset="UTF-8"><title>${race.name} - Εγγραφές</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:#1a1a1a;padding:30px;background:#fff;font-size:11pt}
-  .header{border-bottom:3px solid #14211a;padding-bottom:14px;margin-bottom:20px}
-  h1{font-size:22pt;color:#1a1a1a;margin-bottom:6px}
-  .meta{color:#666;font-size:10pt}
-  .stats{display:flex;gap:14px;margin:18px 0;padding:14px;background:#eef2ef;border-radius:8px;font-size:10pt}
-  .stat{flex:1}
-  .stat-label{color:#666;font-size:9pt;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
-  .stat-value{font-size:15pt;font-weight:800;color:#1a1a1a}
-  table{width:100%;border-collapse:collapse;font-size:10pt}
-  thead{background:#14211a;color:#fff}
-  th{padding:10px 8px;text-align:left;font-weight:700;font-size:9pt;text-transform:uppercase;letter-spacing:0.04em}
-  td{padding:8px;border-bottom:1px solid #e8e6df}
-  tbody tr:nth-child(even){background:#fafaf7}
-  .num{text-align:right;font-variant-numeric:tabular-nums}
-  .bib{font-weight:700;color:#14211a;font-family:monospace}
-  .paid{color:#10b981;font-weight:600;font-size:9pt}
-  .pending{color:#d97706;font-weight:600;font-size:9pt}
-  .footer{margin-top:24px;padding-top:14px;border-top:1px solid #e8e6df;color:#999;font-size:9pt;display:flex;justify-content:space-between}
-  .print-note{position:fixed;top:20px;right:20px;background:#14211a;color:#fff;padding:14px 24px;border-radius:10px;font-size:14pt;box-shadow:0 6px 20px rgba(20,33,26,0.4);cursor:pointer;border:none;font-family:inherit;font-weight:700;z-index:1000}
-  .print-note:hover{background:#0b120e;transform:translateY(-2px)}
-  @media print{.print-note{display:none}@page{margin:1.5cm;size:A4}}
-</style></head><body>
-<button class="print-note" onclick="window.print()">🖨️ Εκτύπωση / Save as PDF</button>
-<div class="header">
-  <h1>${race.name}</h1>
-  <div class="meta">📅 ${race.date||"-"} &nbsp;·&nbsp; 📍 ${race.location||"-"}</div>
-</div>
-<div class="stats">
-  <div class="stat"><div class="stat-label">Σύνολο</div><div class="stat-value">${regs.length}${race.max_runners?"/"+race.max_runners:""}</div></div>
-  <div class="stat"><div class="stat-label">Πληρωμένοι</div><div class="stat-value" style="color:#10b981">${paidCount}</div></div>
-  <div class="stat"><div class="stat-label">Εκκρεμείς</div><div class="stat-value" style="color:#d97706">${regs.length-paidCount}</div></div>
-  <div class="stat"><div class="stat-label">Έσοδα</div><div class="stat-value">€${totalRev.toFixed(2)}</div></div>
-</div>
-<table>
-<thead><tr><th>#</th><th>BIB</th><th>Ονοματεπώνυμο</th><th>Διαδρομή</th><th>Σύλλογος</th><th>Πόλη</th><th>Πληρωμή</th><th>Τιμή</th></tr></thead>
-<tbody>${rows}</tbody>
-</table>
-<div class="footer">
-  <div>Race Management · racemanagement.gr</div>
-  <div>Εκτύπωση: ${new Date().toLocaleString("el-GR")}</div>
-</div>
-</body></html>`;
-    const w=window.open("","_blank");
-    if(!w){toast("⚠️ Επέτρεψε τα popups για το PDF","warning");return;}
-    w.document.write(html);
-    w.document.close();
-    toast("✅ Άνοιξε νέο tab - πάτα '🖨️ Εκτύπωση' πάνω δεξιά","success");
-  }
 
   function exportPDFByRoute(race,distanceFilter){
     const allRegs=registrations.filter(r=>r.race_id===race.id);
@@ -5665,7 +5607,84 @@ function AdminPanel(){
     }
     setLoading(false);
   }
-  useEffect(()=>{fetchOrgs();},[]);
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      setLoading(true);
+      const [orgsRes,racesRes,runnersRes,approvedRes]=await Promise.all([
+        supabase.from("profiles").select("*").eq("role","organizer").order("id",{ascending:false}),
+        supabase.from("races").select("*").eq("status","pending_approval").order("date",{ascending:true}),
+        supabase.from("runners").select("id,first_name,last_name,email,dob,athlete_profile_id,created_at"),
+        supabase.from("races").select("id,name,date,distances").in("status",["approved","upcoming","active"]).order("date",{ascending:false})
+      ]);
+      if(cancelled)return;
+      if(approvedRes.data)setApprovedRaces(approvedRes.data);
+      if(orgsRes.data){setPendingOrgs(orgsRes.data.filter(o=>o.status==="pending"));setAllOrgs(orgsRes.data);}
+      if(racesRes.data)setPendingRaces(racesRes.data);
+      if(runnersRes.data){
+        const runners=runnersRes.data;
+        const dupGroups=[];
+        const byEmail={};
+        runners.forEach(r=>{
+          if(!r.email)return;
+          const key=String(r.email).toLowerCase().trim();
+          if(!key)return;
+          if(!byEmail[key])byEmail[key]=[];
+          byEmail[key].push(r);
+        });
+        Object.entries(byEmail).forEach(([key,group])=>{
+          if(group.length>1)dupGroups.push({type:"email",key,runners:group});
+        });
+        const byNameDob={};
+        runners.forEach(r=>{
+          if(!r.first_name||!r.last_name||!r.dob)return;
+          const key=`${String(r.first_name).toLowerCase().trim()}|${String(r.last_name).toLowerCase().trim()}|${r.dob}`;
+          if(!byNameDob[key])byNameDob[key]=[];
+          byNameDob[key].push(r);
+        });
+        Object.entries(byNameDob).forEach(([key,group])=>{
+          if(group.length>1){
+            const ids=group.map(g=>g.id).sort().join(",");
+            const exists=dupGroups.some(d=>d.runners.map(r=>r.id).sort().join(",")===ids);
+            if(!exists)dupGroups.push({type:"name_dob",key,runners:group});
+          }
+        });
+        function levenshtein(a,b){
+          if(!a||!b)return 99;
+          a=a.toLowerCase().trim();b=b.toLowerCase().trim();
+          if(a===b)return 0;
+          if(Math.abs(a.length-b.length)>3)return 99;
+          const dp=Array(a.length+1).fill(null).map(()=>Array(b.length+1).fill(0));
+          for(let i=0;i<=a.length;i++)dp[i][0]=i;
+          for(let j=0;j<=b.length;j++)dp[0][j]=j;
+          for(let i=1;i<=a.length;i++){
+            for(let j=1;j<=b.length;j++){
+              dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])+1;
+            }
+          }
+          return dp[a.length][b.length];
+        }
+        const fullNameRunners=runners.filter(r=>r.first_name&&r.last_name);
+        for(let i=0;i<fullNameRunners.length;i++){
+          for(let j=i+1;j<fullNameRunners.length;j++){
+            const a=fullNameRunners[i],b=fullNameRunners[j];
+            const aFull=`${a.first_name} ${a.last_name}`;
+            const bFull=`${b.first_name} ${b.last_name}`;
+            const aRev=`${a.last_name} ${a.first_name}`;
+            const dist=Math.min(levenshtein(aFull,bFull),levenshtein(aRev,bFull));
+            if(dist>0&&dist<=2){
+              const ids=[a.id,b.id].sort().join(",");
+              const exists=dupGroups.some(d=>d.runners.map(r=>r.id).sort().join(",")===ids);
+              if(!exists)dupGroups.push({type:"similar_name",key:`${aFull} ≈ ${bFull}`,runners:[a,b]});
+            }
+          }
+        }
+        setDuplicates(dupGroups);
+      }
+      setLoading(false);
+    })();
+    return()=>{cancelled=true;};
+  },[]);
   async function submitManualReg(){
     if(!manualForm.race_id){toast(lang==="el"?"⚠ Επίλεξε αγώνα":"⚠ Select race","warning");return;}
     if(!manualForm.first_name.trim()||!manualForm.last_name.trim()){toast(lang==="el"?"⚠ Όνομα + Επώνυμο":"⚠ First + Last name","warning");return;}
@@ -6027,7 +6046,26 @@ function CRMDashboard({profile,races}){
     if(t.data)setTasks(t.data);
     setLoading(false);
   }
-  useEffect(()=>{fetchCRM();},[]);
+  useEffect(()=>{
+    if(!profile?.id)return;
+    let cancelled=false;
+    (async()=>{
+      setLoading(true);
+      const [c,s,v,t]=await Promise.all([
+        supabase.from("crm_contacts").select("*").eq("organizer_id",profile.id).order("last_race_date",{ascending:false,nullsFirst:false}),
+        supabase.from("crm_sponsors").select("*").eq("organizer_id",profile.id).order("created_at",{ascending:false}),
+        supabase.from("crm_volunteers").select("*").eq("organizer_id",profile.id).order("created_at",{ascending:false}),
+        supabase.from("crm_tasks").select("*").eq("organizer_id",profile.id).order("due_date",{ascending:true,nullsFirst:false})
+      ]);
+      if(cancelled)return;
+      if(c.data)setContacts(c.data);
+      if(s.data)setSponsors(s.data);
+      if(v.data)setVolunteers(v.data);
+      if(t.data)setTasks(t.data);
+      setLoading(false);
+    })();
+    return()=>{cancelled=true;};
+  },[profile?.id]);
   if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>🔄 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
   const athleteContacts=contacts.filter(c=>c.contact_type==="athlete");
   const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
@@ -6323,167 +6361,6 @@ function TasksModule({tasks,onRefresh,myProfileId,lang,races}){
   </div>;
 }
 
-function FinanceModule({organizerId,races,lang}){
-  const [txs,setTxs]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [raceFilter,setRaceFilter]=useState("all");
-  const [typeFilter,setTypeFilter]=useState("all");
-  // Form
-  const [showForm,setShowForm]=useState(false);
-  const [fDesc,setFDesc]=useState("");
-  const [fAmount,setFAmount]=useState("");
-  const [fType,setFType]=useState("sponsorship");
-  const [fRaceId,setFRaceId]=useState("");
-  const [fDate,setFDate]=useState(new Date().toISOString().slice(0,10));
-  const [busy,setBusy]=useState(false);
-
-  async function fetchTxs(){
-    setLoading(true);
-    const {data}=await supabase.from("crm_transactions").select("*").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});
-    setTxs(data||[]);
-    setLoading(false);
-  }
-  useEffect(()=>{fetchTxs();},[]);
-
-  async function addTx(){
-    if(!fDesc.trim()||!fAmount||!organizerId)return;
-    const amt=parseFloat(fAmount);
-    if(isNaN(amt)||amt===0){toast(lang==="el"?"⚠ Άκυρο ποσό":"⚠ Invalid amount","warning");return;}
-    setBusy(true);
-    // Income types positive, expense negative
-    const finalAmount=fType==="expense"||fType==="refund"?-Math.abs(amt):Math.abs(amt);
-    const {error}=await supabase.from("crm_transactions").insert({
-      organizer_id:organizerId,
-      race_id:fRaceId||null,
-      type:fType,
-      amount:finalAmount,
-      description:fDesc.trim(),
-      source:"manual",
-      status:"completed",
-      transaction_date:fDate
-    });
-    setBusy(false);
-    if(error){toast("⚠ "+error.message,"error");return;}
-    setFDesc("");setFAmount("");setFRaceId("");setFType("sponsorship");setFDate(new Date().toISOString().slice(0,10));
-    setShowForm(false);
-    fetchTxs();
-    toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
-  }
-  async function deleteTx(id){
-    if(!confirm(lang==="el"?"Διαγραφή συναλλαγής;":"Delete transaction?"))return;
-    const {error}=await supabase.from("crm_transactions").delete().eq("id",id);
-    if(!error){fetchTxs();toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");}
-  }
-
-  // Apply filters
-  const filtered=txs.filter(t=>{
-    if(raceFilter!=="all"&&t.race_id!==raceFilter)return false;
-    if(typeFilter!=="all"&&t.type!==typeFilter)return false;
-    return true;
-  });
-  const totalIncome=filtered.filter(t=>t.amount>0).reduce((s,t)=>s+parseFloat(t.amount),0);
-  const totalExpense=filtered.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
-  const netProfit=totalIncome-totalExpense;
-
-  const typeIcons={registration:"🏃",sponsorship:"🤝",expense:"📉",other_income:"💰",refund:"↩️"};
-  const typeLabels={registration:lang==="el"?"Εγγραφή":"Registration",sponsorship:lang==="el"?"Χορηγία":"Sponsorship",expense:lang==="el"?"Έξοδο":"Expense",other_income:lang==="el"?"Άλλο Έσοδο":"Other Income",refund:lang==="el"?"Επιστροφή":"Refund"};
-
-  if(loading)return <div style={{textAlign:"center",padding:"40px",color:T.textMid}}>💰 {lang==="el"?"Φόρτωση...":"Loading..."}</div>;
-
-  return <div>
-    {/* Summary cards */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",gap:"10px",marginBottom:"16px"}}>
-      <div style={{background:`linear-gradient(135deg, ${T.accent}15 0%, ${T.accent}05 100%)`,border:`1px solid ${T.accent}33`,borderRadius:"12px",padding:"14px 16px"}}>
-        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>💰 {lang==="el"?"Έσοδα":"Income"}</div>
-        <div style={{fontSize:"22px",fontWeight:900,color:T.accent,lineHeight:1}}>{totalIncome.toFixed(2)}€</div>
-      </div>
-      <div style={{background:`linear-gradient(135deg, ${T.danger}15 0%, ${T.danger}05 100%)`,border:`1px solid ${T.danger}33`,borderRadius:"12px",padding:"14px 16px"}}>
-        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>📉 {lang==="el"?"Έξοδα":"Expenses"}</div>
-        <div style={{fontSize:"22px",fontWeight:900,color:T.danger,lineHeight:1}}>{totalExpense.toFixed(2)}€</div>
-      </div>
-      <div style={{background:`linear-gradient(135deg, ${netProfit>=0?T.primary:T.warning}15 0%, transparent 100%)`,border:`1px solid ${netProfit>=0?T.primary:T.warning}33`,borderRadius:"12px",padding:"14px 16px"}}>
-        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>{netProfit>=0?"✅":"⚠️"} {lang==="el"?"Καθαρό":"Net"}</div>
-        <div style={{fontSize:"22px",fontWeight:900,color:netProfit>=0?T.primary:T.warning,lineHeight:1}}>{netProfit.toFixed(2)}€</div>
-      </div>
-      <div style={{background:`linear-gradient(135deg, ${T.warning}15 0%, ${T.warning}05 100%)`,border:`1px solid ${T.warning}33`,borderRadius:"12px",padding:"14px 16px"}}>
-        <div style={{fontSize:"10px",color:T.textMid,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,marginBottom:"4px"}}>📅 {lang==="el"?"Συναλλαγές":"Transactions"}</div>
-        <div style={{fontSize:"22px",fontWeight:900,color:T.warning,lineHeight:1}}>{filtered.length}</div>
-      </div>
-    </div>
-
-    {/* Filters + Add button */}
-    <div style={{display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"}}>
-      <select value={raceFilter} onChange={e=>setRaceFilter(e.target.value)} style={{flex:1,minWidth:"160px",padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
-        <option value="all">🏁 {lang==="el"?"Όλοι οι αγώνες":"All races"}</option>
-        {races.filter(r=>r.user_id===organizerId).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-      </select>
-      <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bgAlt,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
-        <option value="all">💱 {lang==="el"?"Όλοι οι τύποι":"All types"}</option>
-        <option value="registration">🏃 {typeLabels.registration}</option>
-        <option value="sponsorship">🤝 {typeLabels.sponsorship}</option>
-        <option value="expense">📉 {typeLabels.expense}</option>
-        <option value="other_income">💰 {typeLabels.other_income}</option>
-        <option value="refund">↩️ {typeLabels.refund}</option>
-      </select>
-      <button onClick={()=>setShowForm(!showForm)} style={{background:T.primary,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{showForm?"✕ "+(lang==="el"?"Άκυρο":"Cancel"):"➕ "+(lang==="el"?"Νέα":"New")}</button>
-    </div>
-
-    {/* Add form */}
-    {showForm&&(
-      <div style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"12px",padding:"16px",marginBottom:"16px"}}>
-        <h3 style={{margin:"0 0 12px",fontSize:"13px",color:T.text,fontWeight:800}}>➕ {lang==="el"?"Νέα Συναλλαγή":"New Transaction"}</h3>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"10px",marginBottom:"10px"}}>
-          <input type="text" value={fDesc} onChange={e=>setFDesc(e.target.value)} placeholder={lang==="el"?"Περιγραφή...":"Description..."} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
-          <input type="number" step="0.01" value={fAmount} onChange={e=>setFAmount(e.target.value)} placeholder={lang==="el"?"Ποσό (€)":"Amount (€)"} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
-          <select value={fType} onChange={e=>setFType(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
-            <option value="sponsorship">🤝 {typeLabels.sponsorship}</option>
-            <option value="other_income">💰 {typeLabels.other_income}</option>
-            <option value="expense">📉 {typeLabels.expense}</option>
-            <option value="refund">↩️ {typeLabels.refund}</option>
-          </select>
-          <select value={fRaceId} onChange={e=>setFRaceId(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",cursor:"pointer"}}>
-            <option value="">{lang==="el"?"— Χωρίς αγώνα —":"— No race —"}</option>
-            {races.filter(r=>r.user_id===organizerId).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <input type="date" value={fDate} onChange={e=>setFDate(e.target.value)} style={{padding:"9px 12px",fontSize:"13px",borderRadius:"8px",border:`1px solid ${T.border}`,background:T.bg,color:T.text,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
-          <button onClick={addTx} disabled={busy||!fDesc.trim()||!fAmount} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"9px 16px",fontSize:"13px",fontWeight:700,cursor:busy||!fDesc.trim()||!fAmount?"not-allowed":"pointer",fontFamily:"inherit",opacity:busy||!fDesc.trim()||!fAmount?0.5:1}}>{busy?"...":(lang==="el"?"💾 Αποθήκευση":"💾 Save")}</button>
-        </div>
-        <p style={{margin:0,fontSize:"11px",color:T.textLight}}>💡 {lang==="el"?"Έσοδα: θετικό ποσό. Έξοδα/Επιστροφές: αυτόματα γίνονται αρνητικά.":"Income: positive. Expenses/Refunds: auto-negative."}</p>
-      </div>
-    )}
-
-    {/* Transactions list */}
-    <div>
-      <h3 style={{margin:"0 0 10px",fontSize:"13px",color:T.text,fontWeight:800}}>📋 {lang==="el"?"Συναλλαγές":"Transactions"}</h3>
-      {filtered.length===0?(
-        <div style={{textAlign:"center",padding:"30px",color:T.textLight,fontSize:"13px",background:T.bgAlt,borderRadius:"10px"}}>{lang==="el"?"Καμία συναλλαγή":"No transactions"}</div>
-      ):(
-        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-          {filtered.map(tx=>{
-            const race=races.find(r=>r.id===tx.race_id);
-            const isPositive=parseFloat(tx.amount)>=0;
-            return <div key={tx.id} style={{background:T.bgAlt,border:`1px solid ${T.border}`,borderRadius:"8px",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px"}}>
-              <div style={{fontSize:"18px",flexShrink:0}}>{typeIcons[tx.type]||"💱"}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.text,fontWeight:600,fontSize:"13px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tx.description}</div>
-                <div style={{color:T.textMid,fontSize:"11px",display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"2px"}}>
-                  <span>📅 {tx.transaction_date}</span>
-                  {race&&<span>🏁 {race.name}</span>}
-                  {tx.source==="auto_registration"&&<span style={{color:T.accent}}>🤖 Auto</span>}
-                </div>
-              </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:"15px",fontWeight:800,color:isPositive?T.accent:T.danger,fontFamily:"monospace",whiteSpace:"nowrap"}}>{isPositive?"+":""}{parseFloat(tx.amount).toFixed(2)}€</div>
-              </div>
-              {tx.source==="manual"&&<button onClick={()=>deleteTx(tx.id)} style={{background:"transparent",border:"none",color:T.textLight,cursor:"pointer",fontSize:"14px",padding:"4px 6px",fontFamily:"inherit",flexShrink:0}}>🗑</button>}
-            </div>;
-          })}
-        </div>
-      )}
-    </div>
-  </div>;
-}
-
 function PublicProfileShareCard({profile}){
   const {lang}=useLang();
   const [showShare,setShowShare]=useState(false);
@@ -6646,7 +6523,7 @@ function PublicAthleteView({athleteId,mySession,onBack}){
       }
     })();
     return()=>{cancelled=true;};
-  },[athleteId]);
+  },[athleteId,myId]);
 
   async function toggleFollow(){
     if(!myId||!data?.profile||busy||myId===data.profile.id)return;
@@ -6781,6 +6658,11 @@ function RaceForecast({races,registrations,session,profile}){
   const myProfileId=profile?.id;
   const myRaces=races.filter(r=>r.user_id===myUserId||r.user_id===myProfileId);
   const [selectedRaceId,setSelectedRaceId]=useState(myRaces[0]?.id||null);
+  const effectiveRaceId=useMemo(()=>{
+    if(myRaces.length===0)return null;
+    if(selectedRaceId&&myRaces.some(r=>r.id===selectedRaceId))return selectedRaceId;
+    return myRaces[0]?.id??null;
+  },[selectedRaceId,myRaces]);
   const [forecast,setForecast]=useState(null);
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -6817,60 +6699,16 @@ function RaceForecast({races,registrations,session,profile}){
       toast(lang==="el"?"❌ Σφάλμα: "+err.message:"❌ Error","error");
     }
   }
-  const [,setShowAddTx]=useState(false);
-  const [txForm,setTxForm]=useState({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
-  const [,setTxBusy]=useState(false);
-
-  const selectedRace=myRaces.find(r=>r.id===selectedRaceId);
-  
-  async function refreshTxs(){
-    if(!selectedRaceId)return;
-    const {data:txs}=await supabase.from("crm_transactions").select("*").eq("race_id",selectedRaceId);
-    setActualTxs(txs||[]);
-  }
-  
-  async function addTransaction(){
-    const amt=parseFloat(txForm.amount);
-    if(!amt||amt<=0||!txForm.description.trim()){toast(lang==="el"?"⚠ Συμπληρώστε ποσό και περιγραφή":"⚠ Fill amount and description","warning");return;}
-    setTxBusy(true);
-    const finalAmount=txForm.type==="expense"||txForm.type==="refund"?-Math.abs(amt):Math.abs(amt);
-    const {error}=await supabase.from("crm_transactions").insert({
-      organizer_id:profile?.id,
-      race_id:selectedRaceId,
-      type:txForm.type,
-      amount:finalAmount,
-      description:txForm.description.trim(),
-      source:"manual",
-      status:"completed",
-      transaction_date:txForm.date
-    });
-    setTxBusy(false);
-    if(error){toast("⚠ "+error.message,"error");return;}
-    setTxForm({type:"sponsorship",amount:"",description:"",date:new Date().toISOString().slice(0,10)});
-    setShowAddTx(false);
-    await refreshTxs();
-    toast(lang==="el"?"✅ Προστέθηκε":"✅ Added","success");
-  }
-  
-  async function deleteTx(id){
-    if(!confirm(lang==="el"?"Διαγραφή συναλλαγής;":"Delete transaction?"))return;
-    const {error}=await supabase.from("crm_transactions").delete().eq("id",id);
-    if(error){toast("⚠ "+error.message,"error");return;}
-    await refreshTxs();
-    toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");
-  }
+  const selectedRace=myRaces.find(r=>r.id===effectiveRaceId);
 
   useEffect(()=>{
-    if(!selectedRaceId)return;
-    // GUARD: only load forecast for races user owns
-    const ownsRace=myRaces.some(r=>r.id===selectedRaceId);
-    if(!ownsRace){setSelectedRaceId(myRaces[0]?.id||null);return;}
-    setLoading(true);
+    if(!effectiveRaceId)return;
+    let cancelled=false;
     (async()=>{
-      // Fetch forecast
-      const {data}=await supabase.from("race_forecast").select("*").eq("race_id",selectedRaceId).maybeSingle();
-      // Fetch actual transactions for this race
-      const {data:txs}=await supabase.from("crm_transactions").select("*").eq("race_id",selectedRaceId);
+      setLoading(true);
+      const {data}=await supabase.from("race_forecast").select("*").eq("race_id",effectiveRaceId).maybeSingle();
+      const {data:txs}=await supabase.from("crm_transactions").select("*").eq("race_id",effectiveRaceId);
+      if(cancelled)return;
       setActualTxs(txs||[]);
       if(data){
         setForecast(data);
@@ -6884,9 +6722,8 @@ function RaceForecast({races,registrations,session,profile}){
           notes:data.notes||""
         });
       }else{
-        // Initialize empty
         setForecast({
-          race_id:selectedRaceId,
+          race_id:effectiveRaceId,
           expected_registrations:0,
           avg_registration_fee:0,
           expected_sponsorships:0,
@@ -6908,17 +6745,18 @@ function RaceForecast({races,registrations,session,profile}){
       }
       setLoading(false);
     })();
-  },[selectedRaceId]);
+    return()=>{cancelled=true;};
+  },[effectiveRaceId]);
 
   async function saveForecast(updates){
-    if(!selectedRaceId)return;
+    if(!effectiveRaceId)return;
     setSaving(true);
     const newData={...forecast,...updates};
     if(forecast?.id){
       const {error}=await supabase.from("race_forecast").update(updates).eq("id",forecast.id);
       if(error){toast("⚠ "+error.message,"error");setSaving(false);return;}
     }else{
-      const {data,error}=await supabase.from("race_forecast").insert({race_id:selectedRaceId,...updates}).select().single();
+      const {data,error}=await supabase.from("race_forecast").insert({race_id:effectiveRaceId,...updates}).select().single();
       if(error){toast("⚠ "+error.message,"error");setSaving(false);return;}
       newData.id=data.id;
     }
@@ -6951,7 +6789,7 @@ function RaceForecast({races,registrations,session,profile}){
   const profit=totalRevenue-totalExpenses;
   
   // Actuals — Combined: auto-synced registrations + manual entry fields
-  const actualRegs=registrations.filter(r=>r.race_id===selectedRaceId);
+  const actualRegs=registrations.filter(r=>r.race_id===effectiveRaceId);
   const actualRegRevenue=actualRegs.filter(r=>r.payment_status==="paid").reduce((s,r)=>s+(parseFloat(r.price_paid)||0),0);
   
   // Manual actual values (from forecast table fields)
@@ -7395,22 +7233,28 @@ function AppContent(){
   const [runners,setRunners]=useState([]);
   const [registrations,setRegistrations]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [showResetPassword,setShowResetPassword]=useState(false);
-  const [viewAthleteId,setViewAthleteId]=useState(null);
+  const [showResetPassword,setShowResetPassword]=useState(()=>
+    typeof window!=="undefined"&&(window.location.search.includes("reset=true")||window.location.hash.includes("type=recovery"))
+  );
+  const [viewAthleteId,setViewAthleteId]=useState(()=>{
+    if(typeof window==="undefined")return null;
+    try{
+      const sp=new URLSearchParams(window.location.search);
+      const aid=sp.get("athlete");
+      if(aid&&aid.startsWith("RM-"))return aid;
+    }catch{/* ignore */}
+    return null;
+  });
 
   useEffect(()=>{
-    supabase.auth.getSession().then(({data:{session}})=>setSession(session));
+    supabase.auth.getSession().then(({data:{session}})=>{
+      setSession(session);
+      if(!session)setLoading(false);
+    });
     const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       setSession(session);
       if(event==="PASSWORD_RECOVERY")setShowResetPassword(true);
     });
-    if(window.location.search.includes("reset=true")||window.location.hash.includes("type=recovery"))setShowResetPassword(true);
-    // Detect /?athlete=RM-XXXX in URL for public profile view
-    try{
-      const sp=new URLSearchParams(window.location.search);
-      const aid=sp.get("athlete");
-      if(aid&&aid.startsWith("RM-"))setViewAthleteId(aid);
-    }catch{/* ignore */}
     return()=>subscription?.unsubscribe();
   },[]);
 
@@ -7447,7 +7291,7 @@ function AppContent(){
     };
   },[session,lang]);
 
-  async function fetchAll(){
+  async function refreshAll(){
     if(!session)return;
     const [r1,r2,r3,r4]=await Promise.all([
       supabase.from("races").select("*").order("created_at",{ascending:false}),
@@ -7455,10 +7299,30 @@ function AppContent(){
       supabase.from("registrations").select("*"),
       supabase.from("profiles").select("*").eq("id",session.user.id).single(),
     ]);
-    if(r1.data)setRaces(r1.data);if(r2.data)setRunners(r2.data);if(r3.data)setRegistrations(r3.data);if(r4.data)setProfile(r4.data);
-    setLoading(false);
+    if(r1.data)setRaces(r1.data);
+    if(r2.data)setRunners(r2.data);
+    if(r3.data)setRegistrations(r3.data);
+    if(r4.data)setProfile(r4.data);
   }
-  useEffect(()=>{if(!session){setLoading(false);return;}fetchAll();},[session]);
+  useEffect(()=>{
+    if(!session)return;
+    let cancelled=false;
+    (async()=>{
+      const [r1,r2,r3,r4]=await Promise.all([
+        supabase.from("races").select("*").order("created_at",{ascending:false}),
+        supabase.from("runners").select("*"),
+        supabase.from("registrations").select("*"),
+        supabase.from("profiles").select("*").eq("id",session.user.id).single(),
+      ]);
+      if(cancelled)return;
+      if(r1.data)setRaces(r1.data);
+      if(r2.data)setRunners(r2.data);
+      if(r3.data)setRegistrations(r3.data);
+      if(r4.data)setProfile(r4.data);
+      setLoading(false);
+    })();
+    return()=>{cancelled=true;};
+  },[session]);
 
   if(showResetPassword)return <ResetPasswordModal onClose={()=>setShowResetPassword(false)}/>;
   if(!session)return <><PublicHomePage/><Footer/></>;
@@ -7516,7 +7380,7 @@ function AppContent(){
     </div>)}
 
     {isAthlete&&(<div style={{padding:"28px",maxWidth:"960px",margin:"0 auto"}}>
-      <AthleteDashboard races={races} registrations={registrations} runners={runners} profile={profile} session={session} onRefresh={fetchAll}/>
+      <AthleteDashboard races={races} registrations={registrations} runners={runners} profile={profile} session={session} onRefresh={refreshAll}/>
     </div>)}
 
     {isOrganizer&&(<>
@@ -7526,8 +7390,8 @@ function AppContent(){
         ))}
       </div>
       <div style={{padding:"28px",maxWidth:"960px",margin:"0 auto"}}>
-        {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
-        {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={fetchAll}/>}
+        {tab==="races"&&<OrganizerRaces races={races} setRaces={setRaces} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={refreshAll}/>}
+        {tab==="regs"&&<OrganizerRegistrations races={races} runners={runners} registrations={registrations} session={session} profile={profile} onRefresh={refreshAll}/>}
         {tab==="stats"&&<OrganizerStats races={races} registrations={registrations} session={session} profile={profile}/>}
         {tab==="forecast"&&<RaceForecast races={races} registrations={registrations} session={session} profile={profile}/>}
         {tab==="crm"&&<CRMDashboard session={session} profile={profile} races={races}/>}
