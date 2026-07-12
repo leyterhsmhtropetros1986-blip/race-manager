@@ -88,14 +88,11 @@ if (typeof document !== "undefined" && !document.getElementById("rm-global-style
   if (document.head) document.head.appendChild(s);
   else document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
 }
-import { createClient } from "@supabase/supabase-js";
 import { MapContainer, TileLayer, Polyline, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-const SUPABASE_URL = "https://kcqnykjbgqjlgcxmcaro.supabase.co";
-const SUPABASE_KEY = "sb_publishable_0dnpl6eFXDjB1Ot26f-qsg_B9IasaUw";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { supabase, SUPABASE_URL } from "./supabaseClient";
+import { uploadToBucket, downloadBlob } from "./utils";
 
 const RUNNER_PUBLIC_COLS="id,first_name,last_name,city,club,avatar_url,gender,dob";
 const RUNNER_ORG_COLS="id,first_name,last_name,email,phone,dob,gender,club,city,avatar_url,amka,emergency_name,emergency_phone,nationality";
@@ -653,12 +650,7 @@ function AddToCalendarMenu({race,onClose}){
   const links=generateCalendarLinks(race);
   if(!links)return null;
   function downloadICS(){
-    const blob=new Blob([links.ics],{type:"text/calendar"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download=`${race.name.replace(/\s+/g,"-")}.ics`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    downloadBlob(links.ics,`${race.name.replace(/\s+/g,"-")}.ics`,"text/calendar");
     onClose();
   }
   return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
@@ -1686,9 +1678,8 @@ function SponsorsPicker({sponsors,onChange}){
     setUploading(true);
     const ext=file.name.split(".").pop();
     const path=`sponsor-${Date.now()}.${ext}`;
-    const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+    const {publicUrl,error:upErr}=await uploadToBucket("race-banners",path,file,{upsert:true});
     if(upErr){toast("⚠️ "+upErr.message,"error");setUploading(false);return;}
-    const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
     setNewSp(s=>({...s,logo_url:publicUrl}));
     setUploading(false);
   }
@@ -1826,15 +1817,7 @@ ${pts}
 function downloadGPX(route,raceName){
   try{
     const gpx=generateGPX(route);
-    const blob=new Blob([gpx],{type:"application/gpx+xml"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=`${(raceName||"race").replace(/[^a-zA-Z0-9]/gi,"-")}-${(route.distance||"route").replace(/[^a-zA-Z0-9]/gi,"-")}.gpx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    downloadBlob(gpx,`${(raceName||"race").replace(/[^a-zA-Z0-9]/gi,"-")}-${(route.distance||"route").replace(/[^a-zA-Z0-9]/gi,"-")}.gpx`,"application/gpx+xml");
   }catch(e){toast("Σφάλμα: "+e.message,"error");}
 }
 
@@ -2235,9 +2218,8 @@ function GalleryPicker({gallery,onChange}){
     for(const file of files){
       const ext=file.name.split(".").pop();
       const path=`gallery-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-      const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+      const {publicUrl,error:upErr}=await uploadToBucket("race-banners",path,file,{upsert:true});
       if(upErr){toast("⚠️ "+upErr.message,"error");continue;}
-      const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
       uploaded.push({id:Date.now().toString()+Math.random().toString(36).slice(2,6),url:publicUrl,caption:""});
     }
     onChange([...(gallery||[]),...uploaded]);
@@ -3710,11 +3692,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
         let gpxUrl=null;
         if(myProfileId){
           const fileName=`${myProfileId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g,"_")}`;
-          const {error:upErr}=await supabase.storage.from("gpx-activities").upload(fileName,file,{contentType:"application/gpx+xml",upsert:false});
-          if(!upErr){
-            const {data:urlData}=supabase.storage.from("gpx-activities").getPublicUrl(fileName);
-            gpxUrl=urlData?.publicUrl||null;
-          }
+          const {publicUrl,error:upErr}=await uploadToBucket("gpx-activities",fileName,file,{contentType:"application/gpx+xml",upsert:false});
+          if(!upErr)gpxUrl=publicUrl;
         }
         parsedQueue.push({
           activity_type:"training",
@@ -3775,9 +3754,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     setUploading(true);
     const ext=file.name.split(".").pop();
     const path=`${myRunner.id}-${file.lastModified}-${file.size}.${ext}`;
-    const {error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true});
+    const {publicUrl,error:upErr}=await uploadToBucket("avatars",path,file,{upsert:true});
     if(upErr){toast("Σφάλμα: "+upErr.message,"error");setUploading(false);return;}
-    const {data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
     await supabase.from("runners").update({avatar_url:publicUrl}).eq("id",myRunner.id);
     onRefresh();setUploading(false);
   }
@@ -4923,9 +4901,8 @@ function DocumentsPicker({documents,onChange}){
     try{
       const ext=file.name.split(".").pop()||"pdf";
       const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-      const {error}=await supabase.storage.from("race-documents").upload(path,file,{cacheControl:"3600",upsert:false});
+      const {publicUrl,error}=await uploadToBucket("race-documents",path,file,{cacheControl:"3600",upsert:false});
       if(error){toast("Σφάλμα: "+error.message,"error");setUploading(false);return;}
-      const {data:{publicUrl}}=supabase.storage.from("race-documents").getPublicUrl(path);
       const newDoc={id:Date.now()+"-"+Math.random().toString(36).slice(2,8),title:newTitle.trim(),url:publicUrl,filename:file.name,size:file.size,type:file.type||"application/pdf",uploaded_at:new Date().toISOString()};
       onChange([...(documents||[]),newDoc]);
       setNewTitle("");
@@ -5048,9 +5025,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
     setUploadingBanner(true);
     const ext=file.name.split(".").pop();
     const path=`race-${Date.now()}.${ext}`;
-    const {error:upErr}=await supabase.storage.from("race-banners").upload(path,file,{upsert:true});
+    const {publicUrl,error:upErr}=await uploadToBucket("race-banners",path,file,{upsert:true});
     if(upErr){toast("⚠️ "+upErr.message,"error");setUploadingBanner(false);return;}
-    const {data:{publicUrl}}=supabase.storage.from("race-banners").getPublicUrl(path);
     setForm(f=>({...f,banner_url:publicUrl}));
     setUploadingBanner(false);
   }
@@ -6273,13 +6249,7 @@ function CRMDashboard({profile,races}){
             <td style="padding:6px;border:1px solid #ccc">${c.source||""}</td>
           </tr>`).join("");
           const xls=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Επαφές</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-          const blob=new Blob(["\uFEFF"+xls],{type:"application/vnd.ms-excel;charset=utf-8;"});
-          const url=URL.createObjectURL(blob);
-          const a=document.createElement("a");
-          a.href=url;
-          a.download=`crm-contacts-${new Date().toISOString().slice(0,10)}.xls`;
-          document.body.appendChild(a);a.click();document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          downloadBlob("\uFEFF"+xls,`crm-contacts-${new Date().toISOString().slice(0,10)}.xls`,"application/vnd.ms-excel;charset=utf-8;");
           toast(lang==="el"?`✅ Εξήχθησαν ${sortedContacts.length} επαφές (Excel)`:`✅ Exported ${sortedContacts.length} contacts`,"success");
         }} style={{background:T.accent,color:"#fff",border:"none",borderRadius:"8px",padding:"10px 16px",fontSize:"13px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 {lang==="el"?"Export Excel":"Export Excel"}</button>
       </div>
