@@ -105,7 +105,8 @@ const REG_ORG_COLS="id,runner_id,race_id,distance,bib_number,category,tshirt,med
 async function fetchRunnersByIds(ids,cols=RUNNER_PUBLIC_COLS){
   const unique=[...new Set((ids||[]).filter(Boolean))];
   if(!unique.length)return[];
-  const {data}=await supabase.from("runners").select(cols).in("id",unique);
+  const {data,error}=await supabase.from("runners").select(cols).in("id",unique);
+  if(error)throw error;
   return data||[];
 }
 
@@ -114,6 +115,7 @@ async function loadScopedAppData(session){
   const email=session.user.email;
 
   const profileRes=await supabase.from("profiles").select("*").eq("id",userId).single();
+  if(profileRes.error)throw profileRes.error;
   const profile=profileRes.data;
   const role=profile?.role;
   const isAdmin=role==="admin";
@@ -127,27 +129,35 @@ async function loadScopedAppData(session){
       supabase.from("registrations").select("*"),
       supabase.from("runners").select("*"),
     ]);
+    const firstErr=r1.error||r2.error||r3.error;
+    if(firstErr)throw firstErr;
     races=r1.data||[];
     registrations=r2.data||[];
     runners=r3.data||[];
   }else if(isApprovedOrganizer){
-    const {data:raceData}=await supabase.from("races").select("*").eq("user_id",userId).order("created_at",{ascending:false});
+    const {data:raceData,error:raceErr}=await supabase.from("races").select("*").eq("user_id",userId).order("created_at",{ascending:false});
+    if(raceErr)throw raceErr;
     races=raceData||[];
     const raceIds=races.map(r=>r.id);
     if(raceIds.length){
-      const {data:regData}=await supabase.from("registrations").select(REG_ORG_COLS).in("race_id",raceIds);
+      const {data:regData,error:regErr}=await supabase.from("registrations").select(REG_ORG_COLS).in("race_id",raceIds);
+      if(regErr)throw regErr;
       registrations=regData||[];
       runners=await fetchRunnersByIds(registrations.map(r=>r.runner_id),RUNNER_ORG_COLS);
     }
-    const {data:selfRunner}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    const {data:selfRunner,error:selfErr}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    if(selfErr)throw selfErr;
     if(selfRunner&&!runners.some(r=>r.id===selfRunner.id))runners.push(selfRunner);
   }else{
-    const {data:raceData}=await supabase.from("races").select("*").in("status",["upcoming","active","finished"]).order("date",{ascending:true});
+    const {data:raceData,error:raceErr}=await supabase.from("races").select("*").in("status",["upcoming","active","finished"]).order("date",{ascending:true});
+    if(raceErr)throw raceErr;
     races=raceData||[];
-    const {data:selfRunner}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    const {data:selfRunner,error:selfErr}=await supabase.from("runners").select("*").eq("email",email).maybeSingle();
+    if(selfErr)throw selfErr;
     if(selfRunner){
       runners=[selfRunner];
-      const {data:regData}=await supabase.from("registrations").select("*").eq("runner_id",selfRunner.id);
+      const {data:regData,error:regErr}=await supabase.from("registrations").select("*").eq("runner_id",selfRunner.id);
+      if(regErr)throw regErr;
       registrations=regData||[];
     }
   }
@@ -2390,7 +2400,8 @@ function PublicHomePage(){
   function closeView(){if(window.history.state)window.history.back();}
   useEffect(()=>{
     (async()=>{
-      const {data}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
+      const {data,error}=await supabase.from("races").select("*").in("status",["upcoming","active"]).order("date",{ascending:true});
+      if(error){console.error("Failed to load public races:",error);toast("⚠ "+error.message,"error");}
       setPublicRaces(data||[]);
       setLoading(false);
     })();
@@ -3093,7 +3104,8 @@ function AthleteRegistrationForm({race,profile,session,onClose,onSuccess}){
       if(error){toast("Σφάλμα δημιουργίας προφίλ: "+error.message,"error");setLoading(false);return;}
       runner=data;
     } else {
-      await supabase.from("runners").update(runnerData).eq("id",runner.id);
+      const {error:updErr}=await supabase.from("runners").update(runnerData).eq("id",runner.id);
+      if(updErr){toast("Σφάλμα ενημέρωσης προφίλ: "+updErr.message,"error");setLoading(false);return;}
     }
     if(!runner){toast("Σφάλμα: δεν βρέθηκε προφίλ.","error");setLoading(false);return;}
     // Capacity check
@@ -3591,15 +3603,18 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
   const [actForm,setActForm]=useState({activity_type:"training",name:"",date:"",distance_km:"",duration_h:"",duration_m:"",duration_s:"",elevation_gain_m:"",location:"",notes:"",is_external_race:false});
   async function refreshActivities(){
     if(!myProfileId)return;
-    const {data}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
+    const {data,error}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
+    if(error){toast("⚠ "+error.message,"error");return;}
     if(data)setActivities(data);
   }
   useEffect(()=>{
     if(!myProfileId)return;
     let cancelled=false;
     (async()=>{
-      const {data}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
-      if(!cancelled&&data)setActivities(data);
+      const {data,error}=await supabase.from("personal_activities").select("*").eq("profile_id",myProfileId).order("date",{ascending:false});
+      if(cancelled)return;
+      if(error){console.error("Failed to load activities:",error);return;}
+      if(data)setActivities(data);
     })();
     return()=>{cancelled=true;};
   },[myProfileId]);
@@ -3778,7 +3793,8 @@ function AthleteProfileInner({runners,registrations,races,session,profile,onRefr
     const {error:upErr}=await supabase.storage.from("avatars").upload(path,file,{upsert:true});
     if(upErr){toast("Σφάλμα: "+upErr.message,"error");setUploading(false);return;}
     const {data:{publicUrl}}=supabase.storage.from("avatars").getPublicUrl(path);
-    await supabase.from("runners").update({avatar_url:publicUrl}).eq("id",myRunner.id);
+    const {error:updErr}=await supabase.from("runners").update({avatar_url:publicUrl}).eq("id",myRunner.id);
+    if(updErr){toast("Σφάλμα: "+updErr.message,"error");setUploading(false);return;}
     onRefresh();setUploading(false);
   }
 
@@ -4790,28 +4806,38 @@ function ImportResultsModal({race,registrations,runners,onClose,onSuccess}){
   async function confirmImport(){
     if(!preview||preview.matched.length===0)return;
     setLoading(true);
-    // 1. Update finish_time για κάθε match
-    for(const m of preview.matched){
-      const time=(m.time==="DNF"||m.time==="DNS"||m.time==="DSQ")?null:m.time;
-      await supabase.from("registrations").update({finish_time:time}).eq("id",m.registration.id);
-    }
-    // 2. Re-fetch and rank: sort by time, set overall_rank
-    const {data:updated}=await supabase.from("registrations").select("*").eq("race_id",race.id);
-    const finished=(updated||[]).filter(r=>r.finish_time).sort((a,b)=>{
-      const ta=a.finish_time,tb=b.finish_time;
-      // Convert HH:MM:SS to seconds
-      const toSec=t=>{const p=String(t).split(":");return parseInt(p[0]||0)*3600+parseInt(p[1]||0)*60+parseInt(p[2]||0);};
-      return toSec(ta)-toSec(tb);
-    });
-    // Group by distance for distance-rank as well
-    const byDistance={};
-    for(let i=0;i<finished.length;i++){
-      const reg=finished[i];
-      await supabase.from("registrations").update({overall_rank:i+1}).eq("id",reg.id);
-      // Distance rank
-      if(!byDistance[reg.distance])byDistance[reg.distance]=0;
-      byDistance[reg.distance]++;
-      await supabase.from("registrations").update({category_rank:byDistance[reg.distance]}).eq("id",reg.id);
+    try{
+      // 1. Update finish_time για κάθε match
+      for(const m of preview.matched){
+        const time=(m.time==="DNF"||m.time==="DNS"||m.time==="DSQ")?null:m.time;
+        const {error}=await supabase.from("registrations").update({finish_time:time}).eq("id",m.registration.id);
+        if(error)throw error;
+      }
+      // 2. Re-fetch and rank: sort by time, set overall_rank
+      const {data:updated,error:fetchErr}=await supabase.from("registrations").select("*").eq("race_id",race.id);
+      if(fetchErr)throw fetchErr;
+      const finished=(updated||[]).filter(r=>r.finish_time).sort((a,b)=>{
+        const ta=a.finish_time,tb=b.finish_time;
+        // Convert HH:MM:SS to seconds
+        const toSec=t=>{const p=String(t).split(":");return parseInt(p[0]||0)*3600+parseInt(p[1]||0)*60+parseInt(p[2]||0);};
+        return toSec(ta)-toSec(tb);
+      });
+      // Group by distance for distance-rank as well
+      const byDistance={};
+      for(let i=0;i<finished.length;i++){
+        const reg=finished[i];
+        const {error:overallErr}=await supabase.from("registrations").update({overall_rank:i+1}).eq("id",reg.id);
+        if(overallErr)throw overallErr;
+        // Distance rank
+        if(!byDistance[reg.distance])byDistance[reg.distance]=0;
+        byDistance[reg.distance]++;
+        const {error:catErr}=await supabase.from("registrations").update({category_rank:byDistance[reg.distance]}).eq("id",reg.id);
+        if(catErr)throw catErr;
+      }
+    }catch(err){
+      setLoading(false);
+      toast((lang==="el"?"❌ Σφάλμα αποθήκευσης αποτελεσμάτων: ":"❌ Failed to save results: ")+(err?.message||err),"error");
+      return;
     }
     setLoading(false);
     setStep("done");
@@ -5089,8 +5115,8 @@ function OrganizerRaces({races,setRaces,runners,registrations,session,profile,on
     }
     setLoading(false);setShowForm(false);resetForm();
   }
-  async function del(id){if(!confirm(t.deleteConfirm))return;await supabase.from("races").delete().eq("id",id);setRaces(races.filter(r=>r.id!==id));}
-  async function toggleStatus(race){const s=["upcoming","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];await supabase.from("races").update({status:ns}).eq("id",race.id);setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
+  async function del(id){if(!confirm(t.deleteConfirm))return;const {error}=await supabase.from("races").delete().eq("id",id);if(error){toast("Σφάλμα: "+error.message,"error");return;}setRaces(races.filter(r=>r.id!==id));}
+  async function toggleStatus(race){const s=["upcoming","finished"];const ns=s[(s.indexOf(race.status)+1)%s.length];const {error}=await supabase.from("races").update({status:ns}).eq("id",race.id);if(error){toast("Σφάλμα: "+error.message,"error");return;}setRaces(races.map(r=>r.id===race.id?{...r,status:ns}:r));}
 
   function exportPDFByRoute(race,distanceFilter){
     const allRegs=registrations.filter(r=>r.race_id===race.id);
@@ -6356,12 +6382,14 @@ function TasksModule({tasks,onRefresh,myProfileId,lang,races}){
     const {error}=await supabase.from("crm_tasks").update({status:"done",completed_at:new Date().toISOString()}).eq("id",taskId);
     setBusyId(null);
     if(!error){if(onRefresh)onRefresh();toast(lang==="el"?"✅ Ολοκληρώθηκε":"✅ Done","success");}
+    else{toast("⚠ "+error.message,"error");}
   }
   async function reopen(taskId){
     setBusyId(taskId);
     const {error}=await supabase.from("crm_tasks").update({status:"todo",completed_at:null}).eq("id",taskId);
     setBusyId(null);
     if(!error){if(onRefresh)onRefresh();}
+    else{toast("⚠ "+error.message,"error");}
   }
   async function deleteTask(taskId){
     if(!confirm(lang==="el"?"Διαγραφή task;":"Delete task?"))return;
@@ -6369,6 +6397,7 @@ function TasksModule({tasks,onRefresh,myProfileId,lang,races}){
     const {error}=await supabase.from("crm_tasks").delete().eq("id",taskId);
     setBusyId(null);
     if(!error){if(onRefresh)onRefresh();toast(lang==="el"?"🗑 Διαγράφηκε":"🗑 Deleted","success");}
+    else{toast("⚠ "+error.message,"error");}
   }
   const todoTasks=tasks.filter(t=>t.status!=="done"&&t.status!=="cancelled");
   const doneTasks=tasks.filter(t=>t.status==="done");
@@ -6660,13 +6689,15 @@ function PublicAthleteView({athleteId,mySession,onBack}){
     setBusy(true);
     try{
       if(iFollow){
-        await supabase.from("athlete_follows").delete().eq("follower_id",myId).eq("following_id",data.profile.id);
+        const {error}=await supabase.from("athlete_follows").delete().eq("follower_id",myId).eq("following_id",data.profile.id);
+        if(error)throw error;
         setIFollow(false);setFollowCount(c=>Math.max(0,c-1));
       }else{
-        await supabase.from("athlete_follows").insert({follower_id:myId,following_id:data.profile.id});
+        const {error}=await supabase.from("athlete_follows").insert({follower_id:myId,following_id:data.profile.id});
+        if(error)throw error;
         setIFollow(true);setFollowCount(c=>c+1);
       }
-    }catch(e){console.error(e);}
+    }catch(e){console.error(e);toast("⚠ "+(e?.message||e),"error");}
     setBusy(false);
   }
 
@@ -7423,23 +7454,35 @@ function AppContent(){
 
   async function refreshAll(){
     if(!session)return;
-    const data=await loadScopedAppData(session);
-    if(data.races)setRaces(data.races);
-    if(data.runners)setRunners(data.runners);
-    if(data.registrations)setRegistrations(data.registrations);
-    if(data.profile)setProfile(data.profile);
+    try{
+      const data=await loadScopedAppData(session);
+      if(data.races)setRaces(data.races);
+      if(data.runners)setRunners(data.runners);
+      if(data.registrations)setRegistrations(data.registrations);
+      if(data.profile)setProfile(data.profile);
+    }catch(err){
+      console.error("refreshAll failed:",err);
+      toast((lang==="el"?"⚠ Αποτυχία φόρτωσης δεδομένων: ":"⚠ Failed to load data: ")+(err?.message||err),"error");
+    }
   }
   useEffect(()=>{
     if(!session)return;
     let cancelled=false;
     (async()=>{
-      const data=await loadScopedAppData(session);
-      if(cancelled)return;
-      if(data.races)setRaces(data.races);
-      if(data.runners)setRunners(data.runners);
-      if(data.registrations)setRegistrations(data.registrations);
-      if(data.profile)setProfile(data.profile);
-      setLoading(false);
+      try{
+        const data=await loadScopedAppData(session);
+        if(cancelled)return;
+        if(data.races)setRaces(data.races);
+        if(data.runners)setRunners(data.runners);
+        if(data.registrations)setRegistrations(data.registrations);
+        if(data.profile)setProfile(data.profile);
+      }catch(err){
+        if(cancelled)return;
+        console.error("Initial data load failed:",err);
+        toast("⚠ Αποτυχία φόρτωσης δεδομένων / Failed to load data: "+(err?.message||err),"error");
+      }finally{
+        if(!cancelled)setLoading(false);
+      }
     })();
     return()=>{cancelled=true;};
   },[session]);
